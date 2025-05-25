@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo-b.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' data:;
+              font-src 'self';
+              script-src 'self' https://www.google-analytics.com https://www.googletagmanager.com 'sha256-GAqhSUH8neHAS5G94p+oJWzBnYd4rroWQj+YXRZetxw=';
+              connect-src 'self' https://223.5.5.5 https://dns.google.com https://www.google-analytics.com https://clients3.google.com https://api.whatsonchain.com https://api.bitails.io https://beef.xn--nda.network https://api.gorillapool.io https://arc.taal.com https://api.taal.com https://*.handcash.io https://*.rockwallet.net"
+    />
+    <title>BitSPV - Bitcoin Satoshi Payment Vision</title>
+    
+    <meta name="description" content="BitSPV - Accelerating the vision of Bitcoin Satoshi Payment.">
+    <meta name="keywords" content="Bitcoin, Satoshi, Payment, Vision, BitSPV">
+    <meta name="author" content="BitSPV Team">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="BitSPV - Bitcoin Satoshi Payment Vision">
+    <meta property="og:description" content="BitSPV - Accelerating the vision of Bitcoin Satoshi Payment.">
+    <meta property="og:image" content="/logo-b.png">
+    <meta property="og:url" content="https://bitspv.com">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="BitSPV - Bitcoin Satoshi Payment Vision">
+    <meta name="twitter:description" content="BitSPV - Accelerating the vision of Bitcoin Satoshi Payment.">
+    <meta name="twitter:image" content="/logo-b.png">
+    
+    <script>
+      const userLang = navigator.language || navigator.userLanguage;
+      if (userLang.includes('zh')) {
+        document.title = '比特超网 | BitSPV - 加速比特币支付愿景呈现'
+      }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "BitSPV - Bitcoin Satoshi Payment Vision",
+      "url": "https://bitspv.com"
+    }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
