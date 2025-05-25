@@ -26,6 +26,7 @@ export default {
       copied: '已复制',
       copyFailed: '复制失败',
       pkNotFound: '未找到私钥',
+      oldWalletWarning: '旧版钱包用户请尽快备份并在新域名导入，继续使用。',
       feeCalculationFailed: '手续费计算失败',
       dryRunFailed: '预处理失败',
       invalidRequest: '无效的支付请求',

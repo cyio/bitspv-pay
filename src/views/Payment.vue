@@ -1,5 +1,10 @@
 <template>
   <div class="min-h-screen py-8">
+    <!-- 顶部提示信息 -->
+    <div v-if="showOldWalletWarning" class="bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded-lg relative mb-4 max-w-md mx-auto text-sm">
+      {{ $t('bsvPayment.statusMessages.oldWalletWarning') }} <a href="https://www.bitspv.com/pay.html" target="_blank" class="text-yellow-800 dark:text-yellow-200 underline hover:text-yellow-900 dark:hover:text-yellow-100">旧网址</a>
+      <button @click="closeOldWalletWarning" class="absolute top-1 right-2 text-yellow-800 dark:text-yellow-200 hover:text-yellow-900 dark:hover:text-yellow-100 text-lg font-bold">&times;</button>
+    </div>
     <div class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 relative">
       <div class="absolute top-4 right-4 flex items-center space-x-2">
         <button @click="showAboutModal = true" title="About" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -111,6 +116,7 @@ const importFileInput = ref(null);
 import { useGoogleConnectivity } from '../composables/useGoogleConnectivity';
 import { useStorage } from '../composables/useStorage';
 import { useWallet } from '../composables/useWallet'; // 导入 useWallet
+const OLD_WALLET_WARNING_CLOSED_KEY = 'oldWalletWarningClosed'; // 定义 localStorage key
 import { P2PKH, Script, Transaction, SatoshisPerKilobyte, PrivateKey } from '@bsv/sdk'; // 移除 PrivateKey, PublicKey, BigNumber
 import { PaymailClient } from '@cyio/ts-paymail/client';
 import jsQR from 'jsqr';
@@ -225,6 +231,7 @@ const showAboutModal = ref(false); // 控制关于弹层的显示
 const isDonationModalVisible = ref(false);
 const isAmountCalculated = ref(false); // 新增：表示金额是否计算完毕
 const showWalletManager = ref(false); // 新增：控制 WalletManager 的显示
+const showOldWalletWarning = ref(true); // 控制顶部提示信息的显示
 
 const storage = useStorage(); // 保持 useStorage 导入
 
@@ -444,9 +451,8 @@ function redirectBack(data) {
     data: data,
   });
 
-  // 构建回调URL - 确保从hash参数获取callbackUrl
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const callbackUrl = hashParams.get('callbackUrl') || '/pay-result';
+  // 构建回调URL - 从 query 参数获取 callbackUrl
+  const callbackUrl = route.query.callbackUrl || '/pay-result'; // 从 route.query 获取 callbackUrl
   
   if (callbackUrl) {
     const separator = callbackUrl.includes('?') ? '&' : '?';
@@ -454,14 +460,21 @@ function redirectBack(data) {
     // 重定向
     location.replace(redirectUrl);
   } else {
-    console.error('No callbackUrl found in hash parameters');
+    console.error('No callbackUrl found in query parameters'); // 更新日志信息
   }
 }
 
 function sendDataToParent(data) {
   console.log('sendDataToParent ', data);
-  if (window.opener && typeof window.opener.receiveDataFromChild === 'function') {
-    window.opener.receiveDataFromChild(data);
+  if (window.opener) {
+    // 向父窗口发送消息
+    window.opener.postMessage(
+      {
+        type: 'payment_success',
+        payload: { txid: data } // data 就是 txid
+      },
+      window.location.origin // 指定父页面的源
+    );
     window.close();
   } else {
     console.error('No parent window or receiveDataFromChild function not found');
@@ -470,6 +483,7 @@ function sendDataToParent(data) {
 }
 
 const onPaymentSuccess = data => {
+  // debugger
   if (window.opener) {
     sendDataToParent(data);
   } else {
@@ -930,8 +944,19 @@ const refreshBalance = async () => {
   }
 };
 
+// 关闭旧钱包警告
+const closeOldWalletWarning = () => {
+  showOldWalletWarning.value = false;
+  localStorage.setItem(OLD_WALLET_WARNING_CLOSED_KEY, 'true');
+};
+
 // 生命周期钩子
 onMounted(async () => {
+  // 检查是否已关闭旧钱包警告
+  if (localStorage.getItem(OLD_WALLET_WARNING_CLOSED_KEY) === 'true') {
+    showOldWalletWarning.value = false;
+  }
+
   const { ciphertext: encryptedWif } = storage.getEncryptedWifData();
   const oldPlaintextWif = storage.getOldPlaintextWif(); // 使用 useStorage 获取旧格式私钥
 
