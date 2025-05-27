@@ -1,10 +1,12 @@
 // Constants
+import { updateProviderHealth, getRecommendedProvider } from './apiProviderHealth';
+
 const WHATS_ON_CHAIN_API = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
 const BITAILS_BROADCAST_API = 'https://api.bitails.io/tx/broadcast';
 const BITAILS_DOWNLOAD_TX_API = 'https://api.bitails.io/download/tx';
 const WHATS_ON_CHAIN_TX_API = 'https://api.whatsonchain.com/v1/bsv/main/tx';
 const BITAILS_TX_OUTPUTS_API = 'https://api.bitails.io/tx';
-const WHATS_ON_CHAIN_ADDRESS_BALANCE_API = 'https://api.whatsonchain.com/v1/bsv/';
+const WHATS_ON_CHAIN_ADDRESS_BALANCE_API = 'https://api.whatsonchain.com/v1/bsv';
 const BITAILS_ADDRESS_BALANCE_API = 'https://api.bitails.io/address';
 const TAAL_API_BASE = import.meta.env.PROD ? 'https://api.taal.com/v1' : '/api-taal';
 const ARC_API_BASE = import.meta.env.PROD ? 'https://arc.taal.com/v1' : '/api-arc';
@@ -94,42 +96,53 @@ async function broadcastTransactionWithBitails(txHex) {
  * @throws {Error} 如果所有来源都失败
  */
 const getSourceTransaction = async txid => {
-  const apiEndpoints = [
-    {
-      url: `${BITAILS_DOWNLOAD_TX_API}/${txid}/hex`,
-      transform: data => data,
-    },
-    {
+  const provider = getRecommendedProvider();
+  if (!provider) {
+    throw new Error(`No healthy service provider available for source transaction check for txid: ${txid}`);
+  }
+
+  const sourceApiEndpoints = {
+    whatsOnChain: {
       url: `${WHATS_ON_CHAIN_TX_API}/${txid}/hex`,
       transform: data => data,
     },
-  ];
+    bitails: {
+      url: `${BITAILS_DOWNLOAD_TX_API}/${txid}/hex`,
+      transform: data => data,
+    },
+  };
 
+  const currentSourceApi = sourceApiEndpoints[provider.name] || Object.values(sourceApiEndpoints)[0];
+
+  const startTime = Date.now();
   try {
-    // 尝试从第一个API获取，如果失败则尝试第二个
-    let response = await fetch(apiEndpoints[0].url);
+    const response = await fetch(currentSourceApi.url);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+
     if (!response.ok) {
-      const errorData = await response.text().catch(() => `Failed to fetch from ${apiEndpoints[0].url}`);
-      console.warn(`API ${apiEndpoints[0].url} failed: ${response.status} ${response.statusText}. Data: ${errorData}. Falling back to next API.`);
-      
-      response = await fetch(apiEndpoints[1].url);
-      if (!response.ok) {
-        const errorData2 = await response.text().catch(() => `Failed to fetch from ${apiEndpoints[1].url}`);
-        throw new Error(
-          `API ${apiEndpoints[1].url} failed: ${response.status} ${response.statusText}. Data: ${errorData2}`
-        );
-      }
+      const errorData = await response.text().catch(() => ({}));
+      console.warn(`API ${provider.name} (${currentSourceApi.url}) failed: ${response.status} ${response.statusText}. Data: ${errorData}. Updating health.`);
+      updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+      throw new Error(`Failed to fetch source transaction from ${provider.name}: ${response.status} ${response.statusText}`);
     }
+
     const data = await response.text();
-    const txHex = apiEndpoints[0].transform(data); // Use transform from the first endpoint as a default
+    const txHex = currentSourceApi.transform(data);
     
     if (typeof txHex !== 'string' || !txHex) {
       throw new Error('从 API 接收到意外的数据格式或空数据');
     }
+
+    updateProviderHealth(provider.name, true, latency); // 成功，更新健康度
     return txHex;
+
   } catch (error) {
-    console.error(`从所有提供者获取原始交易失败: ${error.message}`);
-    throw new Error(`无法从任何提供者获取原始交易: ${error.message}`);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+    console.error(`Error fetching source transaction from ${provider.name} (${sourceApiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+    throw new Error(`Failed to fetch source transaction: ${error.message}`);
   }
 };
 
@@ -166,29 +179,53 @@ const getOpReturnFromWhatsOnChain = async txid => {
 };
 
 async function getBalance(address, network = 'main') {
-  const apiEndpoint = {
-    url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/balance`,
-    transform: data => ({ confirmed: data.confirmed, unconfirmed: data.unconfirmed }),
+  const provider = getRecommendedProvider();
+  if (!provider) {
+    throw new Error(`No healthy service provider available for balance check for address: ${address}`);
+  }
+
+  const apiEndpoints = {
+    whatsOnChain: {
+      url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/balance`,
+      transform: data => ({ confirmed: data.confirmed, unconfirmed: data.unconfirmed }),
+    },
+    bitails: {
+      url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/balance`, // 假设 Bitails 有单独的 balance API
+      transform: data => ({ confirmed: data.balance, unconfirmed: 0 }), // 假设 Bitails 返回的字段不同
+    },
   };
 
+  const currentApi = apiEndpoints[provider.name] || Object.values(apiEndpoints)[0];
+
+  const startTime = Date.now();
   try {
-    const response = await fetch(apiEndpoint.url);
+    const response = await fetch(currentApi.url);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        `API ${apiEndpoint.url} failed: ${response.status} ${response.statusText} ` + JSON.stringify(errorData)
-      );
+      console.warn(`API ${provider.name} (${currentApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+      throw new Error(`Failed to fetch balance from ${provider.name}: ${response.status} ${response.statusText}`);
     }
+
     const data = await response.json();
-    const result = apiEndpoint.transform(data);
-    
+    const result = currentApi.transform(data);
+
     if (typeof result !== 'object' || result === null || typeof result.confirmed !== 'number' || typeof result.unconfirmed !== 'number') {
         throw new Error('Received unexpected data format from API');
     }
+
+    updateProviderHealth(provider.name, true, latency); // 成功，更新健康度
     const total = result.confirmed + result.unconfirmed;
     return { ...result, total };
+
   } catch (error) {
-    console.error(`Error fetching balance for ${address}:`, error);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+    console.error(`Error fetching balance from ${provider.name} (${apiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
     throw new Error(`Failed to fetch balance: ${error.message}`);
   }
 }
@@ -310,10 +347,15 @@ const getSourceAddressFromTx = async txid => {
   }
 };
 
-const getUTXOs = async (address, pubKey) => {
-  const apiEndpoints = [
-    {
-      url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/main/address/${address}/unspent`,
+const getUTXOs = async (address, network = 'main') => {
+  const provider = getRecommendedProvider();
+  if (!provider) {
+    throw new Error(`No healthy service provider available for UTXO check for address: ${address}`);
+  }
+
+  const utxoApiEndpoints = {
+    whatsOnChain: {
+      url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/unspent`,
       transform: data =>
         data.map(utxo => ({
           txid: utxo.tx_hash,
@@ -321,7 +363,7 @@ const getUTXOs = async (address, pubKey) => {
           satoshis: utxo.value,
         })),
     },
-    {
+    bitails: {
       url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/unspent`,
       transform: data =>
         data.unspent.map(utxo => ({
@@ -330,24 +372,39 @@ const getUTXOs = async (address, pubKey) => {
           satoshis: utxo.satoshis,
         })),
     },
-  ];
+  };
 
+  const currentUtxoApi = utxoApiEndpoints[provider.name] || Object.values(utxoApiEndpoints)[0];
+
+  const startTime = Date.now();
   try {
-    // 尝试从第一个API获取，如果失败则尝试第二个
-    let response = await fetch(apiEndpoints[0].url);
+    const response = await fetch(currentUtxoApi.url);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+
     if (!response.ok) {
-      console.warn(`API ${apiEndpoints[0].url} failed. Falling back to next API.`);
-      response = await fetch(apiEndpoints[1].url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const errorData = await response.json().catch(() => ({}));
+      console.warn(`API ${provider.name} (${currentUtxoApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+      throw new Error(`Failed to fetch UTXOs from ${provider.name}: ${response.status} ${response.statusText}`);
     }
+
     const data = await response.json();
-    const utxos = apiEndpoints[0].transform(data); // Use transform from the first endpoint as a default
+    const utxos = currentUtxoApi.transform(data);
+
+    if (!Array.isArray(utxos)) {
+      throw new Error('Received unexpected data format from API: UTXOs should be an array');
+    }
+
+    updateProviderHealth(provider.name, true, latency); // 成功，更新健康度
     return utxos;
+
   } catch (error) {
-    console.error('Failed to get UTXOs from any API:', error);
-    return [];
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+    console.error(`Error fetching UTXOs from ${provider.name} (${utxoApiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+    throw new Error(`Failed to fetch UTXOs: ${error.message}`);
   }
 };
 

@@ -259,7 +259,7 @@ const openPaymentPage = () => {
 
 // 处理转账事件
 const handleTransferFunds = async (receivedTarget, amount) => {
-  const utxos = await getUTXOs(address.value, pubKey.value); // 确保 utxos 被定义
+  const utxos = await getUTXOs(address.value); // 确保 utxos 被定义
   
   let paymentTargetObject = {};
   if (isValidPaymail(receivedTarget)) {
@@ -393,7 +393,7 @@ const calculateMaxTransfer = async () => {
   // No need to explicitly call ensurePrivateKeyLoaded here if processRefund handles it.
   // For now, processRefund's call is sufficient.
   try {
-    const utxos = await getUTXOs(address.value, pubKey.value);
+    const utxos = await getUTXOs(address.value);
     const currentBalance = utxos.reduce((sum, utxo) => sum + utxo.satoshis, 0);
 
     if (currentBalance <= 0) {
@@ -517,7 +517,7 @@ const checkBalance = async () => {
     }
 
     // 仅在需要花费时获取 UTXOs 用于交易构建和 Dry Run
-    const utxos = await getUTXOs(address.value, pubKey.value);
+    const utxos = await getUTXOs(address.value);
 
     // 新增检查：如果 utxos 为空但 balance > 0，则认为是网络问题
     if (utxos.length === 0 && balance.value > 0) {
