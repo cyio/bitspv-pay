@@ -6,6 +6,15 @@ import VueGtag from 'vue-gtag-next';
 import i18n from '@/i18n';
 import { useIsSmallScreen } from '@/composables/useIsSmallScreen.js'; // 引入自定义 hook
 
+// 创建 Trusted Types 策略
+if (window.trustedTypes && window.trustedTypes.createPolicy) {
+  window.trustedTypes.createPolicy('default', {
+    createHTML: (string) => string,
+    createScriptURL: (string) => string,
+    createScript: (string) => string
+  });
+}
+
 const app = createApp(App);
 
 // 全局注册插件
@@ -50,7 +59,7 @@ router.beforeEach((to, from, next) => {
     const webPageScript = document.createElement('script');
     webPageScript.type = 'application/ld+json';
     webPageScript.id = 'webpage-json-ld';
-    webPageScript.text = JSON.stringify({
+    webPageScript.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'WebPage',
       name: title,
