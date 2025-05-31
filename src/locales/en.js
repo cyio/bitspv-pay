@@ -245,6 +245,19 @@ export default {
   modal: {
     closeButton: 'Close',
   },
+  transactionHistory: {
+    title: 'Transaction History',
+    smallTitle: 'Latest',
+    loading: 'Loading transactions...',
+    error: 'Error fetching transactions',
+    noRecords: 'No transaction records found.',
+    txid: 'TxID',
+    copy: 'Copy',
+    copied: 'Copied',
+    copyFailedTitle: 'Copy Failed',
+    copyFailedMessage: 'Failed to copy transaction ID.',
+    loadMore: 'Load More',
+  },
   donationModal: {
     title: 'Buy me a coffee',
     message: 'Like this tool? Consider buying the developer a coffee to show your support!',

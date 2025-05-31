@@ -1,4 +1,5 @@
 import { ref, computed, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n'; // 导入 useI18n
 import { PrivateKey, PublicKey } from '@bsv/sdk';
 import QRCode from 'qrcode';
 import { useStorage } from './useStorage';
@@ -7,7 +8,8 @@ import { showInfoDialog, showConfirmationDialog, showPromptDialog } from '../uti
 import { isWeChat } from '../utils';
 import { downloadEncryptedDataQrCode, generateEncryptedDataQrCodeUrl } from '../utils/bsv'; // 导入新的工具函数
 
-export function useWallet(t) { // 接受 t 作为参数
+export function useWallet() {
+  const { t } = useI18n(); // 获取翻译函数
   const storage = useStorage();
   const { promptForPin, ensurePrivateKeyLoaded, autoBackupPrivateKeyToFile, encryptData, decryptData, generateEncryptedBackupData } = usePinManager(); // 导入 generateEncryptedBackupData
 

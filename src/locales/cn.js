@@ -227,9 +227,25 @@ export default {
         transferFailed: '转账失败',
       },
     },
+    viewHistoryButton: '查看交易记录', // 新增：查看交易记录按钮
   },
   modal: {
     closeButton: '关闭',
+  },
+  transactionHistory: { // 新增：交易历史记录模块
+    title: '交易记录',
+    smallTitle: '最近',
+    loading: '正在加载交易记录...',
+    error: '加载交易记录失败',
+    noRecords: '暂无交易记录',
+    txid: '交易ID',
+    copy: '复制',
+    copied: '已复制',
+    copyFailedTitle: '复制失败',
+    copyFailedMessage: '无法复制交易ID到剪贴板。请重试或手动复制。',
+    from: '来自',
+    to: '至',
+    loadMore: '加载更多', // 新增：加载更多按钮文本
   },
   donationModal: {
     title: '打赏一杯咖啡',

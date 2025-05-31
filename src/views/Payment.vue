@@ -14,6 +14,12 @@
           <!-- <SparklesIcon class="w-6 h-6" /> -->
           <CoffeeIcon />
         </button>
+        <!-- 交易历史按钮 -->
+        <button @click="openHistoryModal" title="交易历史" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
       <h1 class="text-2xl font-bold text-center mb-2">{{ $t('bsvPayment.title') }}</h1>
       <p class="text-sm text-center text-gray-500 mb-4">{{ $t('bsvPayment.statusMessages.notSafeForStorage') }}</p>
@@ -106,6 +112,17 @@
     </div>
     <PaymentAbout :visible="showAboutModal" @close="showAboutModal = false" />
     <DonationModal :visible="isDonationModalVisible" @close="closeDonationModal" />
+
+    <!-- 交易历史模态框 -->
+    <Modal :visible="showHistoryModal" @close="showHistoryModal = false" :title="$t('transactionHistory.title')" :hideFooter="true">
+      <div class="max-h-96 overflow-y-auto">
+        <TransactionHistory
+          :transactions="transactions"
+          :is-loading="isHistoryLoading"
+          :error="historyError"
+        />
+      </div>
+    </Modal>
   </div>
   <input type="file" ref="importFileInput" @change="handleFileImport" accept="image/*" style="display: none" />
 </template>
@@ -147,6 +164,9 @@ import {
 import { showInfoDialog, showPromptDialog, showConfirmationDialog } from '../utils/confirm'; // 导入 showInfoDialog, showPromptDialog, showConfirmationDialog
 import WalletManager from '../components/WalletManager.vue';
 import { getBalance } from '../utils/bsv'; // 导入 getBalance 函数
+import Modal from '../components/Modal.vue'; // 导入 Modal 组件
+import TransactionHistory from '../components/TransactionHistory.vue'; // 导入 TransactionHistory 组件
+import { useTransactionHistory } from '../composables/useTransactionHistory'; // 导入 useTransactionHistory composable
 
 const route = useRoute();
 const { t, locale } = useI18n();
@@ -157,6 +177,9 @@ const walletManager = ref(null);
 
 // 使用 useWallet composable，并传入 t
 const { pubKey, address, qrcode, isWalletUiVisible, createWallet, getWifForBackup, handleDeleteWallet, handleImportData, handleRequestImportWallet, ensurePrivateKeyLoaded } = useWallet(t);
+
+// 使用 useTransactionHistory composable
+const { transactions, isLoading: isHistoryLoading, error: historyError } = useTransactionHistory();
 
 // 计算属性：根据状态返回相应的 Tailwind CSS 类
 const statusClasses = computed(() => {
@@ -232,6 +255,7 @@ const isDonationModalVisible = ref(false);
 const isAmountCalculated = ref(false); // 新增：表示金额是否计算完毕
 const showWalletManager = ref(false); // 新增：控制 WalletManager 的显示
 const showOldWalletWarning = ref(true); // 控制顶部提示信息的显示
+const showHistoryModal = ref(false); // 控制历史交易记录模态框的显示
 
 const storage = useStorage(); // 保持 useStorage 导入
 
@@ -243,6 +267,11 @@ const openDonationModal = () => {
 
 const closeDonationModal = () => {
   isDonationModalVisible.value = false;
+};
+
+// 打开历史交易记录模态框并加载数据
+const openHistoryModal = async () => {
+  showHistoryModal.value = true;
 };
 
 const triggerImportWallet = () => {

@@ -1,5 +1,5 @@
-import { P2PKH } from '@bsv/sdk';
-import { isWeChat, downloadImage } from './index'; // 导入 downloadImage
+import { P2PKH, Script, PublicKey, Hash } from '@bsv/sdk'; // 导入 Script, Address, Hash
+import { isWeChat, downloadImage } from './index'; // 导入 downloadImage 和 getAddressFromScript
 import QRCode from 'qrcode'; // 导入 QRCode
 import {
   broadcastTransaction,
@@ -18,6 +18,7 @@ import {
   getUTXOs,
   getAddressDetail,
   fetchMinerFee,
+  fetchAddressTransactions, // 导入获取地址交易历史的函数
 } from './api';
 
 function getSenderAddress(tx) {

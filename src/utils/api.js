@@ -5,6 +5,7 @@ const WHATS_ON_CHAIN_API = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
 const BITAILS_BROADCAST_API = 'https://api.bitails.io/tx/broadcast';
 const BITAILS_DOWNLOAD_TX_API = 'https://api.bitails.io/download/tx';
 const WHATS_ON_CHAIN_TX_API = 'https://api.whatsonchain.com/v1/bsv/main/tx';
+const WHATS_ON_CHAIN_TX_BATCH_API = 'https://api.whatsonchain.com/v1/bsv/main/tx/hash'; // 修改为单笔查询接口的基础URL
 const BITAILS_TX_OUTPUTS_API = 'https://api.bitails.io/tx';
 const WHATS_ON_CHAIN_ADDRESS_BALANCE_API = 'https://api.whatsonchain.com/v1/bsv';
 const BITAILS_ADDRESS_BALANCE_API = 'https://api.bitails.io/address';
@@ -347,6 +348,40 @@ const getSourceAddressFromTx = async txid => {
   }
 };
 
+/**
+ * 批量获取交易详情。
+ * @param {Array<string>} txids - 交易 ID 数组。
+ * @returns {Promise<Array>} 交易详情数组。
+ * @throws {Error} 如果请求失败。
+ */
+async function fetchTransactionDetailsBatch(txids) {
+  if (!Array.isArray(txids) || txids.length === 0) {
+    return [];
+  }
+
+  try {
+    const results = await Promise.all(
+      txids.map(async (txid) => {
+        const response = await fetch(`${WHATS_ON_CHAIN_TX_BATCH_API}/${txid}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.warn(
+            `Failed to fetch transaction details for ${txid}: ${response.status} ${response.statusText} ` +
+              JSON.stringify(errorData)
+          );
+          return null; // 返回 null 或抛出错误，取决于错误处理策略
+        }
+        return response.json();
+      })
+    );
+    // 过滤掉失败的请求（如果返回 null）
+    return results.filter(result => result !== null);
+  } catch (error) {
+    console.error('Error fetching transaction details in batch:', error);
+    throw error;
+  }
+}
+
 const getUTXOs = async (address, network = 'main') => {
   const provider = getRecommendedProvider();
   if (!provider) {
@@ -445,6 +480,80 @@ const fetchMinerFee = async () => {
   }
 };
 
+/**
+ * 尝试从 WhatsOnChain 和 Bitails 获取地址的交易历史。
+ * @param {string} address - 要查询的地址。
+ * @returns {Promise<Array>} 格式化的交易记录数组。
+ * @throws {Error} 如果所有来源都失败。
+ */
+async function fetchAddressTransactions(address) {
+  const provider = getRecommendedProvider();
+  if (!provider) {
+    throw new Error(`No healthy service provider available for address transaction history check for address: ${address}`);
+  }
+
+  const historyApiEndpoints = {
+    whatsOnChain: {
+      url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/main/address/${address}/history`,
+      transform: data => data.map(tx => ({
+        txid: tx.tx_hash,
+        height: tx.height,
+        // value: tx.value, // 交易金额，对于地址来说是净变化
+        // time: tx.time,
+        // op_return: tx.op_return,
+        // WhatsOnChain 不直接提供输入/输出地址，需要额外查询交易详情
+      })),
+    },
+    // bitails: {
+    //   // Bitails 的地址交易历史 API 路径可能需要根据实际情况调整
+    //   // 假设 Bitails 有一个 /address/{address}/transactions 的接口
+    //   url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/transactions`,
+    //   transform: data => data.transactions.map(tx => ({
+    //     txid: tx.txid,
+    //     height: tx.block_height,
+    //     time: tx.time,
+    //     // Bitails 可能会提供更详细的输入/输出信息，方便判断收入/支出
+    //     inputs: tx.inputs,
+    //     outputs: tx.outputs,
+    //   })),
+    // },
+  };
+
+  const currentApi = historyApiEndpoints[provider.name] || Object.values(historyApiEndpoints)[0];
+
+  const startTime = Date.now();
+  try {
+    const response = await fetch(currentApi.url);
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn(`API ${provider.name} (${currentApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+      throw new Error(`Failed to fetch address transactions from ${provider.name}: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const transactions = currentApi.transform(data);
+
+    if (!Array.isArray(transactions)) {
+      throw new Error('Received unexpected data format from API: Transactions should be an array');
+    }
+
+    updateProviderHealth(provider.name, true, latency); // 成功，更新健康度
+    return transactions;
+
+  } catch (error) {
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+    console.error(`Error fetching address transactions from ${provider.name} (${historyApiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
+    throw new Error(`Failed to fetch address transactions: ${error.message}`);
+  }
+}
+
+
 export {
   broadcastTransaction,
   broadcastTransactionWithBitails,
@@ -462,4 +571,6 @@ export {
   getUTXOs,
   getAddressDetail,
   fetchMinerFee,
+  fetchAddressTransactions, // 导出获取地址交易历史的函数
+  fetchTransactionDetailsBatch, // 导出批量获取交易详情的函数
 };
