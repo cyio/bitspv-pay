@@ -89,7 +89,7 @@ async function generateEncryptedDataQrCodeUrl(backupData) {
     // console.log('bsv.js: backupData content (first 200 chars):', backupDataString.substring(0, 200));
 
     // 使用 errorCorrectionLevel: 'H' 提高容错率，width 设置二维码宽度
-    return await QRCode.toDataURL(backupDataString, { errorCorrectionLevel: 'H', width: 300 });
+    return await QRCode.toDataURL(backupDataString, { errorCorrectionLevel: 'H', width: 256 });
   } catch (err) {
     console.error('Failed to generate encrypted data QR code URL:', err);
     return '';

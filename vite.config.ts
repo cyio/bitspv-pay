@@ -63,6 +63,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       port: 5175, // 设置默认端口为 5175
+      hmr: { overlay: false }, // 禁用 Vite 的错误覆盖层
       // 增加了额外的安全层，限制了跨域资源的加载和交互方式
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',

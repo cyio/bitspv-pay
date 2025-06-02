@@ -219,7 +219,8 @@ export function showPromptDialog(
   inputPlaceholder = '',
   hintMessage = '', // 新增可选参数 hintMessage
   showCancelButton = true, // 新增参数，控制是否显示取消按钮
-  hideModalHeaderCloseButton = false // 新增参数，控制是否显示 Modal 的头部关闭按钮
+  hideModalHeaderCloseButton = false, // 新增参数，控制是否显示 Modal 的头部关闭按钮
+  maxLength = undefined, // 新增参数，用于设置输入框的最大长度
 ) {
   return new Promise((resolve) => {
     const mountEl = document.createElement('div');
@@ -277,19 +278,23 @@ export function showPromptDialog(
             },
             {
               default: () => {
-                const inputEl = h('input', {
+                const inputProps = {
                   type: inputType,
                   value: inputValue.value,
                   onInput: (event) => (inputValue.value = event.target.value),
                   placeholder: inputPlaceholder,
                   class: 'mt-2 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
-                  // autocomplete: inputType === 'password' ? 'new-password' : 'on', // 'on' allows normal autofill for non-password
-                  // autofocus: true, // Removed autofocus, will be handled manually
-                });
+                };
 
-                const contentChildren = [
-                  h('p', { class: 'text-sm text-gray-700 dark:text-gray-300 py-2' }, message),
-                ];
+                if (maxLength !== undefined) {
+                  inputProps.maxlength = maxLength;
+                }
+
+                const inputEl = h('input', inputProps);
+
+                const contentChildren = [];
+                
+                contentChildren.push(h('p', { class: 'text-sm text-gray-700 dark:text-gray-300 py-2' }, message));
 
                 if (inputType === 'password') {
                   // Wrap password input in a form to isolate it for password managers
@@ -351,5 +356,45 @@ export function showPromptDialog(
         inputElement.focus();
       }
     }, 100); // 100ms delay, adjust if necessary
+  });
+}
+
+import MultiInputPrompt from '@/components/MultiInputPrompt.vue'; // 导入新的组件
+
+// 新增的通用多输入弹窗函数
+export function showMultiInputPrompt(options) {
+  return new Promise((resolve) => {
+    const mountEl = document.createElement('div');
+    document.body.appendChild(mountEl);
+
+    const app = createApp({
+      setup() {
+        const handleConfirm = (values) => {
+          app.unmount();
+          if (mountEl.parentNode) {
+            mountEl.parentNode.removeChild(mountEl);
+          }
+          resolve(values);
+        };
+
+        const handleCancel = () => {
+          app.unmount();
+          if (mountEl.parentNode) {
+            mountEl.parentNode.removeChild(mountEl);
+          }
+          resolve(null);
+        };
+
+        return () =>
+          h(MultiInputPrompt, {
+            ...options,
+            onConfirm: handleConfirm,
+            onCancel: handleCancel,
+          });
+      },
+    });
+
+    app.use(i18n);
+    app.mount(mountEl);
   });
 }

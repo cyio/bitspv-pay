@@ -21,7 +21,7 @@
           </svg>
         </button>
       </div>
-      <h1 class="text-2xl font-bold text-center mb-2">{{ $t('bsvPayment.title') }}</h1>
+      <h1 class="text-2xl font-bold text-center">{{ $t('bsvPayment.title') }}</h1>
       <p class="text-sm text-center text-gray-500 mb-4">{{ $t('bsvPayment.statusMessages.notSafeForStorage') }}</p>
 
       <!-- 状态显示 -->
@@ -49,6 +49,10 @@
       <div class="h-6 w-full flex justify-center" v-show="sendRequest && ['waiting', 'processing'].includes(status)">
         <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         <!-- <div class="animate-spin rounded-full h-6 w-6 border-t-4 border-blue-500 border-solid"></div> -->
+      </div>
+      <!-- 钱包名称显示 -->
+      <div v-if="walletName" class="text-center text-gray-600 dark:text-gray-300">
+        <span class="text-sm"><span class="font-semibold">{{ walletName }}</span></span>
       </div>
 
       <!-- Wallet Dependent UI -->
@@ -176,7 +180,7 @@ const sourceTxCache = new Map(); // Cache for source transactions
 const walletManager = ref(null);
 
 // 使用 useWallet composable，并传入 t
-const { pubKey, address, qrcode, isWalletUiVisible, createWallet, getWifForBackup, handleDeleteWallet, handleImportData, handleRequestImportWallet, ensurePrivateKeyLoaded } = useWallet(t);
+const { pubKey, address, qrcode, walletName, isWalletUiVisible, createWallet, getWifForBackup, handleDeleteWallet, handleImportData, handleRequestImportWallet, ensurePrivateKeyLoaded, setWalletName } = useWallet(t);
 
 // 使用 useTransactionHistory composable
 const { transactions, isLoading: isHistoryLoading, error: historyError } = useTransactionHistory();
@@ -221,6 +225,9 @@ const handleFileImport = async (event) => {
         const result = await handleImportData(code.data);
         if (result?.error && walletManager.value?.updateTransferStatus) {
           walletManager.value.updateTransferStatus('error', result.message);
+        } else if (result?.walletName) {
+          // 导入成功后，更新 Payment.vue 中的 walletName
+          walletName.value = result.walletName;
         }
       } else {
         await showInfoDialog(
@@ -254,7 +261,7 @@ const showAboutModal = ref(false); // 控制关于弹层的显示
 const isDonationModalVisible = ref(false);
 const isAmountCalculated = ref(false); // 新增：表示金额是否计算完毕
 const showWalletManager = ref(false); // 新增：控制 WalletManager 的显示
-const showOldWalletWarning = ref(true); // 控制顶部提示信息的显示
+const showOldWalletWarning = ref(false); // 控制顶部提示信息的显示
 const showHistoryModal = ref(false); // 控制历史交易记录模态框的显示
 
 const storage = useStorage(); // 保持 useStorage 导入
@@ -1005,6 +1012,9 @@ onMounted(async () => {
         statusMessage.value = result.message;
         return;
       }
+      if (result?.walletName) {
+        walletName.value = result.walletName;
+      }
       await handlePaymentRequest();
     } else { // 用户选择导入钱包
       await nextTick(); // 确保 importFileInput.value 已更新
@@ -1012,6 +1022,8 @@ onMounted(async () => {
       if (result?.error) {
         status.value = 'error';
         statusMessage.value = result.message;
+      } else if (result?.walletName) {
+        walletName.value = result.walletName;
       }
     }
   } else {
@@ -1021,6 +1033,9 @@ onMounted(async () => {
       status.value = 'error';
       statusMessage.value = result.message;
       return;
+    }
+    if (result?.walletName) {
+      walletName.value = result.walletName;
     }
     await handlePaymentRequest();
   }

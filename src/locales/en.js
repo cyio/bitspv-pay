@@ -50,6 +50,7 @@ export default {
         imageLoadError: 'Image load failed.',
         fileReadError: 'File read failed.',
         invalidImportData: 'Invalid import data. Please ensure it is a valid WIF private key or JSON format.',
+        invalidQrCode: 'Invalid QR code.',
         utxoFetchFailed: 'Failed to fetch Unspent Transaction Outputs (UTXOs). Please check network connection or try again later.',
         passkeyNotFoundInStorage:
           'Passkey information not found locally. Please set up a new wallet or recover.',
@@ -124,12 +125,12 @@ export default {
       unknownStatus: 'Unknown Status',
     },
     pinModal: {
-      setTitle: 'Set Up PIN',
-      setPrompt: 'Enter a new PIN (minimum 6 digits) for your wallet:',
+      setTitle: 'Set new wallet', // Modified title
+      setPrompt: 'Enter a new PIN (minimum 6 digits) for your wallet:', // PIN prompt
       setButton: 'Set PIN',
-      confirmTitle: 'Confirm PIN',
-      confirmPrompt: 'Re-enter your PIN to confirm:',
-      confirmButton: 'Confirm PIN',
+      confirmTitle: 'Confirm PIN', // Retained for consistency, though no longer used in combined flow
+      confirmPrompt: 'Re-enter your PIN to confirm:', // Retained for consistency
+      confirmButton: 'Confirm PIN', // Retained for consistency
       unlockTitle: 'Unlock Wallet',
       unlockPrompt: 'Enter your PIN to unlock the wallet:',
       unlockButton: 'Unlock',
@@ -150,8 +151,8 @@ export default {
       importSuccessMessage: 'Wallet imported and secured with a PIN.',
       pinTooShortTitle: 'PIN Too Short',
       pinTooShortMessage: 'PIN must be at least 6 digits long.',
-      pinsDoNotMatchTitle: 'PINs Do Not Match',
-      pinsDoNotMatchMessage: 'The PINs you entered do not match. Please try again.',
+      pinsDoNotMatchTitle: 'PINs Do Not Match', // Retained for consistency
+      pinsDoNotMatchMessage: 'The PINs you entered do not match. Please try again.', // Retained for consistency
       unlockRequiredTitle: 'Unlock Required',
       unlockRequiredForCopyMessage: 'Please unlock your wallet to copy the private key.',
       unlockCancelledTitle: 'Unlock Cancelled',
@@ -164,10 +165,21 @@ export default {
       pinIsMandatoryTitle: 'PIN Required',
       pinIsMandatoryMessage:
         'To protect your funds, setting a PIN is mandatory. This step cannot be skipped.',
-      confirmPinCancelledTitle: 'PIN Confirmation Cancelled',
+      confirmPinCancelledTitle: 'PIN Confirmation Cancelled', // Retained for consistency
       confirmPinCancelledMessage:
-        'Confirmation of the PIN was cancelled. Please restart the PIN setup process.',
+        'Confirmation of the PIN was cancelled. Please restart the PIN setup process.', // Retained for consistency
+      setHintTitle: 'Set Hint', // New title for the hint section
+      setHintPrompt: 'Please enter your hint (optional, max 50 characters):', // Hint prompt
+      setHintPlaceholder: 'This hint will be displayed when importing the wallet', // Hint placeholder
+      hintTooLong: 'Hint cannot exceed 50 characters', // Hint too long message
+      unlockHintPrompt: 'Hint: ', // For displaying stored hint during unlock
+      defaultWalletName: 'Wallet 1', // New
+      walletNamePrompt: 'Enter wallet name (optional, max 20 characters):', // New
+      walletNamePlaceholder: 'e.g., My Main Wallet', // New
+      pinInputPlaceholder: 'Enter PIN', // New
+      hintHintForSet: 'This hint will be displayed when importing the wallet to help you recall the PIN.', // New
     },
+    walletNameLabel: 'Wallet Name', // New
     walletSetup: {
       title: 'Set Up Your Wallet',
       prompt: 'Initialize your wallet to start using BSV payments.',

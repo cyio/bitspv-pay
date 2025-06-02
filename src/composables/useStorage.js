@@ -4,6 +4,7 @@ import { ref } from 'vue'
 const ENCRYPTED_WIF = 'encrypted-wif';
 const ENCRYPTED_WIF_IV = 'encrypted-wif-iv';
 const ENCRYPTED_WIF_SALT = 'encrypted-wif-salt';
+const WALLET_NAME = 'wallet-name'; // 用于存储钱包名称
 const PUBLIC_KEY = 'pub-key';
 const WALLET_ADDRESS = 'wallet-address';
 const IS_PIN_SETUP_DONE = 'is-pin-setup-done';
@@ -16,9 +17,10 @@ export const useStorage = () => {
     const ciphertext = localStorage.getItem(ENCRYPTED_WIF);
     const iv = localStorage.getItem(ENCRYPTED_WIF_IV);
     const salt = localStorage.getItem(ENCRYPTED_WIF_SALT);
-    return { ciphertext, iv, salt };
+    const walletName = localStorage.getItem(WALLET_NAME); // 获取钱包名称
+    return { ciphertext, iv, salt, walletName };
   };
-  const setEncryptedWifData = (ciphertext, iv, salt) => {
+  const setEncryptedWifData = (ciphertext, iv, salt) => { // 移除 hint 参数
     localStorage.setItem(ENCRYPTED_WIF, ciphertext);
     localStorage.setItem(ENCRYPTED_WIF_IV, iv);
     localStorage.setItem(ENCRYPTED_WIF_SALT, salt);
@@ -28,6 +30,10 @@ export const useStorage = () => {
     localStorage.removeItem(ENCRYPTED_WIF_IV);
     localStorage.removeItem(ENCRYPTED_WIF_SALT);
   };
+
+  const getWalletName = () => localStorage.getItem(WALLET_NAME);
+  const setWalletName = (value) => localStorage.setItem(WALLET_NAME, value);
+  const removeWalletName = () => localStorage.removeItem(WALLET_NAME);
 
   // 新增：获取旧格式的明文私钥
   const getOldPlaintextWif = () => localStorage.getItem(OLD_PRIV_KEY);
@@ -57,6 +63,7 @@ export const useStorage = () => {
     removePublicKey();
     removeWalletAddress();
     removeIsPinSetupDone();
+    removeWalletName(); // 移除钱包名称
     if (address) {
       removeBackupStatus(address);
     }
@@ -77,6 +84,9 @@ export const useStorage = () => {
     setBackupStatus,
     getOldPlaintextWif,
     removeOldPlaintextWif,
-    clearWalletData
+    clearWalletData,
+    getWalletName, // 导出新的函数
+    setWalletName, // 导出新的函数
+    removeWalletName, // 导出新的函数
   };
 };

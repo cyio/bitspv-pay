@@ -49,6 +49,7 @@ export default {
         imageLoadError: '图片加载失败。',
         fileReadError: '文件读取失败。',
         invalidImportData: '无效的导入数据。请确保是有效的WIF私钥或JSON格式。',
+        invalidQrCode: '无效的二维码。',
         utxoFetchFailed: '无法获取交易输出（UTXO）。请检查网络连接或稍后重试。',
         passkeyNotFoundInStorage: '本地未找到 Passkey 信息。请设置新钱包或尝试恢复。',
         passkeyAuthFailed: 'Passkey 身份验证失败。请重试。',
@@ -118,12 +119,12 @@ export default {
       unknownStatus: '未知状态',
     },
     pinModal: {
-      setTitle: '设置PIN码',
-      setPrompt: '为您的钱包输入一个新的PIN码（至少6位）：',
+      setTitle: '设置新钱包', // 修改标题
+      setPrompt: '为您的钱包输入一个新的PIN码（至少6位）：', // PIN 提示语
       setButton: '设置PIN码',
-      confirmTitle: '确认PIN码',
-      confirmPrompt: '重新输入您的PIN码以确认：',
-      confirmButton: '确认PIN码',
+      confirmTitle: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      confirmPrompt: '重新输入您的PIN码以确认：', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      confirmButton: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
       unlockTitle: '解锁钱包',
       unlockPrompt: '输入您的PIN码以解锁钱包：',
       unlockButton: '解锁',
@@ -142,9 +143,9 @@ export default {
       importSuccessTitle: '导入成功',
       importSuccessMessage: '钱包已导入并通过PIN码保护。',
       pinTooShortTitle: 'PIN码过短',
-      pinTooShortMessage: 'PIN码必须至少为6位数字。',
-      pinsDoNotMatchTitle: 'PIN码不匹配',
-      pinsDoNotMatchMessage: '您输入的PIN码不匹配。请重试。',
+      pinTooShortMessage: 'PIN码必须至少为6位',
+      pinsDoNotMatchTitle: 'PIN码不匹配', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      pinsDoNotMatchMessage: '您输入的PIN码不匹配。请重试。', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
       unlockRequiredTitle: '需要解锁',
       unlockRequiredForCopyMessage: '请解锁您的钱包以复制私钥。',
       unlockCancelledTitle: '解锁已取消',
@@ -154,9 +155,20 @@ export default {
       pinHintForSet: 'PIN 码用于加密私钥，本网站不会保存您的PIN码，它将在转账等操作时使用。',
       pinIsMandatoryTitle: '需要设置 PIN',
       pinIsMandatoryMessage: '为了保护您的资金安全，必须设置 PIN 码。此步骤无法跳过。',
-      confirmPinCancelledTitle: '确认 PIN 已取消',
-      confirmPinCancelledMessage: 'PIN 码的确认已取消。请重新开始设置您的 PIN 码。',
+      confirmPinCancelledTitle: '确认 PIN 已取消', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      confirmPinCancelledMessage: 'PIN 码的确认已取消。请重新开始设置您的 PIN 码。', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      setHintTitle: '设置 PIN 码提示语', // 保持不变，作为 Note 输入框的标题
+      setHintPrompt: '请输入您的 PIN 码提示语（可选，不超过 50 字符）：', // 保持不变，作为 Note 输入框的提示
+      setHintPlaceholder: '此 PIN 码提示语将在导入钱包时显示',
+      hintTooLong: 'PIN 码提示语不能超过 50 字符',
+      unlockHintPrompt: 'PIN 码提示语：',
+      defaultWalletName: '钱包1', // 新增
+      walletNamePrompt: '请输入钱包名称（可选，不超过 20 字符）：', // 新增
+      walletNamePlaceholder: '例如：我的主钱包', // 新增
+      pinInputPlaceholder: '请输入 PIN 码', // 新增
+      hintHintForSet: '此提示语将在导入钱包时显示，帮助您回忆 PIN 码。', // 新增
     },
+    walletNameLabel: '钱包名称', // 新增
     walletSetup: {
       title: '设置您的钱包',
       prompt: '创建新钱包或导入现有钱包：',
@@ -211,6 +223,8 @@ export default {
     createNewWalletConfirmMessage: '这将引导您创建一个由 Passkey 和 PIN码保护的新钱包。是否继续？',
     createButton: '创建',
     cancelButton: '取消',
+    pinHintButton: '显示 PIN 码提示语', // 新增
+    pinHintText: 'PIN 码提示语：', // 新增
     transfer: {
       transferButton: '转账',
       transferTitle: '转账',
