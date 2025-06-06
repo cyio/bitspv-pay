@@ -27,7 +27,7 @@ function callPay(paymentParams) {
   // 将支付参数编码后放入哈希
   const encodedData = encodeURIComponent(JSON.stringify(paymentParams));
   let childWindow = window.open(
-    `/pay.html#${encodedData}`, // 使用 # 传递数据
+    `https://pay.bitspv.com/#${encodedData}`, // 使用 # 传递数据
     'Payment',
     'width=500,height=580' // 可选：设置窗口大小
   );
@@ -70,7 +70,7 @@ function redirectToPay(paymentParams) {
   const encodedData = encodeURIComponent(JSON.stringify(paymentParams));
   // 保留原有的查询参数，将数据放入哈希
   const callbackUrl = encodeURIComponent(window.location.href); // 当前页面的URL作为回调地址
-  window.location.href = `/pay.html?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
+  window.location.href = `https://pay.bitspv.com/?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
 }
 
 // 在原页面加载时处理回调
@@ -150,6 +150,6 @@ const paymentParams = [
 
 ## 6. 示例代码参考
 
-您可以参考 <mcfile name="PublishOnBlockchain.vue" path="/Users/gongyi01/Projects/Personal/background-removal-demo/src/views/PublishOnBlockchain.vue"></mcfile> 文件中的 `sendMesaage`、`callPay`、`redirectToPay` 和 `handlePaymentCallback` 函数的实现，了解如何在实际应用中调用 `pay.html` 并处理回调。
+您可以参考`PublishOnBlockchain.vue`文件中的 `sendMesaage`、`callPay`、`redirectToPay` 和 `handlePaymentCallback` 函数的实现，了解如何在实际应用中调用 `pay.html` 并处理回调。
 
 请注意，`pay.html` 内部的具体实现（例如如何与钱包交互、构建交易等）不属于本文档的范围，本文档主要关注如何从外部接入和使用 `pay.html` 作为支付代理。
