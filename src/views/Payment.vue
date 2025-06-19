@@ -509,9 +509,19 @@ function sendDataToParent(data) {
         type: 'payment_success',
         payload: { txid: data } // data 就是 txid
       },
-      window.location.origin // 指定父页面的源
+      '*' // 指定父页面的源
     );
-    window.close();
+    
+    // 监听父窗口的确认消息
+    const handleConfirmation = (event) => {
+      if (event.data && event.data.type === 'message_received') {
+        console.log('收到父窗口确认消息，准备关闭窗口');
+        window.removeEventListener('message', handleConfirmation);
+        window.close();
+      }
+    };
+    
+    window.addEventListener('message', handleConfirmation);
   } else {
     console.error('No parent window or receiveDataFromChild function not found');
     redirectBack(data); // 回退到URL重定向方式
@@ -519,6 +529,7 @@ function sendDataToParent(data) {
 }
 
 const onPaymentSuccess = data => {
+  console.log('onPaymentSuccess called with data:', data);
   // debugger
   if (window.opener) {
     sendDataToParent(data);
@@ -988,6 +999,9 @@ const closeOldWalletWarning = () => {
 
 // 生命周期钩子
 onMounted(async () => {
+  console.log('window.opener:', window.opener);
+  console.log('window.location.origin:', window.location.origin);
+  console.log('document.referrer:', document.referrer);
   // 检查是否已关闭旧钱包警告
   if (localStorage.getItem(OLD_WALLET_WARNING_CLOSED_KEY) === 'true') {
     showOldWalletWarning.value = false;

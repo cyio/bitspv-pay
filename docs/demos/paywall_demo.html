@@ -76,10 +76,13 @@
 
         <button id="payButton" class="pay-button">支付以阅读 (1 satoshi)</button>
         <div id="statusMessage" class="status-message"></div>
+        <!-- <a href="http://localhost:5175" target="_blank" class="link-opener">打开支付服务</a> -->
     </div>
 
     <script>
         // demo tx https://whatsonchain.com/tx/5334dd32c3ffbaf2759b9ef5eeac0262e2b7d366cc64a6d39b94b108575d086d
+        const PAY_BASE_URL = 'https://pay.bitspv.com'; // 支付服务基础URL
+        // const PAY_BASE_URL = 'http://localhost:5175'; // 支付服务基础URL
         const PAID_CONTENT_KEY = 'mpv_demo_paid_txid';
         const PAID_ORDER_ID_KEY = 'mpv_demo_order_id';
         const PAID_TX_DETAILS_KEY = 'mpv_demo_tx_details'; // 存储完整的交易详情
@@ -273,7 +276,11 @@
             }
         }
 
-        // 调用支付
+        // 存储支付窗口引用
+        let paymentWindow = null;
+        let paymentCheckInterval = null;
+
+        // 调用支付 - 新开Tab方式
         function redirectToPay() {
             // 生成唯一的 orderId 并存储，以便支付成功后验证
             const orderId = generateUUID();
@@ -300,12 +307,184 @@
             const encodedData = encodeURIComponent(JSON.stringify(paymentParams));
             const callbackUrl = encodeURIComponent(window.location.href.split('?')[0]); // 当前页面的URL作为回调地址，去除查询参数
 
-            window.location.href = `https://pay.bitspv.com/?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
+            // 使用window.open在新标签页打开支付页面
+            try {
+                const windowFeatures = 'width=500,height=580,scrollbars=yes,resizable=yes'
+                paymentWindow = window.open(
+                    `${PAY_BASE_URL}/?mode=popup&callbackUrl=${callbackUrl}#${encodedData}`,
+                    '_blank', windowFeatures
+                );
+                // console.log('paymentWindow: ', paymentWindow);
+                
+                if (!paymentWindow) {
+                    // 如果弹窗被阻止，提示用户并降级到重定向模式
+                    showStatus('浏览器阻止了弹窗，请允许弹窗后重试，或者我们将为您跳转到支付页面。');
+                    setTimeout(() => {
+                        window.location.href = `${PAY_BASE_URL}/?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
+                    }, 3000);
+                    return;
+                }
+                
+                showStatus('支付窗口已打开，请在新窗口中完成支付...');
+                
+                // 设置定时器检查支付窗口状态
+                paymentCheckInterval = setInterval(() => {
+                    try {
+                        // 检查支付窗口是否已关闭
+                        if (paymentWindow.closed) {
+                            clearInterval(paymentCheckInterval);
+                            paymentWindow = null;
+                            showStatus('支付窗口已关闭，正在检查支付状态...');
+                            // 支付窗口关闭后检查支付状态
+                            setTimeout(() => {
+                                checkPaymentStatus();
+                            }, 1000);
+                        }
+                    } catch (e) {
+                        // 处理跨域访问错误
+                        console.log('检查支付窗口状态时出现跨域错误，这是正常的');
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('打开支付窗口失败:', error);
+                showStatus('打开支付窗口失败，将为您跳转到支付页面。');
+                // 降级到重定向模式
+                setTimeout(() => {
+                    window.location.href = `${PAY_BASE_URL}/?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
+                }, 2000);
+            }
         }
 
+        // 处理来自支付窗口的消息
+        function handlePaymentMessage(event) {
+            console.log('handlePaymentMessage called with event:', event);
+            // 验证消息来源，确保安全性（支持本地开发环境）
+            const allowedOrigins = [
+                PAY_BASE_URL,
+                'http://localhost:3000',
+                'http://localhost:5175',
+                'http://127.0.0.1:3000',
+                'http://127.0.0.1:5173'
+            ];
+            
+            if (!allowedOrigins.includes(event.origin)) {
+                console.warn('收到来自未知来源的消息:', event.origin);
+                return;
+            }
+            
+            console.log('收到支付窗口消息:', event.data);
+            
+            try {
+                const messageData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                // 兼容 bitspv-pay 项目的消息格式：type: 'payment_success', payload: { txid: data }
+                if (messageData.type === 'payment_success') {
+                    // 处理支付成功
+                    const txid = messageData.payload.txid;
+                    console.log('支付成功，交易ID:', txid);
+                    showStatus('收到支付成功消息，正在验证...');
+                    
+                    // 向子窗口发送确认消息
+                    if (paymentWindow && !paymentWindow.closed) {
+                        paymentWindow.postMessage({
+                            type: 'message_received'
+                        }, '*');
+                    }
+                    
+                    // 清除窗口检查定时器
+                    if (paymentCheckInterval) {
+                        clearInterval(paymentCheckInterval);
+                        paymentCheckInterval = null;
+                    }
+                    
+                    // 延迟关闭支付窗口，给子窗口时间处理确认消息
+                    setTimeout(() => {
+                        if (paymentWindow && !paymentWindow.closed) {
+                            paymentWindow.close();
+                            paymentWindow = null;
+                        }
+                    }, 200);
+                    
+                    // 验证支付
+                    performPaymentVerification(txid, localStorage.getItem(PAID_ORDER_ID_KEY))
+                        .catch(error => {
+                            console.error('支付验证失败:', error);
+                            showStatus(`支付验证失败: ${error.message}`);
+                        });
+                        
+                } else if (messageData.type === 'payment_error') {
+                    // 处理支付错误
+                    console.error('支付失败:', messageData.error);
+                    showStatus(`支付失败: ${messageData.error || '未知错误'}`);
+                    
+                    // 清除窗口检查定时器
+                    if (paymentCheckInterval) {
+                        clearInterval(paymentCheckInterval);
+                        paymentCheckInterval = null;
+                    }
+                    
+                    // 关闭支付窗口
+                    if (paymentWindow && !paymentWindow.closed) {
+                        paymentWindow.close();
+                        paymentWindow = null;
+                    }
+                    
+                } else if (messageData.type === 'payment_cancelled') {
+                    // 处理支付取消
+                    console.log('用户取消了支付');
+                    showStatus('支付已取消');
+                    
+                    // 清除窗口检查定时器
+                    if (paymentCheckInterval) {
+                        clearInterval(paymentCheckInterval);
+                        paymentCheckInterval = null;
+                    }
+                    
+                    // 关闭支付窗口
+                    if (paymentWindow && !paymentWindow.closed) {
+                        paymentWindow.close();
+                        paymentWindow = null;
+                    }
+                    
+                } else if (messageData.type === 'payment_ready') {
+                    // 支付页面已准备就绪
+                    console.log('支付页面已准备就绪');
+                    showStatus('支付页面已加载，请完成支付...');
+                    
+                } else {
+                    console.log('收到未知类型的消息:', messageData);
+                }
+                
+            } catch (error) {
+                console.error('解析支付消息失败:', error);
+            }
+        }
+        
+        // 清理函数
+        function cleanupPaymentProcess() {
+            if (paymentCheckInterval) {
+                clearInterval(paymentCheckInterval);
+                paymentCheckInterval = null;
+            }
+            if (paymentWindow && !paymentWindow.closed) {
+                paymentWindow.close();
+                paymentWindow = null;
+            }
+        }
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', cleanupPaymentProcess);
+        
         // 页面加载时执行
         document.addEventListener('DOMContentLoaded', () => {
+            // 设置消息监听器
+            window.addEventListener('message', handlePaymentMessage, false);
+            
+            // 绑定支付按钮事件
             payButton.addEventListener('click', redirectToPay);
+            
+            // 检查支付状态（处理页面刷新或直接访问的情况）
             checkPaymentStatus();
         });
 
