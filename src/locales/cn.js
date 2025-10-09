@@ -277,7 +277,7 @@ export default {
       '非托管网页钱包，仅适用于临时小额支付。安全性低，不适合存储资金，使用请自行承担风险。',
     security: {
       title: '安全性说明',
-      provider: '基于 TS-SDK 和公开免费的 API 服务提供商',
+      provider: '基于 BSV TS-SDK 和公开免费的 API 服务提供商',
       browserEnvironment: '钱包的安全性取决于你的 浏览器环境 与 使用习惯',
     },
     usage: {
@@ -288,6 +288,8 @@ export default {
         '推荐使用手机设备：某些 App 提供内置的类沙盒浏览器环境，能提供更高的隔离性与安全性',
       desktopComparison: '桌面端操作更便捷，但相较而言安全性稍低',
     },
+    walletDecryptTool: 'BitSPV 钱包备份解密工具（开源）',
+    tools: '相关工具',
     content: {
       paragraph1: '这是一个支付功能的示例实现，用于演示 BSV 小额支付的能力。',
       paragraph2: '所有交易均在 BSV 网络上进行，公开透明。请注意保管好您的私钥。',

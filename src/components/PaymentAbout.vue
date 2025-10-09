@@ -22,6 +22,17 @@
         </div>
       </div>
 
+      <div>
+        <h3 class="text-md font-semibold text-gray-700 dark:text-gray-200">{{ $t('paymentAbout.tools') }}</h3>
+        <div class="pl-4 mt-1 space-y-1 text-sm text-gray-500 dark:text-gray-400">
+          <p>
+            <a href="https://cyio.github.io/bitspv-open/wallet-decrypt/" target="_blank" class="text-blue-500 hover:underline">
+              {{ $t('paymentAbout.walletDecryptTool') }}
+            </a>
+          </p>
+        </div>
+      </div>
+
       <!-- <p class="mt-2 text-sm text-gray-500 dark:text-gray-300">
         <strong>{{ $t('paymentAbout.versionLabel') }}:</strong> 1.0.0
       </p> -->

@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@bsv/paymail": "^2.0.2",
-    "@bsv/sdk": "^1.4.24",
+    "@bsv/sdk": "^1.8.2",
     "@cyio/ts-paymail": "2.0.1",
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.2.0",

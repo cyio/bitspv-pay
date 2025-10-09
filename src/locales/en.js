@@ -286,7 +286,7 @@ export default {
       'Non-custodial web wallet for temporary small payments only. Not safe for storing funds. Use at your own risk.',
     security: {
       title: 'Security Notes',
-      provider: 'Based on TS-SDK and publicly available free API service providers.',
+      provider: 'Based on BSV TS-SDK and publicly available free API service providers.',
       browserEnvironment:
         'The security of the wallet depends on your browser environment and usage habits.',
     },
@@ -298,6 +298,8 @@ export default {
         'It is recommended to use a mobile device: some Apps provide a built-in sandbox-like browser environment, which can offer higher isolation and security.',
       desktopComparison: 'Desktop operation is more convenient, but relatively less secure.',
     },
+    walletDecryptTool: 'BitSPV Wallet Backup Decryption Tool(Open Source)',
+    tools: 'Related Tools',
     content: {
       paragraph1:
         'This is an example implementation of a payment feature to demonstrate the capabilities of BSV micropayments.',

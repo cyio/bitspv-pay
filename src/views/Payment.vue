@@ -878,12 +878,13 @@ const processRefund = async (utxos, request, dryRun = false) => {
     console.log('Broadcast response:', resp);
     const txHex = tx.toHex(); // Get txHex for P2P and Bitails broadcast
 
-    try {
-      // console.log('Raw transaction:', txHex);
-      broadcastTransactionWithBitails(txHex);
-    } catch (error) {
-      console.error('Failed to broadcast transaction with Bitails:', error);
-    }
+    // backup broadcast via Bitails (optional)
+    // try {
+    //   // console.log('Raw transaction:', txHex);
+    //   broadcastTransactionWithBitails(txHex);
+    // } catch (error) {
+    //   console.error('Failed to broadcast transaction with Bitails:', error);
+    // }
 
     // 检查是否存在竞争交易
     if (resp.status === 'success' && resp.txid && (!resp.competingTxs || resp.competingTxs.length === 0)) {
