@@ -138,7 +138,7 @@ import { useGoogleConnectivity } from '../composables/useGoogleConnectivity';
 import { useStorage } from '../composables/useStorage';
 import { useWallet } from '../composables/useWallet'; // 导入 useWallet
 const OLD_WALLET_WARNING_CLOSED_KEY = 'oldWalletWarningClosed'; // 定义 localStorage key
-import { P2PKH, Script, Transaction, SatoshisPerKilobyte, PrivateKey } from '@bsv/sdk'; // 移除 PrivateKey, PublicKey, BigNumber
+import { P2PKH, Script, Transaction, SatoshisPerKilobyte, LivePolicy, PrivateKey } from '@bsv/sdk'; // 移除 PrivateKey, PublicKey, BigNumber
 import { PaymailClient } from '@cyio/ts-paymail/client';
 import jsQR from 'jsqr';
 import PaymentAbout from '../components/PaymentAbout.vue';
@@ -783,7 +783,7 @@ const processRefund = async (utxos, request, dryRun = false) => {
 
     let satsIn = 0;
     let fee = 0;
-    const feeModel = new SatoshisPerKilobyte(10);
+    const feeModel = new LivePolicy();
     const MIN_FEE = 2; // 定义最小费用常量, hi 大概是 5 sat
     
     // 新钱包初始化时计算基础费用

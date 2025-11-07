@@ -9,8 +9,8 @@ dependencies:
     specifier: ^2.0.2
     version: 2.1.2(@babel/core@7.26.0)
   '@bsv/sdk':
-    specifier: ^1.8.2
-    version: 1.8.2
+    specifier: ^1.8.13
+    version: 1.8.13
   '@cyio/ts-paymail':
     specifier: 2.0.1
     version: 2.0.1(@babel/core@7.26.0)
@@ -1648,7 +1648,7 @@ packages:
   /@bsv/paymail@2.1.2(@babel/core@7.26.0):
     resolution: {integrity: sha512-6dBIL25ryKABxpn4rYr4KNJhm+qnnA8MzqOtBypB2FtYE34w71QJvPe5sSpT7hkuM6Km8QVCbIlnO67mZBdNiA==}
     dependencies:
-      '@bsv/sdk': 1.8.2
+      '@bsv/sdk': 1.8.13
       '@types/jest': 30.0.0
       cross-fetch: 4.1.0
       express: 5.1.0
@@ -1676,14 +1676,14 @@ packages:
       - ts-node
     dev: false
 
-  /@bsv/sdk@1.8.2:
-    resolution: {integrity: sha512-ZLDTca0JoZXFOxQ86saapPVe93EIvWhZZtNsegVYCT562kKwo+lziyfkzM1PrGX9W3E49JofIjC4br6iFVmNoA==}
+  /@bsv/sdk@1.8.13:
+    resolution: {integrity: sha512-jEFNvWZR/3gbKaIsocCmm2KjZUrk1RHM5eB1XGlK2TXHP/AMjMko/Kz2H9o0jrn6uxIuscM+e067hwPmxqkp0Q==}
     dev: false
 
   /@cyio/ts-paymail@2.0.1(@babel/core@7.26.0):
     resolution: {integrity: sha512-eBu5AdiRDDhtjz/TJeQtzc2ZD0qLuhkSQOw7WYXJGR0bNGkij53fxM8SRXbYdTkKE4C9yCokYSzCHad/yh1Z5g==}
     dependencies:
-      '@bsv/sdk': 1.8.2
+      '@bsv/sdk': 1.8.13
       '@types/jest': 29.5.14
       cross-fetch: 4.1.0
       express: 4.21.2
