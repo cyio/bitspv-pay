@@ -442,16 +442,19 @@ const calculateMaxTransfer = async () => {
     // 模拟发送全部余额到一个临时地址以估算费用
     const tempTargetAddress = address.value; // 使用自己的地址作为临时目标
 
+    // 尝试转出全部余额，这样即使失败，也能从返回中获取精确的fee
     const dryRunRequest = [{
       address: tempTargetAddress,
-      satoshis: currentBalance - 10, // 尝试发送余额-10sat，确保有足够手续费空间
+      satoshis: currentBalance,
     }];
 
     console.log('Calculating max transfer amount (dry run)...');
     const dryRunResult = await processRefund(utxos, dryRunRequest, true);
 
-    if (dryRunResult.error === 0) {
-      const estimatedFee = dryRunResult.requiredFee || 0;
+    // 预期会收到 insufficient-funds 错误，因为没有为fee留出空间
+    // 但这个错误会附带精确计算出的 requiredFee
+    if (dryRunResult.error === 'insufficient-funds' && dryRunResult.requiredFee) {
+      const estimatedFee = dryRunResult.requiredFee;
       const calculatedMax = currentBalance - estimatedFee;
       const maxAmount = calculatedMax > 0 ? calculatedMax : 0;
       console.log(`Calculation successful. Balance: ${currentBalance}, Estimated Fee: ${estimatedFee}, Max Transferable: ${maxAmount}`);
@@ -460,12 +463,14 @@ const calculateMaxTransfer = async () => {
         maxAmount,
         message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
       };
-    } else if (dryRunResult.error === 'insufficient-funds') {
+    // 如果 dryRun 成功，说明余额为0或者刚好等于手续费，可转出为0
+    } else if (dryRunResult.error === 0) {
       return {
         maxAmount: 0,
         message: t('bsvPayment.statusMessages.balanceStatus.insufficientForFee')
       };
     } else {
+      // 其他未知错误
       return {
         maxAmount: 0,
         message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${dryRunResult.message || dryRunResult.error}`
@@ -784,12 +789,14 @@ const processRefund = async (utxos, request, dryRun = false) => {
     let satsIn = 0;
     let fee = 0;
     const feeModel = new LivePolicy();
-    const MIN_FEE = 2; // 定义最小费用常量, hi 大概是 5 sat
+    // 定义一个标准的P2PKH输入大小（字节），用于估算基本费用
+    const P2PKH_INPUT_SIZE = 148;
+    // 根据当前费率动态计算一个输入的最低费用，替换硬编码的MIN_FEE
+    const minimumFeeForOneInput = Math.ceil(feeModel.value * (P2PKH_INPUT_SIZE / 1000));
     
     // 新钱包初始化时计算基础费用
     if (!utxos || utxos.length === 0) {
-      const estimatedOneInputFee = 2;
-      fee = (await feeModel.computeFee(tx)) + estimatedOneInputFee;
+      fee = (await feeModel.computeFee(tx)) + minimumFeeForOneInput;
     }
     
     for await (const u of utxos || []) {
@@ -827,7 +834,7 @@ const processRefund = async (utxos, request, dryRun = false) => {
       });
       satsIn += Number(u.satoshis);
       // 计算费用，但确保最小费用为10聪，不断 addInput，只计算最后 tx 体积的费用
-      fee = Math.max(await feeModel.computeFee(tx), MIN_FEE);
+      fee = Math.max(await feeModel.computeFee(tx), minimumFeeForOneInput);
       if (satsIn >= satsOut + fee) break; // 输入金额够用了，结束遍历
     }
 
