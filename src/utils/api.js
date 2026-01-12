@@ -13,6 +13,8 @@ const TAAL_API_BASE = import.meta.env.PROD ? 'https://api.taal.com/v1' : '/api-t
 const ARC_API_BASE = import.meta.env.PROD ? 'https://arc.taal.com/v1' : '/api-arc';
 const BEEF_NETWORK_API = 'https://beef.xn--nda.network';
 const WHATS_ON_CHAIN_MINER_FEES_API = 'https://api.whatsonchain.com/v1/bsv/main/miner/fees';
+const WHATS_ON_CHAIN_ADDRESS_HISTORY_API =
+  'https://api.whatsonchain.com/v1/bsv/main/addresses/history/all';
 
 
 /**
@@ -489,20 +491,36 @@ const fetchMinerFee = async () => {
 async function fetchAddressTransactions(address) {
   const provider = getRecommendedProvider();
   if (!provider) {
-    throw new Error(`No healthy service provider available for address transaction history check for address: ${address}`);
+    throw new Error(
+      `No healthy service provider available for address transaction history check for address: ${address}`
+    );
   }
 
   const historyApiEndpoints = {
     whatsOnChain: {
-      url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/main/address/${address}/history`,
-      transform: data => data.map(tx => ({
-        txid: tx.tx_hash,
-        height: tx.height,
-        // value: tx.value, // 交易金额，对于地址来说是净变化
-        // time: tx.time,
-        // op_return: tx.op_return,
-        // WhatsOnChain 不直接提供输入/输出地址，需要额外查询交易详情
-      })),
+      url: WHATS_ON_CHAIN_ADDRESS_HISTORY_API,
+      method: 'POST',
+      body: JSON.stringify({ addresses: [address] }),
+      headers: { 'Content-Type': 'application/json' },
+      transform: data => {
+        const addressData = data[0] || {};
+        const confirmed =
+          addressData.confirmed.result?.map(tx => ({
+            tx_hash: tx.tx_hash,
+            height: tx.height,
+          })) || [];
+        const unconfirmed =
+          addressData.unconfirmed.result?.map(tx => ({
+            tx_hash: tx.tx_hash,
+            height: 0, // 未确认交易的高度设为 0
+          })) || [];
+
+        // 按区块高度对已确认交易进行降序排序
+        confirmed.sort((a, b) => b.height - a.height);
+
+        // 合并交易，未确认的在前
+        return [...unconfirmed, ...confirmed];
+      },
     },
     // bitails: {
     //   // Bitails 的地址交易历史 API 路径可能需要根据实际情况调整
@@ -523,15 +541,26 @@ async function fetchAddressTransactions(address) {
 
   const startTime = Date.now();
   try {
-    const response = await fetch(currentApi.url);
+    const fetchOptions = {
+      method: currentApi.method || 'GET',
+      headers: currentApi.headers,
+      body: currentApi.body,
+    };
+    const response = await fetch(currentApi.url, fetchOptions);
     const endTime = Date.now();
     const latency = endTime - startTime;
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.warn(`API ${provider.name} (${currentApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      console.warn(
+        `API ${provider.name} (${currentApi.url}) failed: ${response.status} ${
+          response.statusText
+        }. Data: ${JSON.stringify(errorData)}. Updating health.`
+      );
       updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
-      throw new Error(`Failed to fetch address transactions from ${provider.name}: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch address transactions from ${provider.name}: ${response.status} ${response.statusText}`
+      );
     }
 
     const data = await response.json();
@@ -543,11 +572,15 @@ async function fetchAddressTransactions(address) {
 
     updateProviderHealth(provider.name, true, latency); // 成功，更新健康度
     return transactions;
-
   } catch (error) {
     const endTime = Date.now();
     const latency = endTime - startTime;
-    console.error(`Error fetching address transactions from ${provider.name} (${historyApiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    console.error(
+      `Error fetching address transactions from ${provider.name} (${
+        historyApiEndpoints[provider.name]?.url || 'N/A'
+      }):`,
+      error
+    );
     updateProviderHealth(provider.name, false, latency); // 失败，更新健康度
     throw new Error(`Failed to fetch address transactions: ${error.message}`);
   }
@@ -571,6 +604,6 @@ export {
   getUTXOs,
   getAddressDetail,
   fetchMinerFee,
-  fetchAddressTransactions, // 导出获取地址交易历史的函数
+  fetchAddressTransactions,
   fetchTransactionDetailsBatch, // 导出批量获取交易详情的函数
 };

@@ -146,7 +146,7 @@ import DonationModal from '../components/DonationModal.vue';
 import AboutIcon from '../components/AboutIcon.vue'; // 导入 AboutIcon
 import CoffeeIcon from '../components/CoffeeIcon.vue'; // 导入 CoffeeIcon
 import RefreshIcon from '../components/RefreshIcon.vue'; // 导入 RefreshIcon
-import CopyIcon from '../components/CopyIcon.vue';
+import { SparklesIcon } from '@heroicons/vue/24/outline';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';

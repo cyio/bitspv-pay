@@ -60,20 +60,23 @@
         </div> -->
       </li>
     </ul>
-<!-- 
-    <div v-if="hasMore" class="flex justify-center mt-4">
+
+    <div v-if="sortedTransactions.length > 0 && hasMore" class="flex justify-center mt-4">
       <button
+        v-if="!isLoadingMore"
         @click="loadMoreTransactions"
-        :disabled="isLoading"
+        :disabled="isLoadingMore"
         class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span v-if="!isLoading">{{ $t('transactionHistory.loadMore') }}</span>
-        <span v-else>
-          <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+        <span >{{ $t('transactionHistory.loadMore') }}... </span>
+      </button>
+      <span v-else>
+          <div
+            class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"
+          ></div>
           {{ $t('transactionHistory.loading') }}
         </span>
-      </button>
-    </div> -->
+    </div>
   </div>
 </template>
 
@@ -92,9 +95,10 @@ const copyStatus = ref({}); // 用于管理每个 txid 的复制状态
 const storage = useStorage(); // 获取 storage 实例
 const address = ref(storage.getWalletAddress()); // 从 storage 获取钱包地址
 
-const { transactions, isLoading, error, hasMore, fetchTransactions } = useTransactionHistory();
+const { transactions, isLoading, error, hasMore, fetchTransactions, isLoadingMore } =
+  useTransactionHistory();
 
-const loadedCount = ref(3); // 初始加载数量
+const currentOffset = ref(0);
 
 const sortedTransactions = computed(() => {
   // 确保 transactions 是一个 ref 对象且其 value 存在且是数组，以避免在初始加载时出现 undefined 错误
@@ -124,13 +128,15 @@ const copyTxid = async (txid) => {
 };
 
 const loadMoreTransactions = async () => {
-  loadedCount.value += 3; // 每次加载 3 笔
-  await fetchTransactions(address.value, 3, loadedCount.value - 3, true); // 追加加载
+  // TRANSACTIONS_PER_PAGE is 3, defined in the composable.
+  currentOffset.value += 3;
+  await fetchTransactions(address.value, undefined, currentOffset.value, true); // 追加加载
 };
 
 onMounted(() => {
   if (address.value) {
-    fetchTransactions(address.value, 3, 0, false); // 初始加载 3 笔
+    currentOffset.value = 0;
+    fetchTransactions(address.value, undefined, currentOffset.value, false); // 初始加载
   }
 });
 </script>
