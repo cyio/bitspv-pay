@@ -141,7 +141,7 @@ export function usePinManager() { // 不再接受 t 作为参数
     const { pin, walletName: returnedWalletName } = await promptForPin('unlock');
     if (!pin) {
       needsPinInput.value = false; // User cancelled
-      return { error: 'unlock-cancelled', message: t('bsvPayment.pinModal.unlockCancelledMessage') };
+      return { error: 'unlock-cancelled', message: t('bsvPayment.pinModal.unlockCancelledTitle') };
     }
 
     try {

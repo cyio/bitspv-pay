@@ -65,6 +65,7 @@ export default {
         decryptionFailedGeneric: '解密失败。请检查PIN码或钱包数据。',
         wifImportFailed: '导入WIF失败',
         importUiNotAvailable: '导入钱包界面不可用，请刷新页面或尝试手动操作。',
+        unlockCancelled: '操作已取消。',
       },
       backupSuccessQr: '私钥二维码已备份下载为 {filename}',
       initializingWallet: '正在初始化钱包...',

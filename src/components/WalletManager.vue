@@ -81,7 +81,7 @@
         </button>
         <button
           @click="executeTransfer"
-          :disabled="!targetAddress || !transferAmount || transferAmount <= 0 || transferAmount > props.maxTransferAmountValue || props.maxTransferAmountValue === null || props.maxTransferAmountValue <= 0 || transferStatus === 'processing'"
+          :disabled="transferStatus === 'processing'"
           class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
            {{ transferStatus === 'processing' ? $t('bsvPayment.processingButton') : $t('bsvPayment.confirmTransferButton') }}
@@ -321,6 +321,13 @@ const setAmountToMax = () => {
 // 执行转账操作
 const executeTransfer = () => {
   updateTransferStatus('processing', t('bsvPayment.statusMessages.processStatus.processing'));
+
+  // 在执行转账前检查最大金额是否仍在计算中
+  if (props.maxTransferAmountValue === null) {
+    updateTransferStatus('error', `${t('bsvPayment.transfer.calculating')}...`);
+    return;
+  }
+
   const currentTargetAddress = targetAddress.value;
   if (!currentTargetAddress || (!isValidAddress(currentTargetAddress) && !isValidPaymail(currentTargetAddress))) {
     updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidAddressOrPaymail'));

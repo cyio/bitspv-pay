@@ -146,7 +146,7 @@ import DonationModal from '../components/DonationModal.vue';
 import AboutIcon from '../components/AboutIcon.vue'; // 导入 AboutIcon
 import CoffeeIcon from '../components/CoffeeIcon.vue'; // 导入 CoffeeIcon
 import RefreshIcon from '../components/RefreshIcon.vue'; // 导入 RefreshIcon
-import { SparklesIcon } from '@heroicons/vue/24/outline';
+import CopyIcon from '../components/CopyIcon.vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -326,7 +326,9 @@ const handleTransferFunds = async (receivedTarget, amount) => {
     walletManager.value.updateTransferStatus('completed', t('bsvPayment.statusMessages.clearWallet.success', { txid: result.txid }));
   } else {
     console.error('Error transferring funds: ', result);
-    walletManager.value.updateTransferStatus('error', t('bsvPayment.statusMessages.clearWallet.error') + ` ${result.error}`);
+    // 优先使用 result.message，如果不存在，则回退到拼接通用错误信息
+    const errorMessage = result.message || `${t('bsvPayment.statusMessages.clearWallet.error')} ${result.error}`;
+    walletManager.value.updateTransferStatus('error', errorMessage);
   }
 };
 
@@ -698,7 +700,14 @@ const processRefund = async (utxos, request, dryRun = false) => {
       // 使用 useWallet 中的 ensurePrivateKeyLoaded
       const result = await ensurePrivateKeyLoaded(pubKey.value, address.value);
       if (!result || !result.loadedPrivKey) {
-        const errorMsg = statusMessage.value || t('bsvPayment.statusMessages.errors.privateKeyNotFound', '未找到私钥，无法执行操作。');
+        // 区分用户取消和真正的加载失败
+        if (result && result.error === 'unlock-cancelled') {
+          const errorMsg = result.message || t('bsvPayment.statusMessages.errors.unlockCancelled', '操作已取消。');
+          status.value = 'waiting'; // 用户取消，返回等待状态
+          statusMessage.value = errorMsg;
+          return { error: 'unlock-cancelled', message: errorMsg };
+        }
+        const errorMsg = result.message || t('bsvPayment.statusMessages.errors.privateKeyNotFound', '未找到私钥，无法执行操作。');
         status.value = 'error'; // 真实执行时，私钥加载失败是明确的错误状态
         statusMessage.value = errorMsg;
         return { error: 'private-key-not-loaded', message: errorMsg };

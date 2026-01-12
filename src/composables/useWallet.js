@@ -251,7 +251,7 @@ export function useWallet() {
         const { pin } = await promptForPin('unlock'); // 移除 dataNote 参数
         if (!pin) {
           await showInfoDialog(t('bsvPayment.pinModal.unlockCancelledTitle'), t('bsvPayment.pinModal.unlockCancelledMessage'));
-          return { error: 'unlock-cancelled', message: t('bsvPayment.pinModal.unlockCancelledMessage') };
+          return { error: 'unlock-cancelled', message: t('bsvPayment.pinModal.unlockCancelledTitle') };
         }
 
         try {

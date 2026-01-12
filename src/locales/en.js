@@ -71,6 +71,7 @@ export default {
         decryptionFailedGeneric: 'Decryption failed. Please check PIN or wallet data.',
         wifImportFailed: 'Failed to import WIF',
         importUiNotAvailable: 'Wallet import interface unavailable. Please refresh the page or try manual operation.',
+        unlockCancelled: 'Operation cancelled.',
       },
       backupSuccessQr: 'Private key QR code backed up and download as {filename}',
       initializingWallet: 'Initializing wallet...',
