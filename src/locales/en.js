@@ -244,10 +244,11 @@ export default {
       transferAmountLabel: 'Transfer Amount',
       transferAmountPlaceholder: 'Enter transfer amount',
       maxLabel: 'Max',
-      unit: 'BSV',
+      unit: 'sats',
       targetAddressLabel: 'Target Paymail/Address',
       targetAddressPlaceholder: 'Enter the Paymail/Address to receive BSV',
       calculating: 'Calculating',
+      amountInUSD: 'Amount in USD',
       errors: {
         invalidAmount: 'Please enter a valid transfer amount',
         amountExceedsMax: 'Transfer amount exceeds the maximum transferable amount',
@@ -270,6 +271,7 @@ export default {
     copyFailedTitle: 'Copy Failed',
     copyFailedMessage: 'Failed to copy transaction ID.',
     loadMore: 'Load More',
+    unconfirmed: 'Unconfirmed',
   },
   donationModal: {
     title: 'Buy me a coffee',

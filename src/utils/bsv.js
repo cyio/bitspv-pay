@@ -19,6 +19,7 @@ import {
   getAddressDetail,
   fetchMinerFee,
   fetchAddressTransactions, // 导入获取地址交易历史的函数
+  getExchangeRate,
 } from './api';
 
 function getSenderAddress(tx) {
@@ -33,6 +34,23 @@ function convertSatoshisToBSV(satoshis) {
 
   // 使用 toFixed(8) 保留 8 位小数，并避免使用科学计数法
   return bsv.toFixed(8);
+}
+
+function convertSatoshisToFiat(satoshis, rate) {
+  if (typeof satoshis !== 'number' || typeof rate !== 'number' || rate <= 0) {
+    return '0.00';
+  }
+  const bsv = satoshis / 100000000;
+  const fiat = bsv * rate;
+  return fiat.toFixed(2);
+}
+
+function convertFiatToSatoshis(fiatAmount, rate) {
+  if (typeof fiatAmount !== 'number' || typeof rate !== 'number' || rate <= 0) {
+    return 0;
+  }
+  const bsv = fiatAmount / rate;
+  return Math.round(bsv * 100000000);
 }
 
 function isValidAddress(address) {
@@ -122,6 +140,9 @@ export {
   generateEncryptedDataQrCodeUrl, // 导出加密数据二维码生成函数
   downloadPrivateKeyAsQrCode, // 导出新的工具函数
   downloadEncryptedDataQrCode, // 导出加密数据二维码下载函数
+  getExchangeRate,
+  convertSatoshisToFiat,
+  convertFiatToSatoshis,
 };
 
 // Function to validate Paymail format

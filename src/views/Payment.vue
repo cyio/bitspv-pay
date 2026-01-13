@@ -29,7 +29,12 @@
         <!-- 支付金额信息 (放在更显著位置) -->
         <div v-if="sendRequest && isAmountCalculated" class="mb-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
           <div class="text-center text-gray-800 dark:text-gray-100">
-            <div class="text-lg font-bold">{{ $t('bsvPayment.totalAmountLabel') }}: {{ convertSatoshisToBSV(minCost) }} BSV</div>
+            <div class="text-lg font-bold">
+              {{ $t('bsvPayment.totalAmountLabel') }}: {{ convertSatoshisToBSV(minCost) }} BSV
+              <span v-if="rate" class="text-base font-normal text-gray-600 dark:text-gray-300">
+                (${{ convertSatoshisToFiat(minCost, rate) }})
+              </span>
+            </div>
             <div v-if="minCost > balance" class="mt-2 text-red-600 dark:text-red-400">
               {{ $t('bsvPayment.supplementAmountLabel', { amount: convertSatoshisToBSV(minCost - balance) }) }}
             </div>
@@ -80,8 +85,19 @@
         </div>
       <!-- 余额显示 -->
       <div class="text-center text-gray-600 dark:text-gray-300 mb-4 flex items-center justify-center space-x-2">
-        <span>{{ $t('bsvPayment.balanceLabel') }}: <span class="font-semibold">{{ convertSatoshisToBSV(balance) }}</span> BSV</span>
-        <button @click="refreshBalance" :disabled="isRefreshingBalance" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300" :title="$t('bsvPayment.refreshBalanceButton')">
+        <span
+          >{{ $t('bsvPayment.balanceLabel') }}:
+          <span class="font-semibold"
+            >{{ convertSatoshisToBSV(balance) }} BSV
+            <span v-if="rate" class="font-normal">(${{ convertSatoshisToFiat(balance, rate) }})</span>
+          </span>
+        </span>
+        <button
+          @click="refreshBalance"
+          :disabled="isRefreshingBalance"
+          class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          :title="$t('bsvPayment.refreshBalanceButton')"
+        >
           <RefreshIcon :is-refreshing="isRefreshingBalance" />
         </button>
       </div>
@@ -100,6 +116,7 @@
           :address="address"
           :max-transfer-amount-value="maxTransferAmountForManager"
           :get-wif-function="getWifForBackup"
+          :rate="rate"
           @transfer-funds="handleTransferFunds"
           @delete-wallet="handleDeleteWallet"
           @request-calculate-max-transfer="handleRequestCalculateMaxTransfer"
@@ -137,6 +154,7 @@ const importFileInput = ref(null);
 import { useGoogleConnectivity } from '../composables/useGoogleConnectivity';
 import { useStorage } from '../composables/useStorage';
 import { useWallet } from '../composables/useWallet'; // 导入 useWallet
+import { useRate } from '../composables/useRate'; // 导入 useRate
 const OLD_WALLET_WARNING_CLOSED_KEY = 'oldWalletWarningClosed'; // 定义 localStorage key
 import { P2PKH, Script, Transaction, SatoshisPerKilobyte, LivePolicy, PrivateKey } from '@bsv/sdk'; // 移除 PrivateKey, PublicKey, BigNumber
 import { PaymailClient } from '@cyio/ts-paymail/client';
@@ -164,6 +182,7 @@ import {
   isValidAddress,
   truncate,
   isValidPaymail, // 导入 isValidPaymail
+  convertSatoshisToFiat,
 } from '../utils/bsv';
 import { showInfoDialog, showPromptDialog, showConfirmationDialog } from '../utils/confirm'; // 导入 showInfoDialog, showPromptDialog, showConfirmationDialog
 import WalletManager from '../components/WalletManager.vue';
@@ -181,6 +200,9 @@ const walletManager = ref(null);
 
 // 使用 useWallet composable，并传入 t
 const { pubKey, address, qrcode, walletName, isWalletUiVisible, createWallet, getWifForBackup, handleDeleteWallet, handleImportData, handleRequestImportWallet, ensurePrivateKeyLoaded, setWalletName } = useWallet(t);
+
+// 使用 useRate composable
+const { rate } = useRate();
 
 // 使用 useTransactionHistory composable
 const { transactions, isLoading: isHistoryLoading, error: historyError } = useTransactionHistory();

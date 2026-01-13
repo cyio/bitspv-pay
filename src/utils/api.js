@@ -15,7 +15,25 @@ const BEEF_NETWORK_API = 'https://beef.xn--nda.network';
 const WHATS_ON_CHAIN_MINER_FEES_API = 'https://api.whatsonchain.com/v1/bsv/main/miner/fees';
 const WHATS_ON_CHAIN_ADDRESS_HISTORY_API =
   'https://api.whatsonchain.com/v1/bsv/main/addresses/history/all';
+const WHATS_ON_CHAIN_EXCHANGE_RATE_API = 'https://api.whatsonchain.com/v1/bsv/main/exchangerate';
 
+
+/**
+ * Fetches the current BSV exchange rate from WhatsOnChain.
+ * @returns {Promise<Object>} The exchange rate data.
+ */
+async function getExchangeRate() {
+  try {
+    const response = await fetch(WHATS_ON_CHAIN_EXCHANGE_RATE_API);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch exchange rate: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching exchange rate:', error);
+    throw error;
+  }
+}
 
 /**
  * Broadcasts a BSV transaction to the network using WhatsOnChain API
@@ -606,4 +624,5 @@ export {
   fetchMinerFee,
   fetchAddressTransactions,
   fetchTransactionDetailsBatch, // 导出批量获取交易详情的函数
+  getExchangeRate,
 };

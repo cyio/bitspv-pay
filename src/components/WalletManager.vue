@@ -48,20 +48,34 @@
           <input
             type="number"
             id="transferAmount"
-            v-model.number="transferAmount"
+            v-model.number="inputAmount"
             :placeholder="$t('bsvPayment.transfer.transferAmountPlaceholder')"
-            class="flex-1 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:text-white"
+            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:text-white"
+            autocomplete="off"
+            step="any"
           />
-          <div class="text-sm text-gray-600 dark:text-gray-300">
-            <span v-if="props.maxTransferAmountValue !== null">
-              {{ $t('bsvPayment.transfer.maxLabel') }}:
-              <button @click="setAmountToMax" class="text-blue-500 hover:underline">
-                {{ convertSatoshisToBSV(props.maxTransferAmountValue) }}
-              </button>
-              {{ $t('bsvPayment.transfer.unit') }}
-            </span>
-            <span v-else>{{ $t('bsvPayment.transfer.calculating') }}...</span>
-          </div>
+          <select
+            v-model="selectedUnit"
+            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:text-white"
+          >
+            <option>BSV</option>
+            <option>sats</option>
+            <option v-if="rate">USD</option>
+          </select>
+        </div>
+
+        <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          <span v-if="props.maxTransferAmountValue !== null">
+            {{ $t('bsvPayment.transfer.maxLabel') }}:
+            <button @click="setAmountToMax" class="text-blue-500 hover:underline">
+              <span v-if="selectedUnit === 'BSV'">{{ convertSatoshisToBSV(props.maxTransferAmountValue) }} BSV</span>
+              <span v-else-if="selectedUnit === 'sats'">{{ props.maxTransferAmountValue }} sats</span>
+              <span v-else-if="selectedUnit === 'USD' && rate">
+                ${{ convertSatoshisToFiat(props.maxTransferAmountValue, rate) }}
+              </span>
+            </button>
+          </span>
+          <span v-else>{{ $t('bsvPayment.transfer.calculating') }}...</span>
         </div>
       </div>
        <!-- 转账状态显示 -->
@@ -161,7 +175,15 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'; // 导入 watch
 import { useI18n } from 'vue-i18n';
-import { isValidAddress, convertSatoshisToBSV, isValidPaymail, generateEncryptedDataQrCodeUrl, downloadEncryptedDataQrCode } from '../utils/bsv'; // 导入加密数据二维码生成和下载函数
+import {
+  isValidAddress,
+  convertSatoshisToBSV,
+  isValidPaymail,
+  generateEncryptedDataQrCodeUrl,
+  downloadEncryptedDataQrCode,
+  convertSatoshisToFiat,
+  convertFiatToSatoshis,
+} from '../utils/bsv'; // 导入加密数据二维码生成和下载函数
 import { showConfirmationDialog } from '../utils/confirm'; // 导入 showConfirmation
 import QRScanner from './QRScanner.vue';
 import Modal from './Modal.vue';
@@ -184,8 +206,12 @@ const props = defineProps({
   },
   getWifFunction: { // 新增 prop 用于获取 WIF
     type: Function,
-    required: true
-  }
+    required: true,
+  },
+  rate: {
+    type: Number,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['clear-wallet', 'delete-wallet', 'request-calculate-max-transfer', 'transfer-funds', 'request-import-wallet']);
@@ -198,13 +224,59 @@ const privateKeyQrCodeUrl = ref(''); // 用于存储二维码图片URL
 const showTransferSection = ref(false);
 const activeBackupData = ref(null); // 修改：用于在二维码显示期间临时存储备份数据 (加密数据)
 const targetAddress = ref('');
-const transferAmount = ref(null);
 const transferStatus = ref(null);
 const transferMessage = ref('');
 
 // 使用传入的地址，用于备份状态键
 const currentAddress = computed(() => {
   return props.address;
+});
+
+const selectedUnit = ref('BSV'); // BSV, sats, USD
+const inputAmount = ref(null);
+
+const transferAmountSatoshis = computed({
+  get() {
+    if (inputAmount.value === null || inputAmount.value === '') return null;
+    const amount = Number(inputAmount.value);
+    if (isNaN(amount)) return null;
+
+    switch (selectedUnit.value) {
+      case 'BSV':
+        return Math.round(amount * 100000000);
+      case 'sats':
+        return Math.round(amount);
+      case 'USD':
+        return props.rate ? convertFiatToSatoshis(amount, props.rate) : null;
+      default:
+        return null;
+    }
+  },
+  set(satoshiValue) {
+    if (satoshiValue === null) {
+      inputAmount.value = null;
+      return;
+    }
+
+    switch (selectedUnit.value) {
+      case 'BSV':
+        inputAmount.value = convertSatoshisToBSV(satoshiValue);
+        break;
+      case 'sats':
+        inputAmount.value = satoshiValue;
+        break;
+      case 'USD':
+        inputAmount.value = props.rate ? convertSatoshisToFiat(satoshiValue, props.rate) : null;
+        break;
+      default:
+        inputAmount.value = null;
+    }
+  },
+});
+
+watch(selectedUnit, () => {
+  // 当单位切换时，根据当前的 satoshis 值重新计算输入框的值
+  transferAmountSatoshis.value = transferAmountSatoshis.value;
 });
 
 // 处理扫码结果
@@ -307,14 +379,14 @@ const toggleTransferSection = () => {
   }
   resetPanels();
   showTransferSection.value = true;
-  transferAmount.value = null;
+  inputAmount.value = null;
   emit('request-calculate-max-transfer');
 };
 
 // 设置金额为最大可转金额
 const setAmountToMax = () => {
   if (props.maxTransferAmountValue !== null) {
-    transferAmount.value = convertSatoshisToBSV(props.maxTransferAmountValue);
+    transferAmountSatoshis.value = props.maxTransferAmountValue;
   }
 };
 
@@ -330,22 +402,22 @@ const executeTransfer = () => {
 
   const currentTargetAddress = targetAddress.value;
   if (!currentTargetAddress || (!isValidAddress(currentTargetAddress) && !isValidPaymail(currentTargetAddress))) {
-    updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidAddressOrPaymail'));
+    updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidTargetAddress'));
     return;
   }
-  if (!transferAmount.value || transferAmount.value <= 0) {
-    updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidAmount'));
+  if (!transferAmountSatoshis.value || transferAmountSatoshis.value <= 0) {
+    updateTransferStatus('error', t('bsvPayment.transfer.errors.invalidAmount'));
     return;
   }
-  if (transferAmount.value > convertSatoshisToBSV(props.maxTransferAmountValue)) {
-    updateTransferStatus('error', t('bsvPayment.statusMessages.errors.amountExceedsMax'));
+  if (transferAmountSatoshis.value > props.maxTransferAmountValue) {
+    updateTransferStatus('error', t('bsvPayment.transfer.errors.amountExceedsMax'));
     return;
   }
   try {
-    emit('transfer-funds', currentTargetAddress, Number((transferAmount.value * 100000000).toFixed(0)));
+    emit('transfer-funds', currentTargetAddress, transferAmountSatoshis.value);
   } catch (error) {
     console.error('Failed to emit transfer-funds event:', error);
-    updateTransferStatus('error', t('bsvPayment.statusMessages.errors.transferFailed'));
+    updateTransferStatus('error', t('bsvPayment.transfer.errors.transferFailed'));
   }
 };
 
@@ -353,7 +425,7 @@ const executeTransfer = () => {
 const onTransferComplete = (status, message) => {
   if (status === 'completed') {
     targetAddress.value = '';
-    transferAmount.value = null;
+    inputAmount.value = null;
   }
   updateTransferStatus(status, message);
 };

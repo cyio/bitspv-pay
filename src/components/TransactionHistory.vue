@@ -33,7 +33,7 @@
               {{ tx.type === 'income' ? '+' : '-' }}{{ tx.amount }}
             </span>
             <span class="text-sm text-gray-500 dark:text-gray-300">
-              {{ formatDate(tx.time) }}
+              {{ tx.time ? formatDate(tx.time) : $t('transactionHistory.unconfirmed') }}
             </span>
           </div>
           <div class="text-xs text-gray-400 dark:text-gray-500 flex justify-end">

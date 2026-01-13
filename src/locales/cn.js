@@ -232,10 +232,11 @@ export default {
       transferAmountLabel: '转账金额',
       transferAmountPlaceholder: '请输入转账金额',
       maxLabel: '最大',
-      unit: 'BSV',
+      unit: 'sats',
       targetAddressLabel: '目标地址',
       targetAddressPlaceholder: '请输入接收 BSV 的 Paymail 或地址',
       calculating: '计算中',
+      amountInUSD: '金额 (USD)',
       errors: {
         invalidAmount: '请输入有效的转账金额',
         amountExceedsMax: '转账金额超过最大可转金额',
@@ -261,6 +262,7 @@ export default {
     from: '来自',
     to: '至',
     loadMore: '加载更多', // 新增：加载更多按钮文本
+    unconfirmed: '待确认',
   },
   donationModal: {
     title: '打赏一杯咖啡',

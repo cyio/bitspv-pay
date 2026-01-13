@@ -42,7 +42,7 @@ function formatSingleTransaction(tx, currentPublicKey, currentWalletAddress) {
   let relatedAddress = '';
   let op_return = '';
 
-  const formattedTime = tx.time ? new Date(tx.time * 1000).toLocaleString() : 'Unknown';
+  const formattedTime = tx.time ? new Date(tx.time * 1000).toLocaleString() : '';
 
   if (tx.vout) {
     const opReturnOutput = tx.vout.find(
