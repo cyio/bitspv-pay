@@ -1,21 +1,23 @@
 // Constants
 import { updateProviderHealth, getRecommendedProvider } from './apiProviderHealth';
 
-const WHATS_ON_CHAIN_API = 'https://api.whatsonchain.com/v1/bsv/main/tx/raw';
+const WOC_API_BASE = import.meta.env.PROD ? 'https://api.whatsonchain.com' : '/whatsonchain';
+
+const WHATS_ON_CHAIN_API = `${WOC_API_BASE}/v1/bsv/main/tx/raw`;
 const BITAILS_BROADCAST_API = 'https://api.bitails.io/tx/broadcast';
 const BITAILS_DOWNLOAD_TX_API = 'https://api.bitails.io/download/tx';
-const WHATS_ON_CHAIN_TX_API = 'https://api.whatsonchain.com/v1/bsv/main/tx';
-const WHATS_ON_CHAIN_TX_BATCH_API = 'https://api.whatsonchain.com/v1/bsv/main/tx/hash'; // 修改为单笔查询接口的基础URL
+const WHATS_ON_CHAIN_TX_API = `${WOC_API_BASE}/v1/bsv/main/tx`;
+const WHATS_ON_CHAIN_TX_BATCH_API = `${WOC_API_BASE}/v1/bsv/main/tx/hash`; // 修改为单笔查询接口的基础URL
 const BITAILS_TX_OUTPUTS_API = 'https://api.bitails.io/tx';
-const WHATS_ON_CHAIN_ADDRESS_BALANCE_API = 'https://api.whatsonchain.com/v1/bsv';
+const WHATS_ON_CHAIN_ADDRESS_BALANCE_API = `${WOC_API_BASE}/v1/bsv`;
 const BITAILS_ADDRESS_BALANCE_API = 'https://api.bitails.io/address';
 const TAAL_API_BASE = import.meta.env.PROD ? 'https://api.taal.com/v1' : '/api-taal';
 const ARC_API_BASE = import.meta.env.PROD ? 'https://arc.taal.com/v1' : '/api-arc';
 const BEEF_NETWORK_API = 'https://beef.xn--nda.network';
-const WHATS_ON_CHAIN_MINER_FEES_API = 'https://api.whatsonchain.com/v1/bsv/main/miner/fees';
+const WHATS_ON_CHAIN_MINER_FEES_API = `${WOC_API_BASE}/v1/bsv/main/miner/fees`;
 const WHATS_ON_CHAIN_ADDRESS_HISTORY_API =
-  'https://api.whatsonchain.com/v1/bsv/main/addresses/history/all';
-const WHATS_ON_CHAIN_EXCHANGE_RATE_API = 'https://api.whatsonchain.com/v1/bsv/main/exchangerate';
+  `${WOC_API_BASE}/v1/bsv/main/addresses/history/all`;
+const WHATS_ON_CHAIN_EXCHANGE_RATE_API = `${WOC_API_BASE}/v1/bsv/main/exchangerate`;
 
 
 /**

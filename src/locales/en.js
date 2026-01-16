@@ -251,10 +251,11 @@ export default {
       amountInUSD: 'Amount in USD',
       errors: {
         invalidAmount: 'Please enter a valid transfer amount',
-        amountExceedsMax: 'Transfer amount exceeds the maximum transferable amount',
+        amountExceedsMax: 'Transfer amount exceeds maximum available',
         transferFailed: 'Transfer failed',
       },
     },
+    viewOnExplorer: 'View on Explorer',
   },
   modal: {
     closeButton: 'Close',
@@ -272,8 +273,12 @@ export default {
     copyFailedMessage: 'Failed to copy transaction ID.',
     loadMore: 'Load More',
     unconfirmed: 'Unconfirmed',
+    loadedCount: 'Loaded {{count}} items',
+    allLoaded: 'All items loaded',
   },
+
   donationModal: {
+
     title: 'Buy me a coffee',
     message: 'Like this tool? Consider buying the developer a coffee to show your support!',
     qrLoading: 'QR Code loading...',
@@ -322,6 +327,11 @@ export default {
     cancel: 'Cancel',
     tip: 'Tip',
     gotIt: 'Got It',
-    pleaseInput: 'Please Input',
+    pleaseInput: 'Please input',
   },
+  donation: {
+    title: 'Support Us',
+    description: 'If you find this project helpful, consider supporting us.',
+    thankYou: 'Thank you for your support!'
+  }
 };

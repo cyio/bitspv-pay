@@ -1,208 +1,142 @@
 import { P2PKH, PublicKey } from '@bsv/sdk';
-import { getSourceAddressFromTx, fetchAddressTransactions } from './api';
-
-function convertSatoshisToBSV(satoshis) {
-  const bsv = satoshis / 100000000;
-  return bsv.toFixed(8);
-}
 
 function getPublicKeyFromScriptSig(scriptSigHex) {
+  // This is a simplified parser. For robust production use, a full-fledged script parser is recommended.
   try {
-    let pos = 0;
-    if (pos < scriptSigHex.length) {
-      const sigLength = parseInt(scriptSigHex.substr(pos, 2), 16);
-      pos += 2 + (sigLength * 2);
-    }
-    if (pos < scriptSigHex.length) {
-      const pubKeyLength = parseInt(scriptSigHex.substr(pos, 2), 16);
-      pos += 2;
-      if (pubKeyLength === 33 && pos + (pubKeyLength * 2) <= scriptSigHex.length) {
-        const publicKeyHex = scriptSigHex.substr(pos, pubKeyLength * 2);
-        if (publicKeyHex.startsWith('02') || publicKeyHex.startsWith('03')) {
-          return publicKeyHex;
-        }
+    // A typical P2PKH scriptSig has: [sig length] [sig] [pubkey length] [pubkey]
+    // We are interested in the last part, the public key.
+    // A compressed public key is 33 bytes (66 hex chars), starting with 0x02 or 0x03.
+    // An uncompressed public key is 65 bytes (130 hex chars), starting with 0x04.
+
+    // Let's find the last potential pubkey in the script.
+    // Check for uncompressed key first
+    if (scriptSigHex.length >= 130) {
+      const potentialPubKey = scriptSigHex.slice(-130);
+      if (potentialPubKey.startsWith('04')) {
+        // Simple validation, not exhaustive
+        PublicKey.fromString(potentialPubKey);
+        return potentialPubKey;
       }
     }
-    throw new Error('Could not extract public key from scriptSig');
+    // Check for compressed key
+    if (scriptSigHex.length >= 66) {
+      const potentialPubKey = scriptSigHex.slice(-66);
+      if (potentialPubKey.startsWith('02') || potentialPubKey.startsWith('03')) {
+        // Simple validation, not exhaustive
+        PublicKey.fromString(potentialPubKey);
+        return potentialPubKey;
+      }
+    }
+    
+    // Fallback for scripts that might be structured differently, trying to parse TLV
+    let pos = 0;
+    let lastPart = '';
+    while(pos < scriptSigHex.length) {
+        const len = parseInt(scriptSigHex.substr(pos, 2), 16);
+        pos += 2;
+        if (isNaN(len) || pos + len * 2 > scriptSigHex.length) break;
+        lastPart = scriptSigHex.substr(pos, len * 2);
+        pos += len * 2;
+    }
+    if (lastPart) {
+        try {
+            PublicKey.fromString(lastPart);
+            return lastPart;
+        } catch(e) {
+            // not a valid pubkey
+        }
+    }
+
+
+    throw new Error('Could not reliably extract public key from scriptSig');
   } catch (error) {
-    console.error('Error extracting public key from scriptSig:', error.message);
+    // console.error('Error extracting public key from scriptSig:', error.message);
     return null;
   }
 }
 
 /**
- * 格式化单个交易对象，判断交易类型、金额和关联地址。
- * @param {Object} tx - 完整的交易对象。
- * @param {string} currentPublicKey - 当前钱包的公钥，用于判断交易类型。
- * @returns {Object} 格式化后的交易记录。
+ * Formats a single detailed transaction object.
+ * @param {Object} tx - The detailed transaction object from the API.
+ * @param {string} currentPubKeyHex - The hex string of the current wallet's public key.
+ * @param {string} currentWalletAddress - The address string of the current wallet.
+ * @returns {Object} A formatted transaction record.
  */
-function formatSingleTransaction(tx, currentPublicKey, currentWalletAddress) {
-  let type = 'unknown';
-  let amount = 0;
-  let relatedAddress = '';
-  let op_return = '';
+export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddress) {
+  if (!tx || typeof tx !== 'object') {
+    return null;
+  }
 
-  const formattedTime = tx.time ? new Date(tx.time * 1000).toLocaleString() : '';
+  const { vin, vout, txid, time, blockheight } = tx;
 
-  if (tx.vout) {
-    const opReturnOutput = tx.vout.find(
-      output => output.scriptPubKey && output.scriptPubKey.type === 'nulldata'
-    );
-    if (opReturnOutput && opReturnOutput.scriptPubKey && opReturnOutput.scriptPubKey.asm) {
-      op_return = opReturnOutput.scriptPubKey.asm.replace('OP_RETURN ', '');
+  let totalValueIn = 0;
+  let totalValueOut = 0;
+  let ourValueIn = 0;
+  let ourValueOut = 0;
+  let isSpending = false;
+
+  for (const input of vin) {
+    const inputValue = Math.round(input.value * 100000000);
+    totalValueIn += inputValue;
+    const inputPubKey = getPublicKeyFromScriptSig(input.scriptSig?.hex);
+    if (inputPubKey && inputPubKey === currentPubKeyHex) {
+      isSpending = true;
+      ourValueIn += inputValue;
     }
   }
 
-  if (tx.vout && tx.vin) {
-    const receivingOutputs = tx.vout.filter(
-      output =>
-        output.scriptPubKey &&
-        output.scriptPubKey.addresses &&
-        output.scriptPubKey.addresses.includes(currentWalletAddress)
-    );
+  for (const output of vout) {
+    const outputValue = Math.round(output.value * 100000000);
+    totalValueOut += outputValue;
+    if (output.scriptPubKey?.addresses?.includes(currentWalletAddress)) {
+      ourValueOut += outputValue;
+    }
+  }
 
-    const isExpense = receivingOutputs.length === 0 && tx.vin.length > 0 && !tx.vin[0].coinbase;
+  let type, amountSatoshis;
 
-    if (receivingOutputs.length > 0) {
-      type = 'income';
-      amount = receivingOutputs.reduce((sum, output) => sum + output.value, 0);
-
-      let senderPublicKeyFromVin = '未知来源';
-      if (tx.vin && tx.vin.length > 0) {
-        senderPublicKeyFromVin = getPublicKeyFromScriptSig(tx.vin[0].scriptSig.hex);
-      }
-      relatedAddress = senderPublicKeyFromVin;
-
-      if (receivingOutputs.length > 0 && senderPublicKeyFromVin === currentPublicKey) {
-        type = 'expense';
-        const sentToOthersOutputs = tx.vout.filter(
-          output =>
-            output.scriptPubKey &&
-            output.scriptPubKey.addresses &&
-            !output.scriptPubKey.addresses.includes(currentWalletAddress)
-        );
-        amount = sentToOthersOutputs.reduce((sum, output) => sum + output.value, 0);
-
-        if (sentToOthersOutputs.length > 0) {
-          relatedAddress = sentToOthersOutputs[0].scriptPubKey.addresses[0];
-        } else {
-          relatedAddress = 'N/A (内部转账)';
+  if (isSpending) {
+    // We are spending. The amount is the value we sent to others.
+    // This is our total input value minus what we received back as change.
+    const change = ourValueOut;
+    amountSatoshis = ourValueIn - change;
+    // But if we sent to ourselves, it's an income of 0 (or just the fee)
+    // Let's refine: Amount is what was sent to addresses other than our own.
+    let sentToOthers = 0;
+    for (const output of vout) {
+        if (!output.scriptPubKey?.addresses?.includes(currentWalletAddress)) {
+            sentToOthers += Math.round(output.value * 100000000);
         }
-      }
-    } else if (isExpense) {
-      type = 'expense';
-      if (tx.vout.length > 0 && tx.vout[0].scriptPubKey && tx.vout[0].scriptPubKey.addresses) {
-        amount = tx.vout[0].value;
-        relatedAddress = tx.vout[0].scriptPubKey.addresses[0];
-      } else {
-        amount = 0;
-        relatedAddress = '未知接收方';
-      }
-    } else {
-      type = 'data/internal';
-      amount = 0;
-      relatedAddress = 'N/A';
     }
+    amountSatoshis = sentToOthers > 0 ? sentToOthers : ourValueIn - ourValueOut;
+    type = 'expense';
+    
+  } else {
+    // We are receiving. The amount is what we received.
+    amountSatoshis = ourValueOut;
+    type = 'income';
   }
+
+  // If after all calculations, the amount is 0, it might be an internal transfer or data tx
+  if (amountSatoshis === 0 && ourValueOut > 0 && isSpending) {
+    type = 'data/internal'; // E.g., sending to self
+  } else if (amountSatoshis === 0 && !isSpending && ourValueOut > 0) {
+    type = 'income'; // It's a valid income even if the final amount is 0 after some logic
+  } else if (amountSatoshis < 0) {
+    // This can happen due to fees. For expenses, we show the amount sent, not including fees.
+    // For now, let's show the absolute value.
+     amountSatoshis = Math.abs(amountSatoshis);
+  }
+
 
   return {
-    txid: tx.txid,
+    txid: txid,
     type: type,
-    amount: typeof amount === 'number' ? convertSatoshisToBSV(amount * 100000000) : amount,
-    time: formattedTime,
-    status: tx.blockheight > 0 ? 'confirmed' : 'unconfirmed',
-    relatedAddress: relatedAddress,
-    op_return: op_return,
+    amount: amountSatoshis / 100000000,
+    time: time,
+    status: blockheight > 0 ? 'confirmed' : 'unconfirmed',
+    relatedAddress: 'N/A', // Simplified for now
+    op_return:
+      vout.find(o => o.scriptPubKey.asm.startsWith('OP_0 OP_RETURN'))?.scriptPubKey.hex || '',
   };
 }
-
-/**
- * 获取指定地址的交易历史，并进行格式化。
- * @param {string} address - 要查询的地址。
- * @param {string} currentPublicKey - 当前钱包的公钥，用于判断交易类型（收入/支出）。
- * @returns {Promise<Array>} 格式化的交易记录数组。
- */
-async function getTransactionsByAddress(address, currentPublicKey) {
-  try {
-    const rawTransactions = await fetchAddressTransactions(address);
-    const formattedTransactions = [];
-
-    let currentWalletAddress = null;
-    try {
-      currentWalletAddress = P2PKH.fromPublicKey(PublicKey.fromString(currentPublicKey)).toAddress().toString();
-    } catch (e) {
-      console.error('Invalid currentPublicKey provided to getTransactionsByAddress:', e);
-      return [];
-    }
-
-    for (const tx of rawTransactions) {
-      let type = 'unknown';
-      let amount = tx.value;
-      let relatedAddress = '';
-
-      if (tx.value > 0) {
-        type = 'income';
-        try {
-          const txDetail = await getSourceAddressFromTx(tx.txid);
-          if (txDetail && txDetail.vin && txDetail.vin.length > 0) {
-            const senderPublicKey = getPublicKeyFromScriptSig(txDetail.vin[0].scriptSig.hex);
-            if (senderPublicKey === currentPublicKey) {
-              type = 'data/internal';
-              relatedAddress = 'N/A (内部转账)';
-            } else {
-              relatedAddress = txDetail.vin[0].addr || '未知来源';
-            }
-          }
-        } catch (detailError) {
-          console.warn(`无法获取交易 ${tx.txid} 的详细信息以确定来源地址:`, detailError);
-          relatedAddress = '未知来源';
-        }
-      } else if (tx.value < 0) {
-        type = 'expense';
-        amount = Math.abs(tx.value);
-        try {
-          const txDetail = await getSourceAddressFromTx(tx.txid);
-          if (txDetail && txDetail.vout && txDetail.vout.length > 0) {
-            const recipientOutput = txDetail.vout.find(
-              output =>
-                output.scriptPubKey &&
-                output.scriptPubKey.addresses &&
-                output.scriptPubKey.addresses[0] !== currentWalletAddress
-            );
-            if (recipientOutput) {
-              relatedAddress = recipientOutput.scriptPubKey.addresses[0] || '未知接收方';
-            } else {
-              relatedAddress = '未知接收方';
-            }
-          }
-        } catch (detailError) {
-          console.warn(`无法获取交易 ${tx.txid} 的详细信息以确定接收方地址:`, detailError);
-          relatedAddress = '未知接收方';
-        }
-      } else {
-        type = 'data/internal';
-        amount = 0;
-        relatedAddress = 'N/A';
-      }
-
-      formattedTransactions.push({
-        txid: tx.txid,
-        type: type,
-        amount: convertSatoshisToBSV(amount),
-        time: new Date(tx.time * 1000).toLocaleString(),
-        status: tx.height > 0 ? 'confirmed' : 'unconfirmed',
-        relatedAddress: relatedAddress,
-        op_return: tx.op_return,
-      });
-    }
-    return formattedTransactions;
-  } catch (error) {
-    console.error('Error in getTransactionsByAddress:', error);
-    throw error;
-  }
-}
-
-export {
-  getTransactionsByAddress,
-  formatSingleTransaction,
-};

@@ -12,12 +12,13 @@
 
 ## 技术栈
 
-- **前端框架**：Vue 3
+- **前端框架**：React
 - **构建工具**：Vite
 - **样式**：TailwindCSS
+- **UI 组件库**: shadcn/ui
 - **支付处理**：`@bsv/sdk` 和 `@cyio/ts-paymail`
-- **国际化**：`vue-i18n`
-- **状态管理**：Vue 组合式 API
+- **国际化**：`react-i18next`
+- **状态管理**：React Hooks
 
 ## 架构概览
 

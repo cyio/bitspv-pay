@@ -243,6 +243,7 @@ export default {
         transferFailed: '转账失败',
       },
     },
+    viewOnExplorer: '在浏览器中查看',
     viewHistoryButton: '查看交易记录', // 新增：查看交易记录按钮
   },
   modal: {
@@ -261,10 +262,14 @@ export default {
     copyFailedMessage: '无法复制交易ID到剪贴板。请重试或手动复制。',
     from: '来自',
     to: '至',
-    loadMore: '加载更多', // 新增：加载更多按钮文本
+    loadMore: '加载更多',
     unconfirmed: '待确认',
+    loadedCount: '已加载 {{count}} 条',
+    allLoaded: '已加载全部',
   },
+
   donationModal: {
+
     title: '打赏一杯咖啡',
     message: '如果此工具对你有用，请考虑打赏一杯咖啡以支持开发者。',
     qrLoading: '二维码加载中...',
@@ -312,4 +317,9 @@ export default {
     gotIt: '知道了',
     pleaseInput: '请输入',
   },
+  donation: {
+    title: '支持我们',
+    description: '如果您觉得这个项目对您有帮助，可以考虑给我们一些支持。',
+    thankYou: '感谢您的支持！'
+  }
 };

@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
-import vue from '@vitejs/plugin-vue';
+import react from '@vitejs/plugin-react';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      vue(),
+      react(),
       // visualizer({
       //   open: true, // 在默认浏览器中打开分析报告
       //   gzipSize: true, // 显示 gzip 压缩后的大小
@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
       createHtmlPlugin({
         pages: [
           {
-            entry: 'src/main.js',
+            entry: 'src/main.jsx',
             filename: 'index.html',
             template: 'index.html',
           },
@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
       // 增加了额外的安全层，限制了跨域资源的加载和交互方式
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Embedder-Policy': 'credentialless',
       },
       proxy: {
         '/api-taal': {
@@ -99,6 +99,11 @@ export default defineConfig(({ mode }) => {
         //   secure: false,
         //   rewrite: path => path.replace(/^\/api-bitail/, ''),
         // },
+        '/whatsonchain': {
+          target: 'https://api.whatsonchain.com',
+          changeOrigin: true,
+          rewrite: path => path.replace(/^\/whatsonchain/, ''),
+        },
       },
     },
     optimizeDeps: { esbuildOptions: { target: 'esnext' } }, // <-- Set this to resolve dev issue.
@@ -114,9 +119,6 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, './src'), // 设置 @ 指向 src 目录
       },
-    },
-    define: {
-      __PRIV_KEY__: JSON.stringify(env.VITE_PRIV_KEY),
     },
   };
 });

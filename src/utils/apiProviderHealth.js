@@ -68,8 +68,11 @@ function getRecommendedProvider() {
     return { name: currentPreferredProviderName, ...serviceProviders[currentPreferredProviderName] };
   }
 
-  // 如果没有可用的健康服务商，返回 null
-  return null;
+  // 如果没有可用的健康服务商，返回 whatsOnChain 作为兜底
+  console.warn('No healthy providers available. Falling back to whatsOnChain.');
+  currentPreferredProviderName = 'whatsOnChain'; // 重置首选为兜底选项
+  // 即使它可能不健康，也返回它以避免应用程序完全失败
+  return { name: 'whatsOnChain', ...serviceProviders.whatsOnChain };
 }
 
 export {

@@ -1,5 +1,3 @@
-import { ref } from 'vue'
-
 // Storage Keys
 const ENCRYPTED_WIF = 'encrypted-wif';
 const ENCRYPTED_WIF_IV = 'encrypted-wif-iv';
@@ -9,11 +7,14 @@ const PUBLIC_KEY = 'pub-key';
 const WALLET_ADDRESS = 'wallet-address';
 const IS_PIN_SETUP_DONE = 'is-pin-setup-done';
 const BACKUP_STATUS_PREFIX = 'backup-status-';
+import { useMemo } from 'react';
+
 const OLD_PRIV_KEY = 'priv-key'; // 定义旧私钥的 localStorage key
 
 export const useStorage = () => {
-  // 钱包数据相关
-  const getEncryptedWifData = () => {
+  return useMemo(() => {
+    // 钱包数据相关
+    const getEncryptedWifData = () => {
     const ciphertext = localStorage.getItem(ENCRYPTED_WIF);
     const iv = localStorage.getItem(ENCRYPTED_WIF_IV);
     const salt = localStorage.getItem(ENCRYPTED_WIF_SALT);
@@ -85,8 +86,9 @@ export const useStorage = () => {
     getOldPlaintextWif,
     removeOldPlaintextWif,
     clearWalletData,
-    getWalletName, // 导出新的函数
-    setWalletName, // 导出新的函数
-    removeWalletName, // 导出新的函数
-  };
+      getWalletName, // 导出新的函数
+      setWalletName, // 导出新的函数
+      removeWalletName, // 导出新的函数
+    };
+  }, []);
 };
