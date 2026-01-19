@@ -15,52 +15,44 @@ export function usePinManager() {
 
   const ensurePrivateKeyLoaded = useCallback(async (currentPubKey) => {
     const { ciphertext: encryptedWif, iv, salt, walletName: storedWalletName } = storage.getEncryptedWifData();
-  
+
     if (!encryptedWif || !iv || !salt) {
-      console.error('Encrypted WIF data not found in localStorage.');
+      console.error('Encrypted WIF data not found.');
       throw new Error(t('bsvPayment.statusMessages.errors.encryptedDataMissing'));
     }
-  
+
     try {
-      // promptForPin now correctly resolves with an object like { pin: '...' }
       const pinData = await promptForPin('unlock');
       const pin = pinData.pin;
-  
-      if (!pin) {
-        // This case handles cancellation or empty submission.
-        // The rejection is now handled by the calling component's catch block.
-        throw new Error(t('bsvPayment.pinModal.unlockCancelledTitle'));
-      }
-  
+
+      // promptForPin promise rejects on cancellation, caught below.
+
       const decryptedWif = await decryptData(encryptedWif, iv, salt, pin);
       if (!decryptedWif) {
         throw new Error(t('bsvPayment.statusMessages.errors.decryptionFailedPinIncorrect'));
       }
       const loadedPrivKey = PrivateKey.fromWif(decryptedWif);
-  
+
       if (currentPubKey && currentPubKey instanceof PublicKey && loadedPrivKey.toPublicKey().toDER('hex') !== currentPubKey.toDER('hex')) {
         console.error("CRITICAL: Decrypted private key does not match cached public key!");
         throw new Error(t('bsvPayment.statusMessages.errors.privateKeyMismatch'));
       }
-  
-      console.log('Private key decrypted and loaded.');
-      if (storedWalletName) {
-        storage.setWalletName(storedWalletName);
-      }
-      // Return all necessary data, including the loaded private key
-      return { loadedPrivKey, encryptedWif, iv, salt, pin, walletName: storedWalletName };
-    } catch (e) {
-      // This catch block now correctly handles rejections from promptForPin (e.g., user cancellation)
-      // as well as any other errors within the try block.
-      console.error('Decryption/loading process failed:', e);
-      const errorMessage = e.message || t('bsvPayment.statusMessages.errors.decryptionFailedGeneric');
+      
+      console.log('Private key decrypted and loaded successfully.');
+      return { loadedPrivKey, pin, walletName: storedWalletName };
 
-      // Show a user-friendly dialog for specific errors, but not for cancellation.
-      if (e.message !== 'User cancelled PIN input.' && e.message !== t('bsvPayment.pinModal.unlockCancelledTitle')) {
-        await showInfo(t('bsvPayment.pinModal.decryptionFailedTitle'), t('bsvPayment.pinModal.decryptionFailedMessage'));
+    } catch (error) {
+      if (error && error.cancelled) {
+        console.log('PIN entry was cancelled by the user.');
+        return { error: 'unlock-cancelled', message: error.message || 'User cancelled PIN entry' };
       }
 
-      // Re-throw the error so the calling function (in useWallet) can catch it and update its state.
+      // For decryption or other errors, show a message
+      console.error('Failed to load private key:', error);
+      const errorMessage = error.message || t('bsvPayment.statusMessages.errors.decryptionFailedGeneric');
+      await showInfo(t('bsvPayment.pinModal.decryptionFailedTitle'), t('bsvPayment.pinModal.decryptionFailedMessage'));
+
+      // Throw a new error to ensure the calling function's flow is stopped
       throw new Error(errorMessage);
     }
   }, [storage, t, promptForPin, showInfo]);

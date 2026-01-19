@@ -6,6 +6,7 @@ export default {
     totalAmountLabel: '支付总金额',
     supplementAmountLabel: '需至少再支付 {amount} BSV',
     statusMessages: {
+      transactionSent: '交易已发送',
       waitingPay: '等待支付...',
       addressCopied: '已复制',
       copyFailed: '复制失败',
@@ -242,7 +243,10 @@ export default {
         amountExceedsMax: '转账金额超过最大可转金额',
         transferFailed: '转账失败',
       },
+      preparing: '正在准备交易...',
     },
+    qrErrorNotSupported: '您的浏览器不支持扫码功能',
+    qrErrorCameraAccessFailed: '无法访问摄像头',
     viewOnExplorer: '在浏览器中查看',
     viewHistoryButton: '查看交易记录', // 新增：查看交易记录按钮
   },
@@ -320,6 +324,8 @@ export default {
   donation: {
     title: '支持我们',
     description: '如果您觉得这个项目对您有帮助，可以考虑给我们一些支持。',
-    thankYou: '感谢您的支持！'
+    thankYou: '感谢您的支持！',
+    qrLoading: '二维码加载中...',
+    toggleButtonPrefix: '切换到'
   }
 };

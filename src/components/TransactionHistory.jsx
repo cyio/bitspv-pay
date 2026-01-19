@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { truncate } from '../utils/bsv';
+import { Copy, Check } from 'lucide-react';
 
 const TransactionHistory = ({ address, pubKey }) => {
   const { t } = useTranslation();
@@ -32,10 +33,10 @@ const TransactionHistory = ({ address, pubKey }) => {
   const copyTxid = async (txid) => {
     try {
       await navigator.clipboard.writeText(txid);
-      setCopyStatus(prev => ({ ...prev, [txid]: t('transactionHistory.copied') }));
+      setCopyStatus(prev => ({ ...prev, [txid]: true }));
       setTimeout(() => {
-        setCopyStatus(prev => ({ ...prev, [txid]: t('transactionHistory.copy') }));
-      }, 1000);
+        setCopyStatus(prev => ({ ...prev, [txid]: false }));
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy txid:', err);
       // You can add a more user-friendly notification here if needed.
@@ -104,8 +105,12 @@ const TransactionHistory = ({ address, pubKey }) => {
                       >
                         {truncate(tx.txid, 6, 6)}
                       </a>
-                      <button onClick={() => copyTxid(tx.txid)} className="ml-1 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs">
-                        [{copyStatus[tx.txid] || t('transactionHistory.copy')}]
+                      <button
+                        onClick={() => copyTxid(tx.txid)}
+                        title={copyStatus[tx.txid] ? t('transactionHistory.copied') : t('transactionHistory.copy')}
+                        className="ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        {copyStatus[tx.txid] ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                       </button>
                     </div>
                   </div>

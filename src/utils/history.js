@@ -76,7 +76,7 @@ export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddre
   let isSpending = false;
 
   for (const input of vin) {
-    const inputValue = Math.round(input.value * 100000000);
+    const inputValue = Math.round((input.value || 0) * 100000000);
     totalValueIn += inputValue;
     const inputPubKey = getPublicKeyFromScriptSig(input.scriptSig?.hex);
     if (inputPubKey && inputPubKey === currentPubKeyHex) {
@@ -86,7 +86,7 @@ export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddre
   }
 
   for (const output of vout) {
-    const outputValue = Math.round(output.value * 100000000);
+    const outputValue = Math.round((output.value || 0) * 100000000);
     totalValueOut += outputValue;
     if (output.scriptPubKey?.addresses?.includes(currentWalletAddress)) {
       ourValueOut += outputValue;
@@ -105,7 +105,7 @@ export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddre
     let sentToOthers = 0;
     for (const output of vout) {
         if (!output.scriptPubKey?.addresses?.includes(currentWalletAddress)) {
-            sentToOthers += Math.round(output.value * 100000000);
+            sentToOthers += Math.round((output.value || 0) * 100000000);
         }
     }
     amountSatoshis = sentToOthers > 0 ? sentToOthers : ourValueIn - ourValueOut;

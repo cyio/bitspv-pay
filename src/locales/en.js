@@ -251,10 +251,13 @@ export default {
       amountInUSD: 'Amount in USD',
       errors: {
         invalidAmount: 'Please enter a valid transfer amount',
-        amountExceedsMax: 'Transfer amount exceeds maximum available',
+        amountExceedsMax: 'Transfer amount exceeds the maximum transferable amount',
         transferFailed: 'Transfer failed',
       },
+      preparing: 'Preparing transaction...',
     },
+    qrErrorNotSupported: 'Your browser does not support QR code scanning.',
+    qrErrorCameraAccessFailed: 'Failed to access camera',
     viewOnExplorer: 'View on Explorer',
   },
   modal: {
@@ -332,6 +335,8 @@ export default {
   donation: {
     title: 'Support Us',
     description: 'If you find this project helpful, consider supporting us.',
-    thankYou: 'Thank you for your support!'
+    thankYou: 'Thank you for your support!',
+    qrLoading: 'QR Code loading...',
+    toggleButtonPrefix: 'Switch to'
   }
 };

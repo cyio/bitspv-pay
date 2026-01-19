@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { PrivateKey, PublicKey, Transaction, Script } from '@bsv/sdk';
 import QRCode from 'qrcode';
 import { useStorage } from './useStorage';
-import { getBalance, getUTXOs, broadcastTransaction, fetchMinerFee } from '../utils/api';
+import { getBalance, getUTXOs } from '../utils/api';
 import { isWeChat } from '../utils';
 import { encryptData, decryptData } from '../utils/webauthn';
 import { usePinManager } from './usePinManager';
+import { processRefund } from '../utils/transaction';
+import { isValidAddress, isValidPaymail } from '../utils/bsv';
 
 export function useWallet() {
   const { t } = useTranslation();
@@ -18,6 +20,8 @@ export function useWallet() {
   const [qrcode, setQrcode] = useState('');
   const [walletName, setWalletName] = useState(storage.getWalletName() || '');
   const [balance, setBalance] = useState({ confirmed: 0, unconfirmed: 0, total: 0 });
+  const [transferStatus, setTransferStatus] = useState(null);
+  const [transferMessage, setTransferMessage] = useState('');
 
   const isWalletUiVisible = useMemo(() => !!address, [address]);
 
@@ -154,54 +158,139 @@ export function useWallet() {
   }, [ensurePrivateKeyLoaded, pubKey, address, walletName, generateEncryptedBackupData, t]);
 
   const calculateMaxSpendable = useCallback(async () => {
-    if (!address) return 0;
-    const utxos = await getUTXOs(address);
-    if (!utxos || utxos.length === 0) return 0;
-    const totalSatoshis = utxos.reduce((sum, utxo) => sum + utxo.satoshis, 0);
-    // Rough estimation of fee, assuming 1 input and 1 output
-    const fee = (180 * (await fetchMinerFee() || 0.05))/100;
-    return Math.max(0, totalSatoshis - fee);
-  }, [address]);
-
-  const sendTransaction = useCallback(async (toAddress, amountSatoshis) => {
+    if (!address) return { maxAmount: 0, message: 'Address not available' };
     try {
-      const result = await ensurePrivateKeyLoaded(pubKey, address);
-      if (!result || !result.loadedPrivKey) {
-        return { success: false, message: 'Could not load private key. PIN correct?' };
-      }
-      const privateKey = result.loadedPrivKey;
+        const utxos = await getUTXOs(address);
+        const currentBalance = utxos.reduce((sum, utxo) => sum + utxo.satoshis, 0);
 
-      const utxos = await getUTXOs(address);
-      if (!utxos || utxos.length === 0) {
-        return { success: false, message: t('bsvPayment.statusMessages.errors.noUTXOs') };
-      }
+        if (currentBalance <= 0) {
+            return {
+                maxAmount: 0,
+                message: t('bsvPayment.statusMessages.balanceStatus.zeroBalance')
+            };
+        }
 
-      const transaction = new Transaction();
-      transaction.from(utxos.map(utxo => ({
-        txid: utxo.txid,
-        vout: utxo.vout,
-        scriptPubKey: Script.fromAddress(address).toHex(),
-        satoshis: utxo.satoshis,
-      })));
-      transaction.to(toAddress, amountSatoshis);
-      transaction.change(address);
-      transaction.sign(privateKey);
+        const dryRunRequest = [{
+            address: address,
+            satoshis: currentBalance,
+        }];
 
-      const txHex = transaction.toHex();
-      const broadcastResult = await broadcastTransaction(txHex);
+        const dryRunResult = await processRefund(utxos, dryRunRequest, {
+            dryRun: true,
+            t,
+            pubKey,
+            address,
+            setStatus: () => {},
+            setStatusMessage: () => {}
+        });
 
-      refreshBalance(address); // Refresh balance after sending
-      return { success: true, message: t('bsvPayment.statusMessages.transactionSent'), txid: broadcastResult.txid };
-
+        if (dryRunResult.error === 'insufficient-funds' && dryRunResult.requiredFee) {
+            const estimatedFee = dryRunResult.requiredFee;
+            const calculatedMax = currentBalance - estimatedFee;
+            const maxAmount = calculatedMax > 0 ? calculatedMax : 0;
+            return {
+                maxAmount,
+                message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
+            };
+        } else if (dryRunResult.error === 0) {
+            return {
+                maxAmount: 0,
+                message: t('bsvPayment.statusMessages.balanceStatus.insufficientForFee')
+            };
+        } else {
+            const errorMessage = dryRunResult.message || dryRunResult.error;
+            return {
+                maxAmount: 0,
+                message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${errorMessage}`
+            };
+        }
     } catch (error) {
-      if (error === undefined) {
-        // User cancelled the PIN prompt
-        throw undefined;
-      }
-      console.error('Error sending transaction:', error);
-      return { success: false, message: error.message || t('bsvPayment.statusMessages.errors.transactionFailed') };
+        console.error('Error calculating max spendable:', error);
+        return {
+            maxAmount: 0,
+            message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${error.message}`
+        };
     }
-  }, [address, pubKey, ensurePrivateKeyLoaded, refreshBalance, t]);
+  }, [address, t, pubKey]);
+
+  const clearTransferStatus = useCallback(() => {
+    setTransferStatus(null);
+    setTransferMessage('');
+  }, []);
+
+  const sendTransaction = useCallback(async (target, amount) => {
+    let paymentTargetObject = {};
+    if (isValidPaymail(target)) {
+        paymentTargetObject.paymail = target;
+    } else if (isValidAddress(target)) {
+        paymentTargetObject.address = target;
+    } else {
+        const errorMessage = t('bsvPayment.statusMessages.errors.invalidReceivedTarget');
+        setTransferStatus('error');
+        setTransferMessage(errorMessage);
+        throw new Error(errorMessage);
+    }
+
+    const transferRequest = [{
+        ...paymentTargetObject,
+        satoshis: amount,
+    }];
+    
+    try {
+        setTransferStatus('preparing');
+        setTransferMessage(t('bsvPayment.transfer.preparing'));
+
+        // Parallelize user PIN input and fetching UTXOs
+        const [keyResult, utxos] = await Promise.all([
+            ensurePrivateKeyLoaded(pubKey, address),
+            getUTXOs(address)
+        ]);
+
+        if (!keyResult || !keyResult.loadedPrivKey) {
+            if (keyResult && keyResult.error === 'unlock-cancelled') {
+                const error = new Error(keyResult.message || 'Operation cancelled by user.');
+                error.cancelled = true;
+                throw error;
+            }
+            throw new Error('Failed to load private key. Is PIN correct?');
+        }
+
+        const result = await processRefund(utxos, transferRequest, {
+            privateKey: keyResult.loadedPrivKey,
+            dryRun: false,
+            t,
+            pubKey,
+            address,
+            setStatus: setTransferStatus,
+            setStatusMessage: setTransferMessage,
+        });
+
+        if (result?.error === 0) {
+            refreshBalance(address);
+            const successMessage = {
+                text: t('bsvPayment.statusMessages.transactionSent'),
+                linkUrl: `https://whatsonchain.com/tx/${result.txid}`,
+                linkText: t('bsvPayment.viewOnExplorer'),
+            };
+            setTransferMessage(successMessage);
+            return { success: true, txid: result.txid };
+        } else {
+            const error = new Error(result.message || 'Transaction failed');
+            error.code = result.error;
+            throw error;
+        }
+    } catch (error) {
+        if (!error.cancelled) {
+             console.error('sendTransaction error:', error);
+             setTransferStatus('error');
+             setTransferMessage(error.message || t('bsvPayment.transfer.errors.transferFailed'));
+        } else {
+            // If user cancelled, clear the status to reset the button state
+            clearTransferStatus();
+        }
+        throw error;
+    }
+}, [address, pubKey, t, ensurePrivateKeyLoaded, refreshBalance, clearTransferStatus]);
 
   const handleDeleteWallet = useCallback((isReload = true) => {
     const addressToDelete = address;
@@ -229,12 +318,17 @@ export function useWallet() {
           throw new Error('Not encrypted JSON format');
         }
       } catch (e) {
+        if (isValidAddress(dataToImport) || isValidPaymail(dataToImport)) {
+          // This case is not a WIF or JSON, so it's likely an address/paymail.
+          // We can't import a wallet from just an address/paymail.
+          // Let it fall through to the wifError block.
+        }
         try {
           PrivateKey.fromWif(dataToImport);
           importDataType = 'plain';
           importDataContent = { wif: dataToImport };
         } catch (wifError) {
-          console.error('Invalid string import data format:', wifError);
+          console.error('Invalid string import data format:', dataToImport);
           await showInfo(t('bsvPayment.statusMessages.errorTitle'), t('bsvPayment.statusMessages.errors.invalidImportData'));
           return { error: 'invalid-import-data' };
         }
@@ -338,5 +432,8 @@ export function useWallet() {
     refreshBalance,
     calculateMaxSpendable,
     sendTransaction,
+    transferStatus,
+    transferMessage,
+    clearTransferStatus,
   };
 }

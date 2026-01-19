@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   isValidAddress,
@@ -44,18 +44,20 @@ const ChevronDownIcon = ({ rotation }) => (
 );
 
 
-const WalletManager = forwardRef(({
+const WalletManager = ({
   address,
   maxTransferAmountValue,
   isWalletMode = true,
-  getWifFunction,
+  getWifForBackup,
   rate,
-  onClearWallet,
   onDeleteWallet,
   onRequestCalculateMaxTransfer,
   onTransferFunds,
   onRequestImportWallet,
-}, ref) => {
+  transferStatus,
+  transferMessage,
+  onClearTransferStatus,
+}) => {
   const { t } = useTranslation();
   const { showDialog } = useDialog();
 
@@ -65,8 +67,7 @@ const WalletManager = forwardRef(({
   const [showTransferSection, setShowTransferSection] = useState(false);
   const [activeBackupData, setActiveBackupData] = useState(null);
   const [targetAddress, setTargetAddress] = useState('');
-  const [transferStatus, setTransferStatus] = useState(null);
-  const [transferMessage, setTransferMessage] = useState('');
+  const [formError, setFormError] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('BSV');
   const [inputAmount, setInputAmount] = useState('');
   
@@ -114,22 +115,16 @@ const WalletManager = forwardRef(({
       setSatoshiValue(transferAmountSatoshis);
     }
   }, [selectedUnit]);
-  
-
   const handleScanResult = (result) => {
     if (result.error) {
-      updateTransferStatus('error', result.error);
+      setFormError(result.error);
     } else if (result.data) {
-      // Assuming result.data contains the scanned address or paymail
       setTargetAddress(result.data);
+      setFormError('');
+      if (transferStatus) onClearTransferStatus();
     } else {
-      updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidQRCode'));
+      setFormError(t('bsvPayment.statusMessages.errors.invalidQRCode'));
     }
-  };
-
-  const updateTransferStatus = (status, message) => {
-    setTransferStatus(status);
-    setTransferMessage(message);
   };
 
   const resetPanels = () => {
@@ -137,7 +132,8 @@ const WalletManager = forwardRef(({
     setPrivateKeyQrCodeUrl('');
     setActiveBackupData(null);
     setShowTransferSection(false);
-    updateTransferStatus(null, '');
+    setFormError('');
+    if (transferStatus) onClearTransferStatus();
   };
 
   const toggleManagePanel = () => {
@@ -147,8 +143,8 @@ const WalletManager = forwardRef(({
   const showBackup = async () => {
     resetPanels();
     let backupData = null;
-    if (getWifFunction) {
-      backupData = await getWifFunction();
+    if (getWifForBackup) {
+      backupData = await getWifForBackup();
       if (!backupData) return;
     }
 
@@ -183,7 +179,7 @@ const WalletManager = forwardRef(({
       await downloadEncryptedDataQrCode(activeBackupData, address);
     } else {
       console.error('Encrypted backup data or address is not available for QR code download.');
-      updateTransferStatus('error', t('bsvPayment.statusMessages.errors.privateKeyNotAvailableForDownload'));
+      setFormError(t('bsvPayment.statusMessages.errors.privateKeyNotAvailableForDownload'));
     }
   };
 
@@ -212,48 +208,45 @@ const WalletManager = forwardRef(({
   };
 
   const executeTransfer = async () => {
-    updateTransferStatus('processing', t('bsvPayment.statusMessages.processStatus.processing'));
+    setFormError('');
+    if (transferStatus) onClearTransferStatus();
+
     if (maxTransferAmountValue === null) {
-      updateTransferStatus('error', `${t('bsvPayment.transfer.calculating')}...`);
+      setFormError(`${t('bsvPayment.transfer.calculating')}...`);
       return;
     }
     if (!targetAddress || (!isValidAddress(targetAddress) && !isValidPaymail(targetAddress))) {
-      updateTransferStatus('error', t('bsvPayment.statusMessages.errors.invalidTargetAddress'));
+      setFormError(t('bsvPayment.statusMessages.errors.invalidTargetAddress'));
       return;
     }
     const amount = transferAmountSatoshis;
     if (!amount || amount <= 0) {
-      updateTransferStatus('error', t('bsvPayment.transfer.errors.invalidAmount'));
+      setFormError(t('bsvPayment.transfer.errors.invalidAmount'));
       return;
     }
     if (amount > maxTransferAmountValue) {
-      updateTransferStatus('error', t('bsvPayment.transfer.errors.amountExceedsMax'));
+      setFormError(t('bsvPayment.transfer.errors.amountExceedsMax'));
       return;
     }
+
     try {
       await onTransferFunds(targetAddress, amount);
-    } catch (error) {
-      if (error === undefined) {
-        // User cancelled PIN input
-        updateTransferStatus(null, '');
-        return;
-      }
-      console.error('Failed to execute transfer:', error);
-      updateTransferStatus('error', error.message || t('bsvPayment.transfer.errors.transferFailed'));
-    }
-  };
-
-  const onTransferComplete = (status, message) => {
-    if (status === 'completed') {
+      // On success, the status will be updated by useWallet, and we can clear the form.
       setTargetAddress('');
       setInputAmount('');
+    } catch (error) {
+      // Errors, including cancellation, are caught here.
+      // useWallet is already handling the state change for real errors.
+      // If it's a cancellation, we do nothing to avoid showing an error.
+      if (error && error.cancelled) {
+        console.log('Transfer cancelled by user at PIN prompt.');
+      } else {
+        // For any other error, useWallet has already set the error state.
+        // We just log it here for debugging.
+        console.error('Failed to execute transfer:', error);
+      }
     }
-    updateTransferStatus(status, message);
   };
-
-  useImperativeHandle(ref, () => ({
-    updateTransferStatus: onTransferComplete,
-  }));
 
   const triggerImportWallet = async () => {
     resetPanels();
@@ -265,7 +258,7 @@ const WalletManager = forwardRef(({
         cancelText: t('bsvPayment.importConfirmation.cancelButton')
       });
       if (!confirmed) {
-        updateTransferStatus('error', t('bsvPayment.statusMessages.info.importCancelled'));
+        setFormError(t('bsvPayment.statusMessages.info.importCancelled'));
         return;
       }
     }
@@ -284,9 +277,12 @@ const WalletManager = forwardRef(({
       onDeleteWallet();
     }
   };
+
+  const displayMessage = transferMessage || formError;
+  const displayStatus = transferStatus || (formError ? 'error' : null);
   
-  const getTransferStatusClass = () => {
-    switch (transferStatus) {
+  const getTransferStatusClass = (status) => {
+    switch (status) {
       case 'processing':
         return 'text-blue-600 dark:text-blue-300';
       case 'completed':
@@ -318,7 +314,11 @@ const WalletManager = forwardRef(({
                 type="text"
                 id="targetAddress"
                 value={targetAddress}
-                onChange={(e) => setTargetAddress(e.target.value)}
+                onChange={(e) => {
+                  setTargetAddress(e.target.value);
+                  setFormError('');
+                  if (transferStatus) onClearTransferStatus();
+                }}
                 placeholder={t('bsvPayment.transfer.targetAddressPlaceholder')}
               />
               <QRScanner onScanResult={handleScanResult}>
@@ -339,7 +339,11 @@ const WalletManager = forwardRef(({
               type="number"
               id="transferAmount"
               value={inputAmount}
-              onChange={(e) => setInputAmount(e.target.value)}
+              onChange={(e) => {
+                setInputAmount(e.target.value);
+                setFormError('');
+                if (transferStatus) onClearTransferStatus();
+              }}
               placeholder={t('bsvPayment.transfer.transferAmountPlaceholder')}
               autoComplete="off"
               step="any"
@@ -365,24 +369,24 @@ const WalletManager = forwardRef(({
               )}
             </div>
           </div>
-          {transferStatus && (
-            <div className={`mb-3 text-sm break-words ${getTransferStatusClass()}`}>
-              {typeof transferMessage === 'object' ? (
+          {displayStatus && (
+            <div className={`mb-3 text-sm break-words ${getTransferStatusClass(displayStatus)}`}>
+              {typeof displayMessage === 'object' ? (
                 <>
-                  {transferMessage.text}{' '}
-                  {transferMessage.linkUrl && (
+                  {displayMessage.text}{' '}
+                  {displayMessage.linkUrl && (
                     <a
-                      href={transferMessage.linkUrl}
+                      href={displayMessage.linkUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
                     >
-                      {transferMessage.linkText}
+                      {displayMessage.linkText}
                     </a>
                   )}
                 </>
               ) : (
-                <span>{transferMessage}</span>
+                <span>{displayMessage}</span>
               )}
             </div>
           )}
@@ -443,6 +447,6 @@ const WalletManager = forwardRef(({
       )}
     </div>
   );
-});
+};
 
 export default WalletManager;

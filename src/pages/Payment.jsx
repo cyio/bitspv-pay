@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom'; // Assuming you'll use React Router
+import { useSearchParams } from 'react-router-dom'; // Assuming you'll use React Router
 import { useWallet } from '../hooks/useWallet';
 import WalletManager from '../components/WalletManager';
 import { useRate } from '../hooks/useRate';
 import { convertSatoshisToBSV, convertSatoshisToFiat } from '../utils/bsv';
-
-import AboutIcon from '../components/AboutIcon.jsx';
-import CoffeeIcon from '../components/CoffeeIcon.jsx';
-import RefreshIcon from '../components/RefreshIcon.jsx';
-import HistoryIcon from '../components/HistoryIcon.jsx';
+import { useContext } from 'react';
+import { Info, Coffee, RefreshCw, History, Copy, Check } from 'lucide-react';
 import TransactionHistory from '../components/TransactionHistory.jsx';
 import {
   Dialog,
@@ -21,6 +18,9 @@ import PaymentAbout from '../components/PaymentAbout.jsx';
 import DonationModal from '../components/DonationModal.jsx';
 import PinDialog from '../components/PinDialog.jsx';
 import { PinPromptContext } from '../contexts/PinPromptContext';
+import { usePaymentFlow } from '../hooks/usePaymentFlow';
+import PaymentStatus from '../components/PaymentStatus.jsx';
+import WalletInfo from '../components/WalletInfo.jsx';
 
 // Import jsQR for QR code scanning
 import jsQR from 'jsqr';
@@ -29,10 +29,11 @@ import jsQR from 'jsqr';
 // This component contains the actual UI and hooks that depend on the PinPromptContext
 function WalletUI() {
   const { t } = useTranslation();
-  const location = useLocation(); // Replaces useRoute
+  const [searchParams] = useSearchParams();
   const importFileInput = useRef(null);
   const walletManagerRef = useRef(null);
 
+  const wallet = useWallet();
   const {
     pubKey,
     address,
@@ -43,31 +44,47 @@ function WalletUI() {
     getWifForBackup,
     handleDeleteWallet,
     handleImportData,
-    ensurePrivateKeyLoaded,
     walletBalance,
     refreshBalance,
     calculateMaxSpendable,
-    sendTransaction
-  } = useWallet();
+    sendTransaction,
+    transferStatus,
+    transferMessage,
+    clearTransferStatus,
+  } = wallet;
 
-  const { rate, isLoading: isRateLoading, error: rateError, refreshRate } = useRate();
+  const { rate, refreshRate } = useRate();
 
+  const onPaymentSuccess = useCallback((data) => {
+    console.log('onPaymentSuccess called with data:', data);
+    if (window.opener) {
+        sendDataToParent(data);
+    } else {
+        redirectBack(data);
+    }
+  }, [searchParams]);
 
-  const [status, setStatus] = useState('waiting'); // waiting, received, processing, completed, error
-  const [statusMessage, setStatusMessage] = useState('');
-  const [minCost, setMinCost] = useState(10);
+  const {
+    status,
+    statusMessage,
+    minCost,
+    isAmountCalculated,
+    sendRequest,
+    showWalletManager,
+    handlePaymentRequest,
+    setStatus,
+    setStatusMessage,
+  } = usePaymentFlow({ onPaymentSuccess, wallet, t });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [copyBtnText, setCopyBtnText] = useState(t('bsvPayment.copyButton'));
+  const [isCopied, setIsCopied] = useState(false);
   const [maxTransferAmount, setMaxTransferAmount] = useState(null);
 
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [isAmountCalculated, setIsAmountCalculated] = useState(false);
-  const [showWalletManager, setShowWalletManager] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  const statusClasses = useMemo(() => {
+  const statusColor = useMemo(() => {
     switch (status) {
       case 'received': return 'text-green-600 dark:text-green-300';
       case 'processing': return 'text-blue-600 dark:text-blue-300';
@@ -78,17 +95,13 @@ function WalletUI() {
   }, [status]);
 
   const copyAddress = async () => {
-    const preText = copyBtnText;
     try {
       await navigator.clipboard.writeText(address);
-      setCopyBtnText(t('bsvPayment.statusMessages.addressCopied'));
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy address:', error);
-      setCopyBtnText(t('bsvPayment.statusMessages.copyFailed'));
     }
-    setTimeout(() => {
-      setCopyBtnText(preText);
-    }, 1000);
   };
 
   const refreshAll = useCallback(async () => {
@@ -106,24 +119,56 @@ function WalletUI() {
     }
   }, [isRefreshing, refreshBalance, refreshRate]);
 
-  // onMounted logic
-  useEffect(() => {
-    const initialize = async () => {
-      if (hasInitialized) return; // Prevent duplicate initialization
+    // Payment flow logic from Vue version
 
-      const result = await createWallet();
-      if (result?.error) {
-        setStatus('error');
-        setStatusMessage(result.message);
-      } else {
-        setHasInitialized(true); // Mark as initialized on success
-      }
+    const sendDataToParent = (data) => {
+        console.log('sendDataToParent ', data);
+        if (window.opener) {
+            window.opener.postMessage({ type: 'payment_success', payload: { txid: data } }, '*');
+            const handleConfirmation = (event) => {
+                if (event.data && event.data.type === 'message_received') {
+                    console.log('Received confirmation from parent, closing window.');
+                    window.removeEventListener('message', handleConfirmation);
+                    window.close();
+                }
+            };
+            window.addEventListener('message', handleConfirmation);
+        } else {
+            console.error('No parent window found, falling back to redirect.');
+            redirectBack(data);
+        }
     };
 
-    initialize();
-  }, [createWallet, hasInitialized]);
+    const redirectBack = (data) => {
+        const callbackUrl = searchParams.get('callbackUrl');
+        if (callbackUrl) {
+            const paymentResult = new URLSearchParams({ status: 'success', data });
+            const separator = callbackUrl.includes('?') ? '&' : '?';
+            const redirectUrl = `${callbackUrl}${separator}${paymentResult.toString()}`;
+            window.location.replace(redirectUrl);
+        } else {
+            console.error('No callbackUrl found in query parameters');
+        }
+    };
 
-  const handleFileChange = async (event) => {
+    useEffect(() => {
+        const initialize = async () => {
+            if (hasInitialized) return;
+
+            const result = await createWallet();
+            if (result?.error) {
+                setStatus('error');
+                setStatusMessage(result.message);
+            } else {
+                setHasInitialized(true);
+                handlePaymentRequest();
+            }
+        };
+
+        initialize();
+    }, [createWallet, hasInitialized, handlePaymentRequest, setStatus, setStatusMessage]);
+
+    const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -168,32 +213,38 @@ function WalletUI() {
 
   const handleRequestCalculateMax = useCallback(async () => {
     console.log("Request to calculate max transfer amount");
-    const max = await calculateMaxSpendable();
-    setMaxTransferAmount(max);
+    const result = await calculateMaxSpendable();
+    if (result && typeof result.maxAmount === 'number') {
+        setMaxTransferAmount(result.maxAmount);
+    } else {
+        setMaxTransferAmount(0); // Fallback
+    }
+    // Optionally, you could show the message to the user if one is returned
+    if (result && result.message) {
+      // For now, we'll just log it. A UI update could be implemented here.
+      console.log('calculateMaxSpendable message:', result.message);
+    }
   }, [calculateMaxSpendable]);
 
-  const handleTransferFunds = useCallback(async (targetAddress, amount) => {
-    console.log(`Transferring ${amount} sats to ${targetAddress}`);
+  const handleTransferFunds = useCallback(async (target, amount) => {
+    // This function now directly uses the refactored sendTransaction from useWallet,
+    // which handles address/paymail logic, PIN prompts, and broadcasting.
+    // It will re-throw errors, including cancellation, to be caught by WalletManager's executeTransfer.
     try {
-      const result = await sendTransaction(targetAddress, amount);
-      if (walletManagerRef.current) {
-        if (result.success) {
-          const message = {
-            text: result.message,
-            linkUrl: `https://whatsonchain.com/tx/${result.txid}`,
-            linkText: t('bsvPayment.viewOnExplorer'),
-          };
-          walletManagerRef.current.updateTransferStatus('completed', message);
-          refreshAll();
-        } else {
-          throw new Error(result.message || 'Transaction failed');
-        }
+      const result = await sendTransaction(target, amount);
+      console.log('Transfer result:', result);
+      if (result.success) {
+        // On success, refresh balance and potentially max spendable amount
+        await refreshAll();
+        handleRequestCalculateMax(); // Recalculate max spendable after transfer
       }
+      // No need to return anything specific on success, WalletManager handles the UI
     } catch (error) {
-      console.error('handleTransferFunds error:', error);
+      // Re-throw to allow WalletManager to catch it and update its UI state (e.g., stop loading spinner).
+      // This is critical for proper UI feedback on failure or cancellation.
       throw error;
     }
-  }, [sendTransaction, refreshAll, t]);
+  }, [sendTransaction, refreshAll, handleRequestCalculateMax]);
 
 
   return (
@@ -202,17 +253,32 @@ function WalletUI() {
         <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 relative">
           <div className="absolute top-4 right-4 flex items-center space-x-2">
             <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              <AboutIcon />
+              <Info className="h-5 w-5" />
             </button>
-            <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              <CoffeeIcon />
-            </button>
+            {!sendRequest && (
+              <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <Coffee className="h-5 w-5" />
+              </button>
+            )}
             <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              <HistoryIcon />
+              <History className="h-5 w-5" />
             </button>
           </div>
           <h1 className="text-2xl font-bold text-center">{t('bsvPayment.title')}</h1>
-          <p className="text-sm text-center text-gray-500 mb-4">{t('bsvPayment.statusMessages.notSafeForStorage')}</p>
+           {!sendRequest && <p className="text-sm text-center text-gray-500 mb-4">{t('bsvPayment.statusMessages.notSafeForStorage')}</p>}
+
+          {sendRequest && (
+            <PaymentStatus
+              status={status}
+              statusMessage={statusMessage}
+              isAmountCalculated={isAmountCalculated}
+              minCost={minCost}
+              rate={rate}
+              walletBalance={walletBalance}
+              statusColor={statusColor}
+            />
+          )}
+
 
           {walletName && (
             <div className="text-center text-gray-600 dark:text-gray-300">
@@ -222,46 +288,33 @@ function WalletUI() {
 
           {isWalletUiVisible ? (
             <>
-              {qrcode && (
-                <div className="mt-2 mb-4">
-                  <div className="flex justify-center">
-                    <img src={qrcode} alt={t('bsvPayment.qrCode')} className="w-48 h-48" />
-                  </div>
-                </div>
-              )}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-950 rounded">
-                  <div className="flex-1 font-mono text-sm truncate">{address}</div>
-                  <button onClick={copyAddress} className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-                    {copyBtnText}
-                  </button>
-                </div>
-              </div>
-              <div className="text-center text-gray-600 dark:text-gray-300 mb-4 flex items-center justify-center space-x-2">
-                <span>
-                  {t('bsvPayment.balanceLabel')}:
-                  <span className="font-semibold">
-                    {convertSatoshisToBSV(walletBalance.total)} BSV
-                    {rate && <span className="font-normal"> (${convertSatoshisToFiat(walletBalance.total, rate)})</span>}
-                  </span>
-                </span>
-                <button onClick={refreshAll} disabled={isRefreshing} title={t('bsvPayment.refreshBalanceButton')}>
-                  <RefreshIcon isRefreshing={isRefreshing} />
-                </button>
-              </div>
-
-              <WalletManager
-                ref={walletManagerRef}
+              <WalletInfo
+                qrcode={qrcode}
                 address={address}
-                maxTransferAmountValue={maxTransferAmount}
-                isWalletMode={isWalletUiVisible}
-                getWifFunction={getWifForBackup}
+                isCopied={isCopied}
+                copyAddress={copyAddress}
+                walletBalance={walletBalance}
                 rate={rate}
-                onDeleteWallet={handleDeleteWallet}
-                onRequestCalculateMaxTransfer={handleRequestCalculateMax}
-                onTransferFunds={handleTransferFunds}
-                onRequestImportWallet={handleRequestImportWallet}
+                refreshAll={refreshAll}
+                isRefreshing={isRefreshing}
               />
+              {showWalletManager && (
+                <WalletManager
+                  ref={walletManagerRef}
+                  address={address}
+                  maxTransferAmountValue={maxTransferAmount}
+                  isWalletMode={isWalletUiVisible}
+                  getWifForBackup={getWifForBackup}
+                  rate={rate}
+                  onDeleteWallet={handleDeleteWallet}
+                  onRequestCalculateMaxTransfer={handleRequestCalculateMax}
+                  onTransferFunds={handleTransferFunds}
+                  onRequestImportWallet={handleRequestImportWallet}
+                  transferStatus={transferStatus}
+                  transferMessage={transferMessage}
+                  onClearTransferStatus={clearTransferStatus}
+                />
+              )}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-8">
@@ -272,7 +325,7 @@ function WalletUI() {
 
         </div>
           <Dialog open={showHistoryModal} onOpenChange={(open) => !open && setShowHistoryModal(false)}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-xl">
               <DialogHeader>
                 <DialogTitle>{t('transactionHistory.title')}</DialogTitle>
               </DialogHeader>
@@ -302,15 +355,22 @@ function PaymentContent() {
   const { t } = useTranslation();
   const [pinState, setPinState] = useState({ isOpen: false });
 
-  const handlePinResolve = useCallback((resolve) => {
+  const handlePinResolve = useCallback((value) => {
+    if (pinState.onResolve) {
+      pinState.onResolve(value);
+    }
     setPinState({ isOpen: false });
-    resolve();
-  }, []);
+  }, [pinState.onResolve]);
 
-  const handlePinReject = useCallback((reject) => {
+  const handlePinReject = useCallback(() => {
+    if (pinState.onReject) {
+      // Pass a special value to indicate cancellation, avoiding an Error object
+      // which might trigger unwanted notifications.
+      pinState.onReject({ cancelled: true });
+    }
     setPinState({ isOpen: false });
-    reject();
-  }, []);
+  }, [pinState.onReject]);
+
 
   const showInfo = useCallback((title, message) => {
     return new Promise((resolve) => {
@@ -375,11 +435,11 @@ function PaymentContent() {
         ...config,
         ...options,
         isOpen: true,
-        onResolve: (value) => handlePinResolve(() => resolve(value)),
-        onReject: () => handlePinReject(reject)
+        onResolve: resolve,
+        onReject: reject,
       });
     });
-  }, [t, handlePinResolve, handlePinReject]);
+  }, [t]);
 
   const contextValue = useMemo(() => ({
     promptForPin,
@@ -391,8 +451,8 @@ function PaymentContent() {
       <WalletUI />
       <PinDialog
         pinState={pinState}
-        onResolve={pinState.onResolve}
-        onReject={pinState.onReject}
+        onResolve={handlePinResolve}
+        onReject={handlePinReject}
       />
     </PinPromptContext.Provider>
   );
