@@ -157,10 +157,28 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     </form>
   );
 
+  const SetupDialogContent = () => (
+    <div className="p-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('bsvPayment.walletSetup.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{t('bsvPayment.walletSetup.prompt')}</p>
+      
+      <div className="flex flex-col gap-3">
+        <Button onClick={() => onResolve({ action: 'create' })}>
+          {t('bsvPayment.walletSetup.createButton')}
+        </Button>
+        <Button variant="outline" onClick={() => onResolve({ action: 'import' })}>
+          {t('bsvPayment.walletSetup.importButton')}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md mx-auto">
-        {mode === 'info' ? <InfoDialogContent /> : <FormDialogContent />}
+        {mode === 'info' ? <InfoDialogContent /> : 
+         mode === 'setup' ? <SetupDialogContent /> : 
+         <FormDialogContent />}
       </div>
     </div>
   );

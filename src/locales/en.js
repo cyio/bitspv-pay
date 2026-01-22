@@ -183,7 +183,7 @@ export default {
     walletNameLabel: 'Wallet Name', // New
     walletSetup: {
       title: 'Set Up Your Wallet',
-      prompt: 'Initialize your wallet to start using BSV payments.',
+      prompt: 'Create a new wallet or import an existing one:',
       createButton: 'Create New Wallet',
       importButton: 'Import Wallet',
     },

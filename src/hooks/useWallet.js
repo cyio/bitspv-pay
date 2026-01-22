@@ -38,7 +38,7 @@ export function useWallet() {
     }
   }, [address]);
 
-  const createWallet = useCallback(async () => {
+  const createWallet = useCallback(async (options = {}) => {
     console.log('begin createWallet');
 
     try {
@@ -100,8 +100,32 @@ export function useWallet() {
           return { error: 'encryption-failed', message: t('bsvPayment.statusMessages.errors.encryptionFailed') };
         }
       } else {
-        console.log('No existing wallet found. Creating new wallet with PIN protection.');
+        console.log('No existing wallet found. Starting setup flow.');
+        
+        // Step 1: Ask user whether to Create or Import
+        let setupAction;
+        try {
+            const setupResult = await promptForPin('setup'); // Returns { action: 'create' | 'import' }
+            setupAction = setupResult.action;
+        } catch (e) {
+             console.log('Setup cancelled or failed', e);
+             return { error: 'setup-cancelled', message: t('bsvPayment.pinModal.setupCancelledMessage') };
+        }
+
+        if (setupAction === 'import') {
+             console.log('User chose to import wallet.');
+             if (options.onImport) {
+                 options.onImport();
+                 return { error: 'import-requested', message: 'User requested to import wallet.' };
+             } else {
+                 return { error: 'import-not-available', message: t('bsvPayment.statusMessages.errors.importUiNotAvailable') };
+             }
+        }
+
+        // Step 2: Create new wallet (User chose 'create')
+        console.log('User chose to create new wallet. Prompting for PIN.');
         const { pin: walletPin, walletName: fetchedWalletName } = await promptForPin('set');
+        
         if (!walletPin) {
           return { error: 'setup-cancelled', message: t('bsvPayment.pinModal.setupCancelledMessage') };
         }
@@ -144,6 +168,14 @@ export function useWallet() {
       return { error: 0, message: 'Wallet created/loaded successfully.', walletName: newWalletName || storage.getWalletName() };
 
     } catch (error) {
+      if (error && error.cancelled) {
+          // If the rejection came from the promptForPin rejection (which might be due to onImport trigger)
+           console.log('Create wallet cancelled (possibly for import).');
+           // If we threw { importRequested: true } it would be caught in the inner try/catch block if we had one wrapping promptForPin.
+           // However, I put the try/catch around promptForPin specifically.
+           // So here we likely just see standard errors.
+           return { error: 'setup-cancelled' };
+      }
       console.error('Failed to create wallet:', error);
       return { error: 'wallet-creation-failed', message: t('bsvPayment.statusMessages.walletCreateFailed') };
     }

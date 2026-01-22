@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isWeChat } from '../utils';
 import {
   isValidAddress,
   convertSatoshisToBSV,
@@ -436,9 +437,16 @@ const WalletManager = ({
                   <p className="mt-2 text-xs text-red-500 dark:text-red-400">{t('bsvPayment.privateKeyWarning')}</p>
                 </div>
                 <DialogFooter>
-                  <Button onClick={downloadPrivateKeyQrCode} className="w-full">
-                    {t('bsvPayment.downloadQrCodeButton')}
-                  </Button>
+                  {!isWeChat && (
+                    <Button onClick={downloadPrivateKeyQrCode} className="w-full">
+                      {t('bsvPayment.downloadQrCodeButton')}
+                    </Button>
+                  )}
+                  {isWeChat && (
+                    <p className="w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 py-2">
+                       {t('bsvPayment.qrCodeDownloadTip')}
+                    </p>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>

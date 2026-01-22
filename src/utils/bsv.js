@@ -1,5 +1,5 @@
 import { P2PKH, Script, PublicKey, Hash } from '@bsv/sdk';
-import { isWeChat, downloadImage } from './index';
+import { downloadImage } from './index';
 import QRCode from 'qrcode';
 import {
   broadcastTransaction,

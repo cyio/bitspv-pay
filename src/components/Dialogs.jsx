@@ -31,7 +31,7 @@ function CustomAlertDialog({ open, onOpenChange, title, message, children }) {
           </div>
 
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse space-x-reverse space-x-2">
+        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 flex justify-end gap-2">
           {children}
         </div>
       </div>

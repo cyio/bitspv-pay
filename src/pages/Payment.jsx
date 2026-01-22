@@ -105,14 +105,13 @@ function WalletUI() {
     try {
       await Promise.all([
         refreshBalance(),
-        refreshRate(),
       ]);
     } catch (error) {
       console.error("Failed to refresh data:", error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [isRefreshing, refreshBalance, refreshRate]);
+  }, [isRefreshing, refreshBalance]);
 
     const sendDataToParent = (data) => {
         console.log('sendDataToParent ', data);
@@ -149,17 +148,64 @@ function WalletUI() {
             if (hasInitialized || isInitializing.current) return;
             isInitializing.current = true;
 
-            const result = await createWallet();
+            const result = await createWallet({
+                onImport: () => {
+                    handleRequestImportWallet();
+                }
+            });
+            
             if (result?.error) {
-                setStatus('error');
-                setStatusMessage(result.message);
+                if (result.error === 'import-requested') {
+                    // User clicked import, do nothing else as file picker is open
+                    // and we want to stop the initialization loop until import finishes
+                    // (which will reload the page on success)
+                    // Reset initializing flag so we can retry if they cancel file picker?
+                    // Actually, if they cancel file picker, nothing happens.
+                    // But createWallet has returned already.
+                    // We might want to reset isInitializing so effect can run again?
+                    // But hasInitialized is false.
+                    // If they don't pick a file, they are stuck.
+                    // Ideally, handleRequestImportWallet handles the file pick.
+                    // If file pick is cancelled, they press "Import" again? 
+                    // No, the dialog is closed.
+                    // So they are stuck on the loading spinner?
+                    // "No, createWallet returned."
+                    // If createWallet returns, we are back in the component.
+                    // The component shows "Loading wallet..." if !isWalletUiVisible.
+                    // Since wallet is not created, isWalletUiVisible is false.
+                    // We need to re-show the "Initialize / Create " UI?
+                    // But createWallet handles the "No wallet found" case by prompting PIN.
+                    // If we return import-requested, we exited that.
+                    // So we need to re-trigger createWallet? 
+                    // Or let them click something?
+                    // There is no UI shown if createWallet exits without success/error that sets state.
+                    // Wait, if result.error is set, we do:
+                    // setStatus('error'); setStatusMessage(result.message);
+                    // This shows PaymentStatus with error.
+                    // Maybe that's fine? "User requested import".
+                    // But we want them to pick a file. 
+                    // If they pick a file, handleFileChange -> handleImportData -> page reload.
+                    // So getting stuck on a "Importing..." or similar state is fine.
+                    // Let's set a status message just in case they cancel file picker.
+                    setStatus('error'); // Show error state with info message
+                    setStatusMessage(t('bsvPayment.statusMessages.info.importCancelled') + ' ' + t('bsvPayment.statusMessages.importUiNotAvailable'));
+                    // DO NOT reset isInitializing.current to false here.
+                    // If we do, the useEffect will re-run on next render (triggered by setStatus above)
+                    // and show the setup dialog again immediately, interfering with the file picker.
+                    // If the user cancels the file picker, they are stuck in this state.
+                    // They can reload the page to try again.
+                    // If they pick a file, handleFileChange will reload the page on success.
+                } else {
+                    setStatus('error');
+                    setStatusMessage(result.message);
+                }
             } else {
                 setHasInitialized(true);
             }
         };
 
         initialize();
-    }, [createWallet, hasInitialized, setStatus, setStatusMessage]);
+    }, [createWallet, hasInitialized, setStatus, setStatusMessage, t]);
 
     useEffect(() => {
         if (hasInitialized) {
@@ -406,6 +452,13 @@ export default function Payment() {
           showCancelButton: false,
           hideModalHeaderCloseButton: true,
         };
+      } else if (mode === 'setup') { // New setup mode
+          config = {
+             mode: 'setup',
+             confirmButtonText: '',
+             showCancelButton: false,
+             hideModalHeaderCloseButton: true,
+          };
       } else { // unlock
         config = {
           mode: 'unlock',
@@ -421,6 +474,11 @@ export default function Payment() {
       setPinState({
         ...config,
         ...options,
+        onImport: options.onImport ? () => {
+            if (options.onImport) options.onImport();
+            reject({ importRequested: true });
+            setPinState({ isOpen: false });
+        } : undefined,
         isOpen: true,
         onResolve: resolve,
         onReject: reject,
