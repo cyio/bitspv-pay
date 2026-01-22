@@ -11,7 +11,7 @@ import {
 
 const PaymentAbout = ({ show, onClose }) => {
   const { t } = useTranslation();
-  const version = '1.0.0'; // Example version
+  const version = '1.0.0';
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && onClose()}>

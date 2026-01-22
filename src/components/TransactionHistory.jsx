@@ -35,13 +35,12 @@ const TransactionHistory = ({ address, pubKey }) => {
       await navigator.clipboard.writeText(txid);
       setCopyStatus(prev => ({ ...prev, [txid]: true }));
       setTimeout(() => {
-        setCopyStatus(prev => ({ ...prev, [txid]: false }));
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy txid:', err);
-      // You can add a more user-friendly notification here if needed.
-    }
-  };
+      setCopyStatus(prev => ({ ...prev, [txid]: false }));
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy txid:', err);
+  }
+};
 
   return (
     <div className="p-4">

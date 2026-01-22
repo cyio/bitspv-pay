@@ -1,68 +1,117 @@
 # BitSPV MicroPay
 
-这是一个独立的 BSV 微支付组件/应用，旨在提供一个轻量级、易于集成的比特币SV（BSV）支付解决方案。它专注于核心支付功能，包括生成支付地址、显示二维码、监听入账以及广播交易。
+A lightweight BSV wallet and payment proxy for sending and receiving payments. It supports both legacy addresses and Paymail, and can be integrated with third-party websites to facilitate payment flows.
 
-## 特点
+## Features
 
-- **轻量级**：专注于支付核心功能，代码精简。
-- **易于集成**：可作为独立页面或嵌入式组件集成到其他应用中。
-- **非托管**：私钥本地生成和存储，用户完全掌控资金。
-- **BSV 原生支持**：基于 `@bsv/sdk` 和 Paymail 协议。
-- **国际化**：支持多语言。
+- **Lightweight & Focused**: A simple interface for core payment tasks.
+- **Easy Integration**: Can be used as a standalone payment page or integrated with third-party sites.
+- **Non-custodial**: Users have full control of their private keys, which are stored locally.
+- **Flexible Payments**: Supports sending to both legacy BSV addresses and Paymail.
+- **Internationalization**: Multi-language support.
 
-## 技术栈
+## Tech Stack
 
-- **前端框架**：React
-- **构建工具**：Vite
-- **样式**：TailwindCSS
-- **UI 组件库**: shadcn/ui
-- **支付处理**：`@bsv/sdk` 和 `@cyio/ts-paymail`
-- **国际化**：`react-i18next`
-- **状态管理**：React Hooks
+- **Frontend Framework**: React
+- **Build Tool**: Vite
+- **Styling**: TailwindCSS
+- **UI Component Library**: shadcn/ui
+- **Payment Processing**: `@bsv/sdk` and `@bsv/paymail`
+- **Internationalization**: `react-i18next`
+- **State Management**: React Hooks
 
-## 架构概览
+## Architecture Overview
+
+This diagram illustrates the flow for handling a payment request from an integrated third-party site.
 
 ```mermaid
 graph TD
-    A[用户界面] --> B[钱包管理]
-    A --> C[支付处理]
-    B --> E[本地存储私钥]
-    C --> F[生成支付二维码]
-    C --> G[广播交易]
-    G --> I[区块链网络]
-    I --> J[交易状态查询]
+    subgraph "Browser"
+        A[Parent/Calling Window]
+    end
+
+    subgraph "BitSPV Payment App"
+        subgraph "UI Components (React)"
+            B[Payment Page]
+            D[Wallet Manager]
+            P[PIN Prompt Dialog]
+        end
+
+        subgraph "Core Logic (Hooks)"
+            C[usePaymentFlow]
+            E[useWallet]
+            F[usePinManager]
+            G[useStorage]
+        end
+
+        subgraph "Utilities"
+            H[@bsv/sdk]
+            I[API Utils]
+        end
+    end
+
+    subgraph "External Services"
+        J[BSV Blockchain]
+        K[API Provider]
+    end
+
+    A -- "1. Opens with payment params in URL" --> B
+    B -- "2. Triggers" --> C
+    C -- "3. Polls for sufficient balance" --> E
+    E -- "4. Needs private key to send" --> F
+    F -- "5. Prompts user" --> P
+    P -- "6. User enters PIN" --> F
+    F -- "7. Unlocks key from" --> G
+    G -- "8. Provides key" --> E
+    E -- "9. Creates & signs transaction via" --> H
+    E -- "10. Broadcasts transaction via" --> I
+    I -- "11. Submits to" --> K
+    K -- "12. Relays to" --> J
+    E -- "13. Returns txid" --> C
+    C -- "14. Triggers onPaymentSuccess" --> B
+    B -- "15. Returns result to" --> A
+end
 ```
 
-**关键业务逻辑：**
+**Key Business Logic:**
 
-- **支付流程**：生成地址 → 显示二维码 → 监听入账 → 广播交易
-- **钱包安全**：私钥本地存储 + 备份功能 + 清空确认
+- **Integration Payment Flow**:
+    1. **Receive Request**: The payment page loads with payment details in the URL hash.
+    2. **Check Balance**: It polls the wallet balance to see if funds are sufficient for the transaction.
+    3. **Process Payment**: Once the balance is confirmed, it prompts for a PIN (if required), constructs the transaction, and broadcasts it.
+    4. **Return Result**: Communicates the transaction ID back to the originating site using `postMessage` (popup mode) or a URL redirect (redirect mode).
+- **Wallet Management**:
+    - Create, import, and back up the wallet.
+    - Manually send BSV to legacy addresses or Paymail.
+    - View transaction history.
+- **Security**:
+    - Private keys are encrypted with a user-defined PIN and stored in the browser's local storage.
 
-## 开发与部署
+## Development and Deployment
 
-### 本地开发
+### Local Development
 
-1.  **安装依赖**：
+1.  **Install dependencies**:
     ```bash
     pnpm install
     ```
-2.  **运行开发服务器**：
+2.  **Run the development server**:
     ```bash
     pnpm dev
     ```
-    应用将在 `http://localhost:5173` (或类似地址) 运行。
+    The application will run at `http://localhost:5173` (or a similar address).
 
-### 构建生产版本
+### Building for Production
 
 ```bash
 pnpm build
 ```
-构建产物将位于 `dist/` 目录。
+The build artifacts will be located in the `dist/` directory.
 
-## 贡献
+## Contributing
 
-欢迎对本项目进行贡献！如果您有任何功能建议、bug 报告或改进，请随时提交 Pull Request 或 Issue。
+Contributions to this project are welcome! If you have any feature suggestions, bug reports, or improvements, please feel free to submit a Pull Request or Issue.
 
-## 许可证
+## License
 
-[待添加许可证信息]
+This project is licensed under the Open BSV License.

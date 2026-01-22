@@ -1,6 +1,6 @@
-import { P2PKH, Script, PublicKey, Hash } from '@bsv/sdk'; // 导入 Script, Address, Hash
-import { isWeChat, downloadImage } from './index'; // 导入 downloadImage 和 getAddressFromScript
-import QRCode from 'qrcode'; // 导入 QRCode
+import { P2PKH, Script, PublicKey, Hash } from '@bsv/sdk';
+import { isWeChat, downloadImage } from './index';
+import QRCode from 'qrcode';
 import {
   broadcastTransaction,
   broadcastTransactionWithBitails,
@@ -18,21 +18,19 @@ import {
   getUTXOs,
   getAddressDetail,
   fetchMinerFee,
-  fetchAddressTransactions, // 导入获取地址交易历史的函数
+  fetchAddressTransactions,
   getExchangeRate,
 } from './api';
 
 function getSenderAddress(tx) {
-  // 通常最后一个输出是找零地址，也就是发送者的地址
+  // Typically, the last output is the change address, which is the sender's address.
   const lastOutput = tx.vout[tx.vout.length - 1];
   return lastOutput.scriptPubKey.addresses[0];
 }
 
 function convertSatoshisToBSV(satoshis) {
-  // 将聪转换为 BSV
   const bsv = satoshis / 100000000;
-
-  // 使用 toFixed(8) 保留 8 位小数，并避免使用科学计数法
+  // Use toFixed(8) to keep 8 decimal places and avoid scientific notation.
   return bsv.toFixed(8);
 }
 
@@ -72,9 +70,9 @@ const truncate = (str, startLength, endLength) => {
 };
 
 /**
- * 生成私钥的二维码 Data URL。
- * @param {string} privateKeyWif WIF 格式的私钥。
- * @returns {Promise<string>} 返回二维码的 Data URL，如果生成失败则返回空字符串。
+ * Generates a QR code Data URL for a private key.
+ * @param {string} privateKeyWif The private key in WIF format.
+ * @returns {Promise<string>} A promise that resolves to the QR code's Data URL, or an empty string on failure.
  */
 async function generatePrivateKeyQrCodeUrl(privateKeyWif) {
   if (!privateKeyWif) {
@@ -82,7 +80,7 @@ async function generatePrivateKeyQrCodeUrl(privateKeyWif) {
     return '';
   }
   try {
-    // 使用 errorCorrectionLevel: 'H' 提高容错率，width 设置二维码宽度
+    // Use errorCorrectionLevel: 'H' for high redundancy, and set width.
     return await QRCode.toDataURL(privateKeyWif, { errorCorrectionLevel: 'H', width: 256 });
   } catch (err) {
     console.error('Failed to generate QR code URL:', err);
@@ -91,22 +89,19 @@ async function generatePrivateKeyQrCodeUrl(privateKeyWif) {
 }
 
 /**
- * 生成加密数据的二维码 Data URL。
- * @param {Object} backupData 包含加密信息的完整备份数据对象。
- * @returns {Promise<string>} 返回二维码的 Data URL，如果生成失败则返回空字符串。
+ * Generates a QR code Data URL for encrypted data.
+ * @param {Object} backupData The full backup data object, including encryptedWif and address.
+ * @returns {Promise<string>} A promise that resolves to the QR code's Data URL, or an empty string on failure.
  */
 async function generateEncryptedDataQrCodeUrl(backupData) {
   if (!backupData || !backupData.encryptedWif || !backupData.address) {
-    console.error('完整的备份数据对象（包含 encryptedWif 和 address）是生成二维码所必需的。');
+    console.error('A complete backup data object (including encryptedWif and address) is required to generate the QR code.');
     return '';
   }
   try {
     const backupDataString = JSON.stringify(backupData);
 
-    // console.log('bsv.js: backupData string length:', backupDataString.length);
-    // console.log('bsv.js: backupData content (first 200 chars):', backupDataString.substring(0, 200));
-
-    // 使用 errorCorrectionLevel: 'H' 提高容错率，width 设置二维码宽度
+    // Use errorCorrectionLevel: 'H' for high redundancy, and set width.
     return await QRCode.toDataURL(backupDataString, { errorCorrectionLevel: 'H', width: 256 });
   } catch (err) {
     console.error('Failed to generate encrypted data QR code URL:', err);
@@ -135,11 +130,11 @@ export {
   fetchMinerFee,
   isValidAddress,
   truncate,
-  isValidPaymail, // 添加导出
-  generatePrivateKeyQrCodeUrl, // 导出新函数
-  generateEncryptedDataQrCodeUrl, // 导出加密数据二维码生成函数
-  downloadPrivateKeyAsQrCode, // 导出新的工具函数
-  downloadEncryptedDataQrCode, // 导出加密数据二维码下载函数
+  isValidPaymail,
+  generatePrivateKeyQrCodeUrl,
+  generateEncryptedDataQrCodeUrl,
+  downloadPrivateKeyAsQrCode,
+  downloadEncryptedDataQrCode,
   getExchangeRate,
   convertSatoshisToFiat,
   convertFiatToSatoshis,
@@ -154,10 +149,10 @@ function isValidPaymail(paymail) {
 }
 
 /**
- * 生成私钥的二维码并触发下载。
- * @param {string} privateKeyWif WIF 格式的私钥。
- * @param {string} address 钱包地址，用于生成文件名。
- * @param {string} [filenamePrefix='bitspv-wif-'] 文件名前缀。
+ * Generates and triggers the download of a QR code for a private key.
+ * @param {string} privateKeyWif The private key in WIF format.
+ * @param {string} address The wallet address, used for the filename.
+ * @param {string} [filenamePrefix='bitspv-wif-'] The prefix for the filename.
  * @returns {Promise<void>}
  */
 async function downloadPrivateKeyAsQrCode(privateKeyWif, address, filenamePrefix = 'bitspv-wif-') {
@@ -179,10 +174,10 @@ async function downloadPrivateKeyAsQrCode(privateKeyWif, address, filenamePrefix
 }
 
 /**
- * 生成加密数据的二维码并触发下载。
- * @param {Object} backupData 包含加密信息的完整备份数据对象。
- * @param {string} address 钱包地址，用于生成文件名。
- * @param {string} [filenamePrefix='bitspv-encrypted-'] 文件名前缀。
+ * Generates and triggers the download of a QR code for encrypted data.
+ * @param {Object} backupData The full backup data object, including encryptedWif.
+ * @param {string} address The wallet address, used for the filename.
+ * @param {string} [filenamePrefix='bitspv-encrypted-'] The prefix for the filename.
  * @returns {Promise<void>}
  */
 async function downloadEncryptedDataQrCode(
@@ -191,7 +186,7 @@ async function downloadEncryptedDataQrCode(
   filenamePrefix = 'bitspv-encrypted-'
 ) {
   if (!backupData || !address) {
-    console.error('完整的备份数据对象和地址是二维码下载所必需的。');
+    console.error('A complete backup data object and address are required for QR code download.');
     return;
   }
   try {

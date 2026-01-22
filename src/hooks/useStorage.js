@@ -21,7 +21,7 @@ export const useStorage = () => {
     const walletName = localStorage.getItem(WALLET_NAME); // 获取钱包名称
     return { ciphertext, iv, salt, walletName };
   };
-  const setEncryptedWifData = (ciphertext, iv, salt) => { // 移除 hint 参数
+  const setEncryptedWifData = (ciphertext, iv, salt) => {
     localStorage.setItem(ENCRYPTED_WIF, ciphertext);
     localStorage.setItem(ENCRYPTED_WIF_IV, iv);
     localStorage.setItem(ENCRYPTED_WIF_SALT, salt);
@@ -60,7 +60,7 @@ export const useStorage = () => {
 
   // 清除所有钱包数据
   const clearWalletData = (address) => {
-    removeEncryptedWifData(); // 使用合并后的函数
+    removeEncryptedWifData();
     removePublicKey();
     removeWalletAddress();
     removeIsPinSetupDone();
@@ -73,10 +73,10 @@ export const useStorage = () => {
   return {
     getEncryptedWifData,
     setEncryptedWifData,
-    removeEncryptedWifData, // 导出合并后的函数
+    removeEncryptedWifData,
     getPublicKey,
     setPublicKey,
-    removePublicKey, // 导出 removePublicKey
+    removePublicKey,
     getWalletAddress,
     setWalletAddress,
     getIsPinSetupDone,
@@ -86,9 +86,9 @@ export const useStorage = () => {
     getOldPlaintextWif,
     removeOldPlaintextWif,
     clearWalletData,
-      getWalletName, // 导出新的函数
-      setWalletName, // 导出新的函数
-      removeWalletName, // 导出新的函数
+      getWalletName,
+      setWalletName,
+      removeWalletName,
     };
   }, []);
 };

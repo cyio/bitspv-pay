@@ -1,11 +1,9 @@
-
 import React, { useState, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DialogContext } from '../contexts/DialogContext';
 import { PinPromptContext } from '../contexts/PinPromptContext';
 import PinDialog from './PinDialog';
 
-// Simple re-implementation of Button for consistency
 const Button = ({ children, variant, ...props }) => {
   const baseClasses = "px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
   const variantClasses = variant === 'outline'

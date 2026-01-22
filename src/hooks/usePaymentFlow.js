@@ -33,9 +33,6 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
     if (!address) return false;
     try {
         await refreshBalance();
-        
-        // To improve user experience, we parallelize fetching the private key (which may require a PIN)
-        // and fetching the latest UTXOs from the network.
         const [keyResult, utxos] = await Promise.all([
             ensurePrivateKeyLoaded(pubKey, address),
             getUTXOs(address)
@@ -93,11 +90,9 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
                 }
                 return false; // Stop polling on success
             } else if (processResult.error === 'private-key-not-loaded') {
-                // This can happen if PIN was cancelled. We should continue polling.
                 return true;
             }
             
-            // For other errors, stop polling
             return false;
         }
     } catch (error) {

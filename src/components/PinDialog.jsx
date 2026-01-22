@@ -3,7 +3,6 @@ import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-// Re-implementing ShadCN UI components with basic HTML and Tailwind for simplicity
 const FormItem = ({ children, className }) => <div className={className}>{children}</div>;
 const FormLabel = ({ children }) => <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</label>;
 const FormControl = ({ children }) => <div>{children}</div>;

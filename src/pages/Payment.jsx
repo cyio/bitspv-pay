@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom'; // Assuming you'll use React Router
+import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import WalletManager from '../components/WalletManager';
 import { useRate } from '../hooks/useRate';
-import { convertSatoshisToBSV, convertSatoshisToFiat } from '../utils/bsv';
-import { useContext } from 'react';
-import { Info, Coffee, RefreshCw, History, Copy, Check } from 'lucide-react';
+import { Info, Coffee, History } from 'lucide-react';
 import TransactionHistory from '../components/TransactionHistory.jsx';
 import {
   Dialog,
@@ -21,12 +19,8 @@ import { PinPromptContext } from '../contexts/PinPromptContext';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import PaymentStatus from '../components/PaymentStatus.jsx';
 import WalletInfo from '../components/WalletInfo.jsx';
-
-// Import jsQR for QR code scanning
 import jsQR from 'jsqr';
 
-
-// This component contains the actual UI and hooks that depend on the PinPromptContext
 function WalletUI() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -83,6 +77,7 @@ function WalletUI() {
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const isInitializing = useRef(false);
 
   const statusColor = useMemo(() => {
     switch (status) {
@@ -119,8 +114,6 @@ function WalletUI() {
     }
   }, [isRefreshing, refreshBalance, refreshRate]);
 
-    // Payment flow logic from Vue version
-
     const sendDataToParent = (data) => {
         console.log('sendDataToParent ', data);
         if (window.opener) {
@@ -153,7 +146,8 @@ function WalletUI() {
 
     useEffect(() => {
         const initialize = async () => {
-            if (hasInitialized) return;
+            if (hasInitialized || isInitializing.current) return;
+            isInitializing.current = true;
 
             const result = await createWallet();
             if (result?.error) {
@@ -161,12 +155,17 @@ function WalletUI() {
                 setStatusMessage(result.message);
             } else {
                 setHasInitialized(true);
-                handlePaymentRequest();
             }
         };
 
         initialize();
-    }, [createWallet, hasInitialized, handlePaymentRequest, setStatus, setStatusMessage]);
+    }, [createWallet, hasInitialized, setStatus, setStatusMessage]);
+
+    useEffect(() => {
+        if (hasInitialized) {
+            handlePaymentRequest();
+        }
+    }, [hasInitialized, handlePaymentRequest]);
 
     const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -184,7 +183,6 @@ function WalletUI() {
         ctx.drawImage(img, 0, 0);
         const imageDataObj = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // 使用导入的 jsQR 库来解码 QR 码
         const code = jsQR(imageDataObj.data, imageDataObj.width, imageDataObj.height);
 
         if (code) {
@@ -192,11 +190,9 @@ function WalletUI() {
           if (result?.error && walletManagerRef.current?.updateTransferStatus) {
             walletManagerRef.current.updateTransferStatus('error', result.message);
           } else if (result?.walletName) {
-            // 导入成功后，更新 walletName
             console.log('Wallet imported successfully:', result.walletName);
           }
         } else {
-          // QR 码无效，尝试直接导入文件
           await handleImportData(file);
         }
       };
@@ -219,17 +215,9 @@ function WalletUI() {
     } else {
         setMaxTransferAmount(0); // Fallback
     }
-    // Optionally, you could show the message to the user if one is returned
-    if (result && result.message) {
-      // For now, we'll just log it. A UI update could be implemented here.
-      console.log('calculateMaxSpendable message:', result.message);
-    }
   }, [calculateMaxSpendable]);
 
   const handleTransferFunds = useCallback(async (target, amount) => {
-    // This function now directly uses the refactored sendTransaction from useWallet,
-    // which handles address/paymail logic, PIN prompts, and broadcasting.
-    // It will re-throw errors, including cancellation, to be caught by WalletManager's executeTransfer.
     try {
       const result = await sendTransaction(target, amount);
       console.log('Transfer result:', result);
@@ -238,7 +226,6 @@ function WalletUI() {
         await refreshAll();
         handleRequestCalculateMax(); // Recalculate max spendable after transfer
       }
-      // No need to return anything specific on success, WalletManager handles the UI
     } catch (error) {
       // Re-throw to allow WalletManager to catch it and update its UI state (e.g., stop loading spinner).
       // This is critical for proper UI feedback on failure or cancellation.
@@ -350,8 +337,8 @@ function WalletUI() {
   );
 }
 
-// This component now sets up the context and renders the UI component.
-function PaymentContent() {
+// This component sets up the PinPrompt context and renders the main UI.
+export default function Payment() {
   const { t } = useTranslation();
   const [pinState, setPinState] = useState({ isOpen: false });
 
@@ -455,12 +442,5 @@ function PaymentContent() {
         onReject={handlePinReject}
       />
     </PinPromptContext.Provider>
-  );
-}
-
-export default function Payment() {
-  // The parent component is now much simpler.
-  return (
-    <PaymentContent />
   );
 }

@@ -1,155 +1,147 @@
-# `pay.html` 通用支付代理接入和使用文档
+# Payment Page Integration Guide
 
-`pay.html` 文件被设计为一个通用的支付代理页面，用于处理比特币SV (BSV) 的支付流程。它可以在独立的窗口中打开，或者通过重定向的方式集成到您的应用中，以简化支付调用和结果处理。
+The BitSPV payment page is designed as a universal payment handler for Bitcoin SV (BSV). It can be opened in a separate window or integrated into your application via redirection to simplify the payment process and result handling.
 
-## 1. 接入 `pay.html`
+## 1. Calling the Payment Page
 
-将 `pay.html` 文件及其相关的资源（例如，打包后的 JavaScript 文件 `/src/pages/pay/main.js` 及其依赖）放置在您的项目可以通过 HTTP 访问的路径下。通常，您可以将其放在项目的根目录或 `public` 目录下。
+You can invoke the payment page in two ways, depending on your application's flow and environment.
 
-确保 `pay.html` 中引用的脚本路径正确，例如：
+### Method 1: Using `window.open` in a New Window (Popup Mode)
 
-```html
-<script type="module" src="/src/pages/pay/main.js"></script>
-```
+This method is suitable for desktop or web environments where you don't want to interrupt the user's current page.
 
-这里的 `/src/pages/pay/main.js` 路径需要根据您的项目结构进行调整，确保浏览器能够正确加载。
-
-## 2. 调用 `pay.html` 进行支付
-
-您可以通过两种方式调用 `pay.html`：
-
-### 方式一：通过 `window.open` 在新窗口中打开
-
-这种方式适用于桌面端或非微信环境，可以在不中断当前页面的情况下完成支付流程。
+**Parent Window Code:**
 
 ```javascript
 function callPay(paymentParams) {
-  // 将支付参数编码后放入哈希
+  // 1. Encode the payment parameters into the URL hash.
   const encodedData = encodeURIComponent(JSON.stringify(paymentParams));
-  let childWindow = window.open(
-    `https://pay.bitspv.com/#${encodedData}`, // 使用 # 传递数据
-    'Payment',
-    'width=500,height=580' // 可选：设置窗口大小
-  );
-  // 设置一个全局函数供子窗口调用回调
-  window.receiveDataFromChild = receiveDataFromChild;
-  // 建立父子窗口关系，确保回调正常工作
-  childWindow.opener = window;
+  const paymentUrl = `https://pay.bitspv.com/#${encodedData}`;
+
+  // 2. Open the payment page in a new window.
+  const childWindow = window.open(paymentUrl, 'Payment', 'width=500,height=580');
+
+  // 3. Listen for the payment result from the child window.
+  const receiveMessage = (event) => {
+    // Ensure the message is from the payment window you opened.
+    if (event.source !== childWindow) {
+      return;
+    }
+
+    if (event.data && event.data.type === 'payment_success') {
+      const txid = event.data.payload.txid;
+      console.log('Received transaction ID from child window:', txid);
+      handlePayResult(txid);
+
+      // 4. (Optional) Send a confirmation back to the child window to close it.
+      childWindow.postMessage({ type: 'message_received' }, '*');
+
+      // 5. Clean up the event listener.
+      window.removeEventListener('message', receiveMessage);
+    }
+  };
+
+  window.addEventListener('message', receiveMessage, false);
 }
 
-// 在父窗口中定义回调函数
-const receiveDataFromChild = data => {
-  console.log('接收到来自子窗口的数据：', data);
-  if (data) {
-    // 处理支付成功后的数据，例如交易ID (txid)
-    handlePayResult(data);
-  }
-};
-
-// 处理支付结果的函数
+// Function to handle the successful payment result.
 function handlePayResult(txid) {
-  // 根据 txid 更新UI或进行其他操作
-  console.log('支付成功，交易ID:', txid);
-  // ...
+  console.log('Payment successful, Transaction ID:', txid);
+  // Update your UI or perform other actions based on the txid.
 }
 ```
 
-**说明：**
-- `paymentParams` 是一个包含支付详情的数组，将在下一节详细说明。
-- 支付参数通过 URL 的哈希部分 (`#${encodedData}`) 传递给 `pay.html`。
-- 在父窗口定义 `receiveDataFromChild` 函数，并在 `window` 对象上暴露，供 `pay.html` 调用。
-- `childWindow.opener = window;` 确保父子窗口之间的通信权限。
+**Explanation:**
+- Payment parameters are passed via the URL hash (`#`).
+- The parent window listens for a `message` event. The payment page will send a message with `{ type: 'payment_success', payload: { txid: '...' } }` upon completion.
+- After receiving the result, the parent window can optionally send a `message_received` confirmation, which will prompt the payment window to close itself.
 
-### 方式二：通过重定向跳转到 `pay.html`
+### Method 2: Redirecting to the Payment Page
 
-这种方式适用于移动端或微信环境，会直接跳转到 `pay.html` 页面进行支付。
+This method is suitable for mobile environments or single-page flows.
+
+**Calling Page Code:**
 
 ```javascript
 function redirectToPay(paymentParams) {
-  // 将支付参数编码后放入哈希
+  // 1. Encode payment parameters into the URL hash.
   const encodedData = encodeURIComponent(JSON.stringify(paymentParams));
-  // 保留原有的查询参数，将数据放入哈希
-  const callbackUrl = encodeURIComponent(window.location.href); // 当前页面的URL作为回调地址
-  window.location.href = `https://pay.bitspv.com/?mode=redirect&callbackUrl=${callbackUrl}#${encodedData}`;
-}
 
-// 在原页面加载时处理回调
+  // 2. Specify the URL to return to after payment completion.
+  const callbackUrl = encodeURIComponent(window.location.href);
+
+  // 3. Redirect to the payment page.
+  const paymentUrl = `https://pay.bitspv.com/?callbackUrl=${callbackUrl}#${encodedData}`;
+  window.location.href = paymentUrl;
+}
+```
+
+**Callback Page Code (The page at `callbackUrl`):**
+
+```javascript
+// On the callback page, check for payment results in the URL when the page loads.
 function handlePaymentCallback() {
-  const { status, data, ...remainingQuery } = route.query; // 假设使用 Vue Router
-  if (data) {
-    // 处理支付成功后的数据，例如交易ID (txid)
-    handlePayResult(data);
-    // 清除URL中的支付回调参数
-    router.replace({
-      path: route.path,
-      query: remainingQuery,
-    });
+  const urlParams = new URLSearchParams(window.location.search);
+  const status = urlParams.get('status');
+  const txid = urlParams.get('data');
+
+  if (status === 'success' && txid) {
+    console.log('Payment successful, Transaction ID:', txid);
+    handlePayResult(txid);
+
+    // Clean the URL to remove payment parameters.
+    const newUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, document.title, newUrl);
+  } else if (status === 'error') {
+    const errorMessage = urlParams.get('errorMessage');
+    console.error('Payment failed:', errorMessage);
   }
 }
 
-// 在页面加载时调用 handlePaymentCallback
-onMounted(() => {
-  handlePaymentCallback();
-});
+// Call this function when your page mounts or loads.
+handlePaymentCallback();
 
-// 处理支付结果的函数
 function handlePayResult(txid) {
-  // 根据 txid 更新UI或进行其他操作
-  console.log('支付成功，交易ID:', txid);
-  // ...
+  // Update UI or perform other actions.
 }
 ```
 
-**说明：**
-- `paymentParams` 同样通过 URL 的哈希部分传递。
-- 当前页面的完整 URL (`window.location.href`) 作为 `callbackUrl` 通过查询参数传递给 `pay.html`。
-- `pay.html` 完成支付后，会重定向回 `callbackUrl`，并将支付结果（例如 `txid`）作为查询参数 (`data`) 添加到 URL 中。
-- 在原页面加载时，通过检查 URL 查询参数来获取支付结果并进行处理。
+**Explanation:**
+- The payment parameters are passed via the URL hash.
+- The current page's URL is passed as a `callbackUrl` query parameter.
+- The payment page will redirect back to the `callbackUrl`, appending the result (`status=success&data=<txid>` or `status=error&errorMessage=...`) as query parameters.
+- Your callback page needs logic to parse these parameters from the URL.
 
-## 3. `paymentParams` 结构
+## 2. `paymentParams` Structure
 
-`paymentParams` 是一个数组，每个元素代表一个支付输出。通常包含至少两个元素：一个用于数据输出（OP_RETURN），一个用于接收找零或支付给指定地址。
+`paymentParams` is an array of objects, where each object represents a transaction output.
 
 ```javascript
 const paymentParams = [
+  // Example 1: A data output (OP_RETURN)
   {
-    data: bData.map(d => Buffer.from(d).toString('hex')), // 数据输出，需要是十六进制字符串数组
-    satoshis: 0, // 数据输出的 satoshis 通常为 0
+    // Data must be an array of hex-encoded strings.
+    data: [
+        '19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut', // Protocol identifier
+        Buffer.from('Hello, BSV!', 'utf8').toString('hex') // Message content
+    ],
+    satoshis: 0, // satoshis for data outputs are always 0
   },
+  // Example 2: A standard payment output
   {
-    address: business.receiveAddress, // 接收找零或支付的地址
-    satoshis: 1000, // 支付的 satoshis 数量
+    address: '1...your-receive-address...', // The recipient's BSV address
+    satoshis: 1000, // The amount to pay in satoshis
   },
-  // ... 可以有更多输出
+  // ... you can add more outputs if needed
 ];
 ```
 
-**说明：**
-- `data`: 包含要写入区块链的数据，每个元素是一个 Buffer 转换成的十六进制字符串。例如，用于 B 协议的数据通常以 `19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut` 开头。
-- `satoshis`: 该输出对应的 satoshis 数量。数据输出通常为 0，支付地址输出为实际支付金额。
-- `address`: 接收支付的比特币SV地址。
+**Field Descriptions:**
+- `data`: An array of hex-encoded strings for an `OP_RETURN` output. Use this for writing data to the blockchain.
+- `address`: A valid BSV address for a standard P2PKH payment.
+- `satoshis`: The amount in satoshis for that output.
 
-## 4. 支付结果回调处理
+## 3. Error Handling
 
-### `window.open` 方式
-
-`pay.html` 在支付成功后，会调用父窗口的 `window.opener.receiveDataFromChild(txid)` 函数，将交易ID (`txid`) 作为参数传递。您需要在父窗口中实现 `receiveDataFromChild` 函数来接收和处理这个 `txid`。
-
-### 重定向方式
-
-`pay.html` 在支付成功后，会重定向回 `callbackUrl`，并在 URL 中添加 `data=txid` 查询参数。您需要在 `callbackUrl` 对应的页面加载时，检查 URL 查询参数，获取 `data` 的值（即 `txid`），并进行处理。
-
-## 5. 错误处理
-
-如果在支付过程中发生错误，`pay.html` 可能会通过以下方式通知调用方：
-
-- **`window.open` 方式:** 可能会调用父窗口的某个错误处理函数（如果定义了），或者在子窗口中显示错误信息。
-- **重定向方式:** 可能会重定向回 `callbackUrl` 并添加错误相关的查询参数（例如 `status=error&errorMessage=...`）。
-
-您需要在调用方根据具体情况实现相应的错误处理逻辑，例如显示错误提示给用户。
-
-## 6. 示例代码参考
-
-您可以参考`PublishOnBlockchain.vue`文件中的 `sendMesaage`、`callPay`、`redirectToPay` 和 `handlePaymentCallback` 函数的实现，了解如何在实际应用中调用 `pay.html` 并处理回调。
-
-请注意，`pay.html` 内部的具体实现（例如如何与钱包交互、构建交易等）不属于本文档的范围，本文档主要关注如何从外部接入和使用 `pay.html` 作为支付代理。
+- **Popup Mode (`window.open`)**: Errors are typically displayed within the payment window itself. The window will not send a `payment_success` message, and the user will likely close it manually. Your parent window can detect when the child window is closed to handle cancellation.
+- **Redirect Mode**: Errors are communicated by redirecting to the `callbackUrl` with query parameters like `status=error` and `errorMessage=...`. Implement logic on your callback page to handle these cases.

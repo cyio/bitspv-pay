@@ -47,7 +47,6 @@ export function usePinManager() {
         return { error: 'unlock-cancelled', message: error.message || 'User cancelled PIN entry' };
       }
 
-      // For decryption or other errors, show a message
       console.error('Failed to load private key:', error);
       const errorMessage = error.message || t('bsvPayment.statusMessages.errors.decryptionFailedGeneric');
       await showInfo(t('bsvPayment.pinModal.decryptionFailedTitle'), t('bsvPayment.pinModal.decryptionFailedMessage'));
