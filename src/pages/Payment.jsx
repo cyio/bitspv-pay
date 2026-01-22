@@ -20,6 +20,7 @@ import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import PaymentStatus from '../components/PaymentStatus.jsx';
 import WalletInfo from '../components/WalletInfo.jsx';
 import jsQR from 'jsqr';
+import { checkGoogleConnectivity } from '../utils/network';
 
 function WalletUI() {
   const { t } = useTranslation();
@@ -147,6 +148,8 @@ function WalletUI() {
         const initialize = async () => {
             if (hasInitialized || isInitializing.current) return;
             isInitializing.current = true;
+
+            checkGoogleConnectivity();
 
             const result = await createWallet({
                 onImport: () => {

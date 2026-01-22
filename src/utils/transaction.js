@@ -1,7 +1,8 @@
 import { Transaction, PrivateKey, Script, P2PKH, LivePolicy } from '@bsv/sdk';
 import { MOCK_DRY_RUN_WIF } from './constants';
 import { getSourceTransaction } from './api';
-import { PaymailClient } from '@cyio/ts-paymail/client';
+import { PaymailClient } from '@bsv/paymail/client';
+import { getGoogleReachable } from './network';
 
 const sourceTxCache = new Map();
 
@@ -31,7 +32,15 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
             setStatusMessage(t('bsvPayment.statusMessages.processStatus.processing'));
         }
 
-        const client = new PaymailClient();
+        let client;
+        if (getGoogleReachable() === false) {
+            const dnsOptions = {
+                dohServerBaseUrl: 'https://223.5.5.5/resolve'
+            };
+            client = new PaymailClient(undefined, dnsOptions);
+        } else {
+            client = new PaymailClient();
+        }
         const tx = new Transaction();
         let satsOut = 0;
         const paymailRefs = [];

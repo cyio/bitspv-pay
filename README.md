@@ -1,6 +1,8 @@
 # BitSPV MicroPay
 
-A lightweight BSV wallet and payment proxy for sending and receiving payments. It supports both legacy addresses and Paymail, and can be integrated with third-party websites to facilitate payment flows.
+A lightweight, non-custodial BSV web wallet and payment tool for sending and receiving payments. It supports both legacy addresses and Paymail, and can be integrated with third-party websites to facilitate payment flows.
+
+As a lightweight wrapper for the BSV SDK, this project aims for minimal dependencies and enhanced security via a strict Content Security Policy (CSP). It relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
 
 ## Features
 

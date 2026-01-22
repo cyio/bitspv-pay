@@ -10,11 +10,15 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ReactGA from "react-ga4";
 import './style.css';
 import i18n from './i18n'; // Your existing i18n setup
 import { I18nextProvider } from 'react-i18next';
 import Payment from './pages/Payment';
 import { DialogProvider } from './components/Dialogs.jsx';
+
+const GA_ID = 'G-924QNFV4HX';
+ReactGA.initialize(GA_ID);
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
