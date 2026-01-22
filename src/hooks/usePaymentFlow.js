@@ -33,10 +33,7 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
     if (!address) return false;
     try {
         await refreshBalance();
-        const [keyResult, utxos] = await Promise.all([
-            ensurePrivateKeyLoaded(pubKey, address),
-            getUTXOs(address)
-        ]);
+        const utxos = await getUTXOs(address);
 
         if (utxos.length === 0 && walletBalance.total > 0) {
             setStatus('error');
@@ -44,15 +41,6 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             return false;
         }
 
-        if (!keyResult || !keyResult.loadedPrivKey) {
-            if (keyResult && keyResult.error === 'unlock-cancelled') {
-                return true; // Continue polling
-            }
-            setStatus('error');
-            setStatusMessage('Failed to load private key for automatic payment.');
-            return false;
-        }
-        
         const dryRunResult = await processRefund(utxos, currentSendRequest, {
             dryRun: true,
             address,
@@ -65,34 +53,50 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             setIsAmountCalculated(true);
             setStatus('waiting');
             setStatusMessage(t('bsvPayment.statusMessages.waitingPay'));
-            return true;
+            return true; // Continue polling
         } else if (dryRunResult.error) {
             setStatus('error');
             setStatusMessage(dryRunResult.message || t('bsvPayment.statusMessages.dryRunFailed'));
-            return false;
-        } else {
-            setIsAmountCalculated(true);
-            setMinCost(dryRunResult.totalRequired);
+            return false; // Stop on other dry run errors
+        }
 
-            const processResult = await processRefund(utxos, currentSendRequest, {
-                privateKey: keyResult.loadedPrivKey,
-                dryRun: false,
-                t,
-                pubKey,
-                address,
-                setStatus,
-                setStatusMessage,
-            });
+        // Funds are sufficient, now we can request PIN
+        setIsAmountCalculated(true);
+        setMinCost(dryRunResult.totalRequired);
 
-            if (processResult.error === 0) {
-                if (currentSendRequest) {
-                    setTimeout(() => onPaymentSuccess(processResult.txid), 100);
-                }
-                return false; // Stop polling on success
-            } else if (processResult.error === 'private-key-not-loaded') {
-                return true;
+        const keyResult = await ensurePrivateKeyLoaded(pubKey, address);
+        
+        if (!keyResult || !keyResult.loadedPrivKey) {
+            if (keyResult && keyResult.error === 'unlock-cancelled') {
+                // User cancelled the PIN prompt. We should stop.
+                setStatus('error');
+                setStatusMessage(t('bsvPayment.statusMessages.errors.paymentCancelled', 'Payment cancelled.'));
+                return false; 
             }
-            
+            // Other errors during key loading
+            setStatus('error');
+            setStatusMessage('Failed to load private key for payment.');
+            return false;
+        }
+
+        const processResult = await processRefund(utxos, currentSendRequest, {
+            privateKey: keyResult.loadedPrivKey,
+            dryRun: false,
+            t,
+            pubKey,
+            address,
+            setStatus,
+            setStatusMessage,
+        });
+
+        if (processResult.error === 0) {
+            if (currentSendRequest) {
+                setTimeout(() => onPaymentSuccess(processResult.txid), 100);
+            }
+            return false; // Stop polling on success
+        } else {
+            // Transaction failed after PIN was entered. Stop polling and show error.
+            // The error is already set by processRefund, so just stop.
             return false;
         }
     } catch (error) {

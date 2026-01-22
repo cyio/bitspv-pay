@@ -1,5 +1,7 @@
 # BitSPV MicroPay
 
+**Live Demo: https://pay.bitspv.com/**
+
 A lightweight, non-custodial BSV web wallet and payment tool for sending and receiving payments. It supports both legacy addresses and Paymail, and can be integrated with third-party websites to facilitate payment flows.
 
 As a lightweight wrapper for the BSV SDK, this project aims for minimal dependencies and enhanced security via a strict Content Security Policy (CSP). It relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
@@ -29,7 +31,7 @@ This diagram illustrates the flow for handling a payment request from an integra
 ```mermaid
 graph TD
     subgraph "Browser"
-        A[Parent/Calling Window]
+        A["Parent/Calling Window"]
     end
 
     subgraph "BitSPV Payment App"
@@ -47,7 +49,7 @@ graph TD
         end
 
         subgraph "Utilities"
-            H[@bsv/sdk]
+            H["@bsv/sdk"]
             I[API Utils]
         end
     end
@@ -72,7 +74,6 @@ graph TD
     E -- "13. Returns txid" --> C
     C -- "14. Triggers onPaymentSuccess" --> B
     B -- "15. Returns result to" --> A
-end
 ```
 
 **Key Business Logic:**
@@ -88,6 +89,14 @@ end
     - View transaction history.
 - **Security**:
     - Private keys are encrypted with a user-defined PIN and stored in the browser's local storage.
+
+## Integration
+
+For instructions on how to integrate the payment tool with your website, please see the [HTML Integration Guide](./docs/pay_html_integration.md).
+
+## Tools
+
+- **[Wallet Backup Decryption Tool](https://cyio.github.io/bitspv-open/)**: A standalone tool to decrypt exported wallet backups.
 
 ## Development and Deployment
 

@@ -79,6 +79,7 @@ function WalletUI() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const isInitializing = useRef(false);
+  const paymentFlowStarted = useRef(false);
 
   const statusColor = useMemo(() => {
     switch (status) {
@@ -159,45 +160,8 @@ function WalletUI() {
             
             if (result?.error) {
                 if (result.error === 'import-requested') {
-                    // User clicked import, do nothing else as file picker is open
-                    // and we want to stop the initialization loop until import finishes
-                    // (which will reload the page on success)
-                    // Reset initializing flag so we can retry if they cancel file picker?
-                    // Actually, if they cancel file picker, nothing happens.
-                    // But createWallet has returned already.
-                    // We might want to reset isInitializing so effect can run again?
-                    // But hasInitialized is false.
-                    // If they don't pick a file, they are stuck.
-                    // Ideally, handleRequestImportWallet handles the file pick.
-                    // If file pick is cancelled, they press "Import" again? 
-                    // No, the dialog is closed.
-                    // So they are stuck on the loading spinner?
-                    // "No, createWallet returned."
-                    // If createWallet returns, we are back in the component.
-                    // The component shows "Loading wallet..." if !isWalletUiVisible.
-                    // Since wallet is not created, isWalletUiVisible is false.
-                    // We need to re-show the "Initialize / Create " UI?
-                    // But createWallet handles the "No wallet found" case by prompting PIN.
-                    // If we return import-requested, we exited that.
-                    // So we need to re-trigger createWallet? 
-                    // Or let them click something?
-                    // There is no UI shown if createWallet exits without success/error that sets state.
-                    // Wait, if result.error is set, we do:
-                    // setStatus('error'); setStatusMessage(result.message);
-                    // This shows PaymentStatus with error.
-                    // Maybe that's fine? "User requested import".
-                    // But we want them to pick a file. 
-                    // If they pick a file, handleFileChange -> handleImportData -> page reload.
-                    // So getting stuck on a "Importing..." or similar state is fine.
-                    // Let's set a status message just in case they cancel file picker.
                     setStatus('error'); // Show error state with info message
                     setStatusMessage(t('bsvPayment.statusMessages.info.importCancelled') + ' ' + t('bsvPayment.statusMessages.importUiNotAvailable'));
-                    // DO NOT reset isInitializing.current to false here.
-                    // If we do, the useEffect will re-run on next render (triggered by setStatus above)
-                    // and show the setup dialog again immediately, interfering with the file picker.
-                    // If the user cancels the file picker, they are stuck in this state.
-                    // They can reload the page to try again.
-                    // If they pick a file, handleFileChange will reload the page on success.
                 } else {
                     setStatus('error');
                     setStatusMessage(result.message);
@@ -211,7 +175,8 @@ function WalletUI() {
     }, [createWallet, hasInitialized, setStatus, setStatusMessage, t]);
 
     useEffect(() => {
-        if (hasInitialized) {
+        if (hasInitialized && !paymentFlowStarted.current) {
+            paymentFlowStarted.current = true;
             handlePaymentRequest();
         }
     }, [hasInitialized, handlePaymentRequest]);
@@ -360,6 +325,14 @@ function WalletUI() {
           )}
 
         </div>
+        <footer className="text-center p-4">
+          <a href="https://github.com/cyio/bitspv-pay" target="_blank" rel="noopener noreferrer" className="text-black dark:text-white hover:opacity-70" title="Source Code on GitHub">
+            <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="inline-block h-6 w-6 fill-current">
+              <title>GitHub</title>
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.228 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297 24 5.67 18.63 0 12 0z"/>
+            </svg>
+          </a>
+        </footer>
           <Dialog open={showHistoryModal} onOpenChange={(open) => !open && setShowHistoryModal(false)}>
             <DialogContent className="max-w-xl">
               <DialogHeader>
