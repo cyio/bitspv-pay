@@ -77,9 +77,7 @@ function WalletUI() {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const isInitializing = useRef(false);
-  const paymentFlowStarted = useRef(false);
 
   const statusColor = useMemo(() => {
     switch (status) {
@@ -146,10 +144,10 @@ function WalletUI() {
     };
 
     useEffect(() => {
-        const initialize = async () => {
-            if (hasInitialized || isInitializing.current) return;
-            isInitializing.current = true;
+        if (isInitializing.current) return;
+        isInitializing.current = true;
 
+        const initializeAndPay = async () => {
             checkGoogleConnectivity();
 
             const result = await createWallet({
@@ -160,26 +158,24 @@ function WalletUI() {
             
             if (result?.error) {
                 if (result.error === 'import-requested') {
-                    setStatus('error'); // Show error state with info message
+                    setStatus('error');
                     setStatusMessage(t('bsvPayment.statusMessages.info.importCancelled') + ' ' + t('bsvPayment.statusMessages.importUiNotAvailable'));
                 } else {
                     setStatus('error');
                     setStatusMessage(result.message);
                 }
             } else {
-                setHasInitialized(true);
+                // Wallet initialized successfully, start payment flow immediately with the new data
+                handlePaymentRequest({
+                    address: result.address,
+                    walletBalance: result.balance,
+                    pubKey: pubKey,
+                });
             }
         };
 
-        initialize();
-    }, [createWallet, hasInitialized, setStatus, setStatusMessage, t]);
-
-    useEffect(() => {
-        if (hasInitialized && !paymentFlowStarted.current) {
-            paymentFlowStarted.current = true;
-            handlePaymentRequest();
-        }
-    }, [hasInitialized, handlePaymentRequest]);
+        initializeAndPay();
+    }, [createWallet, handlePaymentRequest, setStatus, setStatusMessage, t, pubKey]);
 
     const handleFileChange = async (event) => {
     const file = event.target.files[0];

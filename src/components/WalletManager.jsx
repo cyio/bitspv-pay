@@ -203,7 +203,14 @@ const WalletManager = ({
 
   const setAmountToMax = () => {
     if (maxTransferAmountValue !== null) {
-      setSatoshiValue(maxTransferAmountValue);
+      if (selectedUnit === 'USD') {
+        // To avoid floating point inaccuracies with fiat conversion,
+        // switch to BSV unit when setting the max amount from USD.
+        setSelectedUnit('BSV');
+        setInputAmount(convertSatoshisToBSV(maxTransferAmountValue).toString());
+      } else {
+        setSatoshiValue(maxTransferAmountValue);
+      }
     }
   };
 

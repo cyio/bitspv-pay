@@ -4,10 +4,7 @@ import { processRefund } from '../utils/transaction';
 
 export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
   const {
-    address,
-    walletBalance,
     refreshBalance,
-    pubKey,
     ensurePrivateKeyLoaded,
   } = wallet;
 
@@ -29,13 +26,27 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
 
   // This function polls for sufficient balance and processes the payment once funds are available.
   // It is designed for handling automatic payments initiated from a URL.
-  const pollAndProcessPayment = useCallback(async (currentSendRequest) => {
+  const pollAndProcessPayment = useCallback(async (
+    { currentSendRequest, address, pubKey, walletBalance },
+    isInitialCheck = false
+  ) => {
     if (!address) return false;
+
     try {
-        await refreshBalance();
+        let currentBalance = walletBalance;
+        if (!isInitialCheck) {
+            currentBalance = await refreshBalance(address);
+        }
+
+        if (!currentBalance) {
+            setStatus('error');
+            setStatusMessage('Failed to get balance.');
+            return false;
+        }
+
         const utxos = await getUTXOs(address);
 
-        if (utxos.length === 0 && walletBalance.total > 0) {
+        if (utxos.length === 0 && currentBalance.total > 0) {
             setStatus('error');
             setStatusMessage(t('bsvPayment.statusMessages.errors.utxoFetchFailed'));
             return false;
@@ -104,22 +115,27 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
         setStatusMessage(error.message || 'Balance check failed.');
         return false;
     }
-}, [address, walletBalance.total, refreshBalance, t, onPaymentSuccess, ensurePrivateKeyLoaded, pubKey]);
+  }, [refreshBalance, t, onPaymentSuccess, ensurePrivateKeyLoaded]);
 
-  const startBalanceCheck = useCallback((request) => {
+  const startBalanceCheck = useCallback((request, walletData) => {
     stopPolling();
-    const executeCheck = async () => {
-        const shouldContinue = await pollAndProcessPayment(request);
+    const executeCheck = async (isInitial = false) => {
+        const shouldContinue = await pollAndProcessPayment({
+            currentSendRequest: request,
+            ...walletData
+        }, isInitial);
+        
         if (shouldContinue) {
-            checkInterval.current = setTimeout(executeCheck, 6000);
+            // Pass walletData for subsequent checks so refreshBalance has the address
+            checkInterval.current = setTimeout(() => executeCheck(false), 6000);
         } else {
             stopPolling();
         }
     };
-    executeCheck();
+    executeCheck(true); // First check is initial
   }, [pollAndProcessPayment]);
 
-  const handlePaymentRequest = useCallback(() => {
+  const handlePaymentRequest = useCallback((walletData) => {
     const hash = window.location.hash.substring(1);
     if (hash) {
         try {
@@ -128,7 +144,14 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             if (params && params.length > 0) {
                 setSendRequest(params);
                 setShowWalletManager(false);
-                startBalanceCheck(params);
+
+                if (!walletData || !walletData.address) {
+                  console.error("Payment request started without wallet data.");
+                  setStatus('error');
+                  setStatusMessage('Wallet not ready for payment request.');
+                  return;
+                }
+                startBalanceCheck(params, walletData);
             }
         } catch (e) {
             console.error('Failed to parse params from URL hash:', e);

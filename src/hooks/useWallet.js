@@ -158,14 +158,15 @@ export function useWallet() {
       }
 
       const currentAddress = tempPrivKey ? tempPrivKey.toPublicKey().toAddress().toString() : addressFromStorage;
+      let newBalance = null;
       if (currentAddress) {
         setQrcode(await QRCode.toDataURL(currentAddress));
-        refreshBalance(currentAddress);
+        newBalance = await refreshBalance(currentAddress);
       } else {
         console.log("Wallet is PIN protected, QR code will be shown after unlock.");
       }
       
-      return { error: 0, message: 'Wallet created/loaded successfully.', walletName: newWalletName || storage.getWalletName() };
+      return { error: 0, address: currentAddress, balance: newBalance, message: 'Wallet created/loaded successfully.', walletName: newWalletName || storage.getWalletName() };
 
     } catch (error) {
       if (error && error.cancelled) {
