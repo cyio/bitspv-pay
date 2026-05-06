@@ -172,7 +172,6 @@ function WalletUI() {
                 // Wallet initialized successfully, start payment flow immediately with the new data
                 handlePaymentRequest({
                     address: result.address,
-                    walletBalance: result.balance,
                     pubKey: pubKey,
                 });
             }

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getUTXOs } from '../utils/api';
 import { processRefund } from '../utils/transaction';
 import { useLog, LOG_TYPES } from '../contexts/LogContext';
 import { checkGoogleConnectivity } from '../utils/network';
@@ -31,31 +30,19 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
   // This function polls for sufficient balance and processes the payment once funds are available.
   // It is designed for handling automatic payments initiated from a URL.
   const pollAndProcessPayment = useCallback(async (
-    { currentSendRequest, address, pubKey, walletBalance },
+    { currentSendRequest, address, pubKey },
     isInitialCheck = false
   ) => {
     if (!address) return false;
 
     try {
-        let currentBalance = walletBalance;
         let currentUtxos = walletUtxos;
 
         if (!isInitialCheck) {
             const refreshResult = await refreshBalance(address);
             if (refreshResult) {
-                currentBalance = refreshResult.balance;
                 currentUtxos = refreshResult.utxos;
             }
-        }
-
-        if (!currentBalance) {
-            setStatus('error');
-            setStatusMessage('Failed to get balance.');
-            return false;
-        }
-
-        if (currentUtxos.length === 0 && currentBalance.total > 0) {
-            currentUtxos = await getUTXOs(address);
         }
 
         const dryRunResult = await processRefund(currentUtxos, currentSendRequest, {

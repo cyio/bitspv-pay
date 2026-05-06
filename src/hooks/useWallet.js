@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PrivateKey, PublicKey, Transaction, Script } from '@bsv/sdk';
 import QRCode from 'qrcode';
 import { useStorage } from './useStorage';
-import { getBalance, getUTXOs } from '../utils/api';
+import { getUTXOs } from '../utils/api';
 import { isWeChat } from '../utils';
 import { encryptData, decryptData } from '../utils/webauthn';
 import { usePinManager } from './usePinManager';
@@ -21,7 +21,6 @@ export function useWallet() {
   const [address, setAddress] = useState('');
   const [qrcode, setQrcode] = useState('');
   const [walletName, setWalletName] = useState(storage.getWalletName() || '');
-  const [balance, setBalance] = useState({ confirmed: 0, unconfirmed: 0, total: 0 });
   const [utxos, setUtxos] = useState([]);
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
@@ -33,22 +32,11 @@ export function useWallet() {
     const addr = currentAddress || address;
     if (!addr) return;
     try {
-      // Switch to calculating balance from UTXOs sum to ensure consistency
       const latestUtxos = await getUTXOs(addr);
       setUtxos(latestUtxos);
-      
-      const total = latestUtxos.reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
-
-      // We can distinguish confirmed vs unconfirmed based on height
-      const confirmed = latestUtxos
-        .filter(u => u.height > 0)
-        .reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
-      const unconfirmed = total - confirmed;
-
-      const newBalance = { confirmed, unconfirmed, total };
-      setBalance(newBalance);
-      addLog(`Balance refreshed: ${total / 100000000} BSV (${latestUtxos.length} UTXOs)`, LOG_TYPES.SUCCESS);
-      return { balance: newBalance, utxos: latestUtxos };
+      const provider = latestUtxos[0]?._provider ?? 'unknown';
+      addLog(`Balance refreshed: ${latestUtxos.reduce((s, u) => s + Number(u.satoshis), 0) / 100000000} BSV (${latestUtxos.length} UTXOs) via ${provider}`, LOG_TYPES.SUCCESS);
+      return { utxos: latestUtxos };
     } catch (error) {
       const errorMsg = `Failed to refresh balance from UTXOs: ${error.message}`;
       console.error(errorMsg, error);
@@ -77,8 +65,8 @@ export function useWallet() {
         setIsWatchOnly(true);
         setWalletName(storage.getWalletName() || '');
         setQrcode(await QRCode.toDataURL(addressFromStorage));
-        const newBalance = await refreshBalance(addressFromStorage);
-        return { error: 0, address: addressFromStorage, balance: newBalance, watchOnly: true };
+        await refreshBalance(addressFromStorage);
+        return { error: 0, address: addressFromStorage, watchOnly: true };
       }
 
       if (encryptedWif) {
@@ -166,8 +154,8 @@ export function useWallet() {
           setIsWatchOnly(true);
           setWalletName('观察钱包');
           setQrcode(await QRCode.toDataURL(watchAddress));
-          const newBalance = await refreshBalance(watchAddress);
-          return { error: 0, address: watchAddress, balance: newBalance, watchOnly: true };
+          await refreshBalance(watchAddress);
+          return { error: 0, address: watchAddress, watchOnly: true };
         }
 
         // Step 2: Create new wallet (User chose 'create')
@@ -206,15 +194,14 @@ export function useWallet() {
       }
 
       const currentAddress = tempPrivKey ? tempPrivKey.toPublicKey().toAddress().toString() : addressFromStorage;
-      let newBalance = null;
       if (currentAddress) {
         setQrcode(await QRCode.toDataURL(currentAddress));
-        newBalance = await refreshBalance(currentAddress);
+        await refreshBalance(currentAddress);
       } else {
         console.log("Wallet is PIN protected, QR code will be shown after unlock.");
       }
       
-      return { error: 0, address: currentAddress, balance: newBalance, message: 'Wallet created/loaded successfully.', walletName: newWalletName || storage.getWalletName() };
+      return { error: 0, address: currentAddress, message: 'Wallet created/loaded successfully.', walletName: newWalletName || storage.getWalletName() };
 
     } catch (error) {
       if (error && error.cancelled) {
@@ -241,13 +228,12 @@ export function useWallet() {
   const calculateMaxSpendable = useCallback(async () => {
     if (!address) return { maxAmount: 0, message: 'Address not available' };
     try {
-        // Use cached UTXOs if available, otherwise fetch
         let currentUtxos = utxos;
-        if (currentUtxos.length === 0 && balance.total === 0) {
+        if (currentUtxos.length === 0) {
             currentUtxos = await getUTXOs(address);
             setUtxos(currentUtxos);
         }
-        
+
         const currentBalance = currentUtxos.reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
         addLog(`Calculating Max Spendable for ${address}. UTXOs: ${currentUtxos.length}, Total: ${currentBalance} sats`, LOG_TYPES.INFO);
 
@@ -305,7 +291,7 @@ export function useWallet() {
             message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${error.message}`
         };
     }
-  }, [address, t, pubKey, utxos, balance.total]);
+  }, [address, t, pubKey, utxos]);
 
   const clearTransferStatus = useCallback(() => {
     setTransferStatus(null);
@@ -336,7 +322,7 @@ export function useWallet() {
 
         // Use cached UTXOs if available to speed up transaction preparation
         let currentUtxos = utxos;
-        if (currentUtxos.length === 0 && balance.total === 0) {
+        if (currentUtxos.length === 0) {
             currentUtxos = await getUTXOs(address);
             setUtxos(currentUtxos);
         }
@@ -395,7 +381,7 @@ export function useWallet() {
         }
         throw error;
     }
-}, [address, pubKey, t, ensurePrivateKeyLoaded, refreshBalance, clearTransferStatus, utxos, balance.total]);
+}, [address, pubKey, t, ensurePrivateKeyLoaded, refreshBalance, clearTransferStatus, utxos]);
 
   const handleDeleteWallet = useCallback((isReload = true) => {
     const addressToDelete = address;
@@ -405,7 +391,7 @@ export function useWallet() {
     setQrcode('');
     setWalletName('');
     setIsWatchOnly(false);
-    setBalance({ confirmed: 0, unconfirmed: 0, total: 0 });
+    setUtxos([]);
     if (isReload) window.location.reload();
   }, [address, storage, t]);
 
@@ -522,6 +508,12 @@ export function useWallet() {
     }
   }, [handleDeleteWallet, promptForPin, showInfo, storage, t]);
 
+  const walletBalance = useMemo(() => {
+    const total = utxos.reduce((sum, u) => sum + Number(u.satoshis), 0);
+    const confirmed = utxos.filter(u => u.height > 0).reduce((sum, u) => sum + Number(u.satoshis), 0);
+    return { confirmed, unconfirmed: total - confirmed, total };
+  }, [utxos]);
+
   return {
     pubKey,
     address,
@@ -529,8 +521,8 @@ export function useWallet() {
     qrcode,
     isWalletUiVisible,
     isWatchOnly,
-    balance: balance.total,
-    walletBalance: balance,
+    balance: walletBalance.total,
+    walletBalance,
     createWallet,
     getWifForBackup,
     handleDeleteWallet,

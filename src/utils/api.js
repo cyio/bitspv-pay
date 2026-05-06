@@ -429,7 +429,7 @@ const getUTXOs = async (address, network = 'main') => {
       url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/unspent`,
       transform: data =>
         data.unspent
-          .filter(utxo => utxo.block_height > 0)
+          .filter(utxo => utxo.blockheight > 0)
           .map(utxo => ({
             txid: utxo.txid,
             vout: utxo.vout,
