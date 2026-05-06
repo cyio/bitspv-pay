@@ -1,4 +1,5 @@
 // Storage Keys
+const WATCH_ONLY = 'watch-only';
 const ENCRYPTED_WIF = 'encrypted-wif';
 const ENCRYPTED_WIF_IV = 'encrypted-wif-iv';
 const ENCRYPTED_WIF_SALT = 'encrypted-wif-salt';
@@ -40,6 +41,11 @@ export const useStorage = () => {
   const getOldPlaintextWif = () => localStorage.getItem(OLD_PRIV_KEY);
   const removeOldPlaintextWif = () => localStorage.removeItem(OLD_PRIV_KEY);
 
+  // 观察模式（watch-only）：只有地址，无私钥
+  const getIsWatchOnly = () => localStorage.getItem(WATCH_ONLY) === 'true';
+  const setIsWatchOnly = (value) => localStorage.setItem(WATCH_ONLY, value.toString());
+  const removeIsWatchOnly = () => localStorage.removeItem(WATCH_ONLY);
+
   const getPublicKey = () => localStorage.getItem(PUBLIC_KEY)
   const setPublicKey = (value) => localStorage.setItem(PUBLIC_KEY, value)
   const removePublicKey = () => localStorage.removeItem(PUBLIC_KEY)
@@ -64,7 +70,8 @@ export const useStorage = () => {
     removePublicKey();
     removeWalletAddress();
     removeIsPinSetupDone();
-    removeWalletName(); // 移除钱包名称
+    removeWalletName();
+    removeIsWatchOnly();
     if (address) {
       removeBackupStatus(address);
     }
@@ -89,6 +96,9 @@ export const useStorage = () => {
       getWalletName,
       setWalletName,
       removeWalletName,
+      getIsWatchOnly,
+      setIsWatchOnly,
+      removeIsWatchOnly,
     };
   }, []);
 };

@@ -161,13 +161,16 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     <div className="p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('bsvPayment.walletSetup.title')}</h2>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{t('bsvPayment.walletSetup.prompt')}</p>
-      
+
       <div className="flex flex-col gap-3">
         <Button onClick={() => onResolve({ action: 'create' })}>
           {t('bsvPayment.walletSetup.createButton')}
         </Button>
         <Button variant="outline" onClick={() => onResolve({ action: 'import' })}>
           {t('bsvPayment.walletSetup.importButton')}
+        </Button>
+        <Button variant="outline" onClick={() => onResolve({ action: 'watch' })}>
+          {t('bsvPayment.walletSetup.watchButton')}
         </Button>
       </div>
     </div>

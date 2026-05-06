@@ -36,10 +36,12 @@ function WalletUI() {
     qrcode,
     walletName,
     isWalletUiVisible,
+    isWatchOnly,
     createWallet,
     getWifForBackup,
     handleDeleteWallet,
     handleImportData,
+    ensurePrivateKeyLoaded,
     walletBalance,
     refreshBalance,
     calculateMaxSpendable,
@@ -47,6 +49,7 @@ function WalletUI() {
     transferStatus,
     transferMessage,
     clearTransferStatus,
+    utxos,
   } = wallet;
 
   const { rate, refreshRate } = useRate();
@@ -300,6 +303,10 @@ function WalletUI() {
                 <WalletManager
                   ref={walletManagerRef}
                   address={address}
+                  pubKey={pubKey}
+                  isWatchOnly={isWatchOnly}
+                  utxos={utxos}
+                  ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
                   maxTransferAmountValue={maxTransferAmount}
                   isWalletMode={isWalletUiVisible}
                   getWifForBackup={getWifForBackup}
@@ -439,6 +446,18 @@ export default function Payment() {
           title: t('bsvPayment.pinModal.unlockTitle'),
           inputs: [{ id: 'pin', label: t('bsvPayment.pinModal.unlockPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true }],
           confirmButtonText: t('bsvPayment.pinModal.unlockButton'),
+          cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
+          showCancelButton: true,
+          hideModalHeaderCloseButton: false,
+        };
+      }
+
+      if (mode === 'watch-address') {
+        config = {
+          mode: 'watch-address',
+          title: t('bsvPayment.watchAddress.title'),
+          inputs: [{ id: 'pin', label: t('bsvPayment.watchAddress.addressLabel'), type: 'text', placeholder: t('bsvPayment.watchAddress.placeholder'), required: true }],
+          confirmButtonText: t('bsvPayment.watchAddress.confirmButton'),
           cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
           showCancelButton: true,
           hideModalHeaderCloseButton: false,

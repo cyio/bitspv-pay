@@ -13,6 +13,7 @@ import {
 } from '../utils/bsv';
 import { useDialog } from '../contexts/DialogContext';
 import QRScanner from './QRScanner';
+import { AirGapSender, AirGapSigner } from './AirGapFlow';
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,10 @@ const ChevronDownIcon = ({ rotation }) => (
 
 const WalletManager = ({
   address,
+  pubKey,
+  isWatchOnly = false,
+  utxos = [],
+  ensurePrivateKeyLoaded,
   maxTransferAmountValue,
   isWalletMode = true,
   getWifForBackup,
@@ -70,6 +75,9 @@ const WalletManager = ({
   const [formError, setFormError] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('BSV');
   const [inputAmount, setInputAmount] = useState('');
+
+  // air-gap 模式：'sender' | 'signer' | null
+  const [airGapMode, setAirGapMode] = useState(null);
   
   const transferAmountSatoshis = useMemo(() => {
     if (inputAmount === '') return null;
@@ -132,6 +140,7 @@ const WalletManager = ({
     setPrivateKeyQrCodeUrl('');
     setActiveBackupData(null);
     setShowTransferSection(false);
+    setAirGapMode(null);
     setFormError('');
     if (transferStatus) onClearTransferStatus();
   };
@@ -305,9 +314,40 @@ const WalletManager = ({
 
   return (
     <div className="relative mt-4">
-      <Button onClick={toggleTransferSection} className="w-full">
-        {t('bsvPayment.transfer.transferButton')}
-      </Button>
+      {/* ── 观察模式：替换转账按钮 ── */}
+      {isWatchOnly ? (
+        <>
+          <Button
+            onClick={() => { resetPanels(); setAirGapMode('sender'); }}
+            className="w-full"
+          >
+            {t('bsvPayment.airGap.transferOffline')}
+          </Button>
+          {airGapMode === 'sender' && (
+            <AirGapSender
+              address={address}
+              rate={rate}
+              utxos={utxos}
+              onDone={() => setAirGapMode(null)}
+              onCancel={() => setAirGapMode(null)}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <Button onClick={toggleTransferSection} className="w-full">
+            {t('bsvPayment.transfer.transferButton')}
+          </Button>
+
+          {airGapMode === 'signer' && (
+            <AirGapSigner
+              ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
+              pubKey={pubKey}
+              onCancel={() => setAirGapMode(null)}
+            />
+          )}
+        </>
+      )}
 
       {showTransferSection && (
         <div className="mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded">
@@ -425,6 +465,14 @@ const WalletManager = ({
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={showBackup} variant="outline">{t('bsvPayment.backupWalletButton')}</Button>
             <Button onClick={triggerImportWallet} variant="outline">{t('bsvPayment.importWalletButton')}</Button>
+            <Button
+              variant="outline"
+              onClick={() => { resetPanels(); setShowManagePanel(false); setAirGapMode('signer'); }}
+              disabled={isWatchOnly}
+              title={isWatchOnly ? t('bsvPayment.airGap.watchOnlyNoKey') : ''}
+            >
+              {t('bsvPayment.airGap.signerButton')}
+            </Button>
             <Button onClick={showDeleteWalletConfirm} variant="destructive">{t('bsvPayment.deleteWalletButton')}</Button>
           </div>
             <Dialog open={showQrModal} onOpenChange={setShowQrModal}>

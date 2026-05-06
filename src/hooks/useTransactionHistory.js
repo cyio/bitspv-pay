@@ -39,7 +39,7 @@ export const useTransactionHistory = (address, pubKey) => {
   };
 
   const fetchTransactions = useCallback(async () => {
-    if (!address || !pubKey || isLoading) {
+    if (!address || isLoading) {
       return;
     }
 

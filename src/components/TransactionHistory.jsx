@@ -17,7 +17,7 @@ const TransactionHistory = ({ address, pubKey }) => {
   } = useTransactionHistory(address, pubKey);
 
   useEffect(() => {
-    if (address && pubKey) {
+    if (address) {
       fetchTransactions();
     }
   }, [address, pubKey, fetchTransactions]);
@@ -83,12 +83,14 @@ const TransactionHistory = ({ address, pubKey }) => {
               >
                 <div className="flex-1 mb-2 sm:mb-0 flex flex-col">
                   <div className="flex justify-between items-center mb-1">
-                    <span
-                      className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                    >
-                      {tx.type === 'income' ? '+' : '-'}
-                      {tx.amount}
-                    </span>
+                    {pubKey && (
+                      <span
+                        className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}
+                        {tx.amount}
+                      </span>
+                    )}
                     <span className="text-sm text-gray-500 dark:text-gray-300">
                       {formatDate(tx.time)}
                     </span>

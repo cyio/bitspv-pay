@@ -25,6 +25,7 @@ export function useWallet() {
   const [utxos, setUtxos] = useState([]);
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
+  const [isWatchOnly, setIsWatchOnly] = useState(storage.getIsWatchOnly());
 
   const isWalletUiVisible = useMemo(() => !!address, [address]);
 
@@ -68,6 +69,17 @@ export function useWallet() {
       let tempPrivKey;
       let currentWif;
       let newWalletName = storage.getWalletName() || '';
+
+      // ── Watch-only 分支：只有地址，无私钥 ──
+      if (!encryptedWif && !oldPlaintextWif && storage.getIsWatchOnly() && addressFromStorage) {
+        console.log('Watch-only wallet loaded from storage.');
+        setAddress(addressFromStorage);
+        setIsWatchOnly(true);
+        setWalletName(storage.getWalletName() || '');
+        setQrcode(await QRCode.toDataURL(addressFromStorage));
+        const newBalance = await refreshBalance(addressFromStorage);
+        return { error: 0, address: addressFromStorage, balance: newBalance, watchOnly: true };
+      }
 
       if (encryptedWif) {
         console.log('Encrypted WIF found. Wallet uses PIN.');
@@ -138,6 +150,24 @@ export function useWallet() {
              } else {
                  return { error: 'import-not-available', message: t('bsvPayment.statusMessages.errors.importUiNotAvailable') };
              }
+        }
+
+        if (setupAction === 'watch') {
+          console.log('User chose watch-only mode.');
+          // 弹出输入框让用户输入/扫描地址
+          const { pin: watchAddress } = await promptForPin('watch-address').catch(() => ({ pin: null }));
+          if (!watchAddress) {
+            return { error: 'setup-cancelled', message: t('bsvPayment.pinModal.setupCancelledMessage') };
+          }
+          storage.setWalletAddress(watchAddress);
+          storage.setIsWatchOnly(true);
+          storage.setWalletName('观察钱包');
+          setAddress(watchAddress);
+          setIsWatchOnly(true);
+          setWalletName('观察钱包');
+          setQrcode(await QRCode.toDataURL(watchAddress));
+          const newBalance = await refreshBalance(watchAddress);
+          return { error: 0, address: watchAddress, balance: newBalance, watchOnly: true };
         }
 
         // Step 2: Create new wallet (User chose 'create')
@@ -374,6 +404,7 @@ export function useWallet() {
     setAddress('');
     setQrcode('');
     setWalletName('');
+    setIsWatchOnly(false);
     setBalance({ confirmed: 0, unconfirmed: 0, total: 0 });
     if (isReload) window.location.reload();
   }, [address, storage, t]);
@@ -497,6 +528,7 @@ export function useWallet() {
     walletName,
     qrcode,
     isWalletUiVisible,
+    isWatchOnly,
     balance: balance.total,
     walletBalance: balance,
     createWallet,
@@ -510,5 +542,6 @@ export function useWallet() {
     transferStatus,
     transferMessage,
     clearTransferStatus,
+    utxos,
   };
 }
