@@ -415,20 +415,28 @@ const getUTXOs = async (address, network = 'main') => {
     whatsOnChain: {
       url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/unspent`,
       transform: data =>
-        data.map(utxo => ({
-          txid: utxo.tx_hash,
-          vout: utxo.tx_pos,
-          satoshis: utxo.value,
-        })),
+        data
+          .filter(utxo => utxo.height > 0)
+          .map(utxo => ({
+            txid: utxo.tx_hash,
+            vout: utxo.tx_pos,
+            satoshis: utxo.value,
+            height: utxo.height,
+            _provider: 'whatsOnChain'
+          })),
     },
     bitails: {
       url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/unspent`,
       transform: data =>
-        data.unspent.map(utxo => ({
-          txid: utxo.txid,
-          vout: utxo.vout,
-          satoshis: utxo.satoshis,
-        })),
+        data.unspent
+          .filter(utxo => utxo.block_height > 0)
+          .map(utxo => ({
+            txid: utxo.txid,
+            vout: utxo.vout,
+            satoshis: utxo.satoshis,
+            height: utxo.block_height,
+            _provider: 'bitails'
+          })),
     },
   };
 

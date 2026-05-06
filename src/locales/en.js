@@ -5,7 +5,7 @@ export default {
     description: 'A simple and fast way to pay with Bitcoin SV.',
     processingButton: 'Processing...',
     totalAmountLabel: 'Total Payment',
-    supplementAmountLabel: 'An additional {amount} BSV is required."',
+    supplementAmountLabel: 'An additional {{amount}} BSV is required."',
     statusMessages: {
       waitingPay: 'waiting pay...',
       addressCopied: 'Copied',
@@ -19,8 +19,8 @@ export default {
         error: 'Process tx fail: ',
       },
       balanceStatus: {
-        latestBalance: 'latest balance {balance} BSV',
-        insufficientForFee: 'Please pay at least {amountInBSV} BSV ({amount} sat)',
+        latestBalance: 'latest balance {{balance}} BSV',
+        insufficientForFee: 'Please pay at least {{amountInBSV}} BSV ({{amount}} sat)',
         zeroBalance: '0',
       },
       notSafeForStorage: '',
@@ -73,7 +73,7 @@ export default {
         importUiNotAvailable: 'Wallet import interface unavailable. Please refresh the page or try manual operation.',
         unlockCancelled: 'Operation cancelled.',
       },
-      backupSuccessQr: 'Private key QR code backed up and download as {filename}',
+      backupSuccessQr: 'Private key QR code backed up and download as {{filename}}',
       initializingWallet: 'Initializing wallet...',
       passkeyAuthPrompt: 'Please authenticate with your Passkey to unlock the wallet.',
       passkeyAuthSuccess: 'Passkey authentication successful. Please enter your PIN.',
@@ -114,7 +114,7 @@ export default {
       },
       clearWallet: {
         processing: 'Transferring...',
-        success: 'Transfer successful! Transaction ID: {txid}',
+        success: 'Transfer successful! Transaction ID: {{txid}}',
         error: 'Transfer failed',
       },
     },
@@ -179,6 +179,10 @@ export default {
       walletNamePlaceholder: 'e.g., My Main Wallet', // New
       pinInputPlaceholder: 'Enter PIN', // New
       hintHintForSet: 'This hint will be displayed when importing the wallet to help you recall the PIN.', // New
+      validation: {
+        required: '{{field}} is required',
+        maxLength: '{{field}} cannot exceed {{max}} characters',
+      },
     },
     walletNameLabel: 'Wallet Name', // New
     walletSetup: {

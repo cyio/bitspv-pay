@@ -6,10 +6,12 @@ import { getGoogleReachable } from './network';
 
 const sourceTxCache = new Map();
 
-export const processRefund = async (utxos, request, { privateKey, dryRun = false, t, pubKey, address, setStatus, setStatusMessage }) => {
+export const processRefund = async (utxos, request, { privateKey, dryRun = false, t, pubKey, address, setStatus, setStatusMessage, addLog }) => {
     if (!request || !Array.isArray(request) || request.length === 0) {
+        const msg = 'Payment details are missing or invalid.';
         console.error('Invalid payment request provided to processRefund:', request);
-        return { error: 'invalid-request', message: 'Payment details are missing or invalid.' };
+        if (addLog) addLog(msg, 'error');
+        return { error: 'invalid-request', message: msg };
     }
 
     try {
@@ -19,6 +21,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
 
         if (!privateKey) {
             const errorMsg = t('bsvPayment.statusMessages.errors.privateKeyNotFound');
+            if (addLog) addLog(errorMsg, 'error');
             if (!dryRun) {
                 setStatus('error');
                 setStatusMessage(errorMsg);
@@ -30,6 +33,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
         if (!dryRun) {
             setStatus('processing');
             setStatusMessage(t('bsvPayment.statusMessages.processStatus.processing'));
+            if (addLog) addLog('Starting transaction construction...', 'info');
         }
 
         let client;
@@ -53,8 +57,10 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                 tx.addOutput({ satoshis: req.satoshis, lockingScript: outScript });
             } else if (req.paymail) {
                 try {
+                    if (addLog) addLog(`Resolving Paymail: ${req.paymail}...`, 'info');
                     const p2pDestination = await client.getP2pPaymentDestination(req.paymail, req.satoshis);
                     if (p2pDestination && p2pDestination.outputs && p2pDestination.outputs.length > 0) {
+                        if (addLog) addLog(`Paymail ${req.paymail} resolved successfully.`, 'success');
                         paymailRefs.push({ paymail: req.paymail, reference: p2pDestination.reference });
                         for (const output of p2pDestination.outputs) {
                             tx.addOutput({
@@ -63,10 +69,14 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                             });
                         }
                     } else {
-                        return { error: 'paymail-resolve-failed', message: `Failed to resolve paymail ${req.paymail}` };
+                        const err = `Failed to resolve paymail ${req.paymail}`;
+                        if (addLog) addLog(err, 'error');
+                        return { error: 'paymail-resolve-failed', message: err };
                     }
                 } catch (e) {
-                    return { error: 'paymail-resolve-error', message: `Error during paymail resolution for ${req.paymail}: ${e.message}` };
+                    const err = `Error during paymail resolution for ${req.paymail}: ${e.message}`;
+                    if (addLog) addLog(err, 'error');
+                    return { error: 'paymail-resolve-error', message: err };
                 }
             } else if (req.script) {
                 const outScript = Script.fromHex(req.script);
@@ -102,7 +112,9 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                 if (sourceTxHex) {
                     sourceTxCache.set(utxo.txid, sourceTxHex);
                 } else {
-                    return { error: 'source-tx-not-found', message: `Could not find source transaction ${utxo.txid}` };
+                    const err = `Could not find source transaction ${utxo.txid}`;
+                    if (addLog) addLog(err, 'error');
+                    return { error: 'source-tx-not-found', message: err };
                 }
             }
             const sourceTransaction = Transaction.fromHex(sourceTxHex);
@@ -120,6 +132,8 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
         const totalRequired = satsOut + requiredFee;
 
         if (satsIn < totalRequired) {
+            const err = `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`;
+            if (addLog && !dryRun) addLog(err, 'warn');
             return {
                 error: 'insufficient-funds',
                 totalRequired,
@@ -132,22 +146,27 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
             return { error: 0, requiredFee, totalRequired };
         }
         
+        if (addLog) addLog(`Transaction constructed. Fee: ${requiredFee} sats. Signing...`, 'info');
         await tx.fee(requiredFee);
         await tx.sign();
 
         const txHex = tx.toHex();
+        if (addLog) addLog('Broadcasting transaction...', 'info');
         const broadcastResult = await tx.broadcast();
 
         if (broadcastResult.status === 'success' && broadcastResult.txid) {
+            if (addLog) addLog(`Transaction broadcast successful! TXID: ${broadcastResult.txid}`, 'success');
             if (paymailRefs.length > 0) {
                 for (const ref of paymailRefs) {
                     try {
+                        if (addLog) addLog(`Notifying Paymail P2P server: ${ref.paymail}...`, 'info');
                         const walletName = 'BitSPV.com';
                         const metadata = {
                             sender: `${walletName} - ${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
                             note: `P2P tx from ${walletName}`
                         };
                         await client.sendTransactionP2P(ref.paymail, txHex, ref.reference, metadata);
+                        if (addLog) addLog(`Paymail P2P notification sent for ${ref.paymail}.`, 'success');
                     } catch (p2pError) {
                         console.error(`Failed to send P2P transaction to ${ref.paymail}:`, p2pError);
                     }

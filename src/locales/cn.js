@@ -4,7 +4,7 @@ export default {
     manageWalletButton: '管理钱包',
     description: '一种简单快捷的比特币SV支付方式。',
     totalAmountLabel: '支付总金额',
-    supplementAmountLabel: '需至少再支付 {amount} BSV',
+    supplementAmountLabel: '需至少再支付 {{amount}} BSV',
     statusMessages: {
       transactionSent: '交易已发送',
       waitingPay: '等待支付...',
@@ -19,8 +19,8 @@ export default {
         error: '交易处理失败: ',
       },
       balanceStatus: {
-        latestBalance: '最新余额 {balance} BSV',
-        insufficientForFee: '请至少支付 {amountInBSV} BSV（{amount} 聪）',
+        latestBalance: '最新余额 {{balance}} BSV',
+        insufficientForFee: '请至少支付 {{amountInBSV}} BSV（{{amount}} 聪）',
         zeroBalance: '0',
       },
       notSafeForStorage: '',
@@ -68,7 +68,7 @@ export default {
         importUiNotAvailable: '导入钱包界面不可用，请刷新页面或尝试手动操作。',
         unlockCancelled: '操作已取消。',
       },
-      backupSuccessQr: '私钥二维码已备份下载为 {filename}',
+      backupSuccessQr: '私钥二维码已备份下载为 {{filename}}',
       initializingWallet: '正在初始化钱包...',
       passkeyAuthPrompt: '请使用您的 Passkey进行身份验证以解锁钱包。',
       passkeyAuthSuccess: 'Passkey 验证成功。请输入您的 PIN码。',
@@ -109,7 +109,7 @@ export default {
       },
       clearWallet: {
         processing: '正在转出...',
-        success: '转出成功！交易 ID: {txid}',
+        success: '转出成功！交易 ID: {{txid}}',
         error: '转出失败',
       },
     },
@@ -169,6 +169,10 @@ export default {
       walletNamePlaceholder: '例如：我的主钱包', // 新增
       pinInputPlaceholder: '请输入 PIN 码', // 新增
       hintHintForSet: '此提示语将在导入钱包时显示，帮助您回忆 PIN 码。', // 新增
+      validation: {
+        required: '请输入{{field}}',
+        maxLength: '{{field}}不能超过 {{max}} 个字符',
+      },
     },
     walletNameLabel: '钱包名称', // 新增
     walletSetup: {

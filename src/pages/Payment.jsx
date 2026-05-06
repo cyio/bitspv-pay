@@ -19,6 +19,7 @@ import { PinPromptContext } from '../contexts/PinPromptContext';
 import { usePaymentFlow } from '../hooks/usePaymentFlow';
 import PaymentStatus from '../components/PaymentStatus.jsx';
 import WalletInfo from '../components/WalletInfo.jsx';
+import DebugConsole from '../components/DebugConsole.jsx';
 import jsQR from 'jsqr';
 import { checkGoogleConnectivity } from '../utils/network';
 
@@ -351,6 +352,7 @@ function WalletUI() {
 
         <input type="file" ref={importFileInput} onChange={handleFileChange} accept="image/*,.bsv" style={{ display: 'none' }} />
       </div>
+      <DebugConsole />
     </>
   );
 }

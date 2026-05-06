@@ -9,9 +9,11 @@ import { encryptData, decryptData } from '../utils/webauthn';
 import { usePinManager } from './usePinManager';
 import { processRefund } from '../utils/transaction';
 import { isValidAddress, isValidPaymail } from '../utils/bsv';
+import { useLog, LOG_TYPES } from '../contexts/LogContext';
 
 export function useWallet() {
   const { t } = useTranslation();
+  const { addLog } = useLog();
   const storage = useStorage();
   const { promptForPin, showInfo, ensurePrivateKeyLoaded, autoBackupPrivateKeyToFile, generateEncryptedBackupData } = usePinManager();
 
@@ -20,6 +22,7 @@ export function useWallet() {
   const [qrcode, setQrcode] = useState('');
   const [walletName, setWalletName] = useState(storage.getWalletName() || '');
   const [balance, setBalance] = useState({ confirmed: 0, unconfirmed: 0, total: 0 });
+  const [utxos, setUtxos] = useState([]);
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
 
@@ -27,13 +30,28 @@ export function useWallet() {
 
   const refreshBalance = useCallback(async (currentAddress) => {
     const addr = currentAddress || address;
-    if (!addr) return null;
+    if (!addr) return;
     try {
-      const newBalance = await getBalance(addr);
+      // Switch to calculating balance from UTXOs sum to ensure consistency
+      const latestUtxos = await getUTXOs(addr);
+      setUtxos(latestUtxos);
+      
+      const total = latestUtxos.reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
+
+      // We can distinguish confirmed vs unconfirmed based on height
+      const confirmed = latestUtxos
+        .filter(u => u.height > 0)
+        .reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
+      const unconfirmed = total - confirmed;
+
+      const newBalance = { confirmed, unconfirmed, total };
       setBalance(newBalance);
-      return newBalance;
+      addLog(`Balance refreshed: ${total / 100000000} BSV (${latestUtxos.length} UTXOs)`, LOG_TYPES.SUCCESS);
+      return { balance: newBalance, utxos: latestUtxos };
     } catch (error) {
-      console.error('Failed to refresh balance:', error);
+      const errorMsg = `Failed to refresh balance from UTXOs: ${error.message}`;
+      console.error(errorMsg, error);
+      addLog(errorMsg, LOG_TYPES.ERROR);
       return null;
     }
   }, [address]);
@@ -193,10 +211,18 @@ export function useWallet() {
   const calculateMaxSpendable = useCallback(async () => {
     if (!address) return { maxAmount: 0, message: 'Address not available' };
     try {
-        const utxos = await getUTXOs(address);
-        const currentBalance = utxos.reduce((sum, utxo) => sum + utxo.satoshis, 0);
+        // Use cached UTXOs if available, otherwise fetch
+        let currentUtxos = utxos;
+        if (currentUtxos.length === 0 && balance.total === 0) {
+            currentUtxos = await getUTXOs(address);
+            setUtxos(currentUtxos);
+        }
+        
+        const currentBalance = currentUtxos.reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
+        addLog(`Calculating Max Spendable for ${address}. UTXOs: ${currentUtxos.length}, Total: ${currentBalance} sats`, LOG_TYPES.INFO);
 
         if (currentBalance <= 0) {
+            addLog('Balance is zero, cannot calculate max spendable.', LOG_TYPES.WARN);
             return {
                 maxAmount: 0,
                 message: t('bsvPayment.statusMessages.balanceStatus.zeroBalance')
@@ -208,13 +234,14 @@ export function useWallet() {
             satoshis: currentBalance,
         }];
 
-        const dryRunResult = await processRefund(utxos, dryRunRequest, {
+        const dryRunResult = await processRefund(currentUtxos, dryRunRequest, {
             dryRun: true,
             t,
             pubKey,
             address,
             setStatus: () => {},
-            setStatusMessage: () => {}
+            setStatusMessage: () => {},
+            addLog,
         });
 
         if (dryRunResult.error === 'insufficient-funds' && dryRunResult.requiredFee) {
@@ -226,9 +253,13 @@ export function useWallet() {
                 message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
             };
         } else if (dryRunResult.error === 0) {
+            // If error is 0, it means currentBalance is enough to cover the amount + fee.
+            // Since we set satoshis: currentBalance in dryRunRequest, 
+            // the requiredFee is what's needed for this total amount.
+            const maxAmount = currentBalance - dryRunResult.requiredFee;
             return {
-                maxAmount: 0,
-                message: t('bsvPayment.statusMessages.balanceStatus.insufficientForFee')
+                maxAmount: maxAmount > 0 ? maxAmount : 0,
+                message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
             };
         } else {
             const errorMessage = dryRunResult.message || dryRunResult.error;
@@ -244,7 +275,7 @@ export function useWallet() {
             message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${error.message}`
         };
     }
-  }, [address, t, pubKey]);
+  }, [address, t, pubKey, utxos, balance.total]);
 
   const clearTransferStatus = useCallback(() => {
     setTransferStatus(null);
@@ -273,10 +304,16 @@ export function useWallet() {
         setTransferStatus('preparing');
         setTransferMessage(t('bsvPayment.transfer.preparing'));
 
-        // Parallelize user PIN input and fetching UTXOs
-        const [keyResult, utxos] = await Promise.all([
-            ensurePrivateKeyLoaded(pubKey, address),
-            getUTXOs(address)
+        // Use cached UTXOs if available to speed up transaction preparation
+        let currentUtxos = utxos;
+        if (currentUtxos.length === 0 && balance.total === 0) {
+            currentUtxos = await getUTXOs(address);
+            setUtxos(currentUtxos);
+        }
+
+        // Parallelize user PIN input and fetching UTXOs (if not already cached)
+        const [keyResult] = await Promise.all([
+            ensurePrivateKeyLoaded(pubKey, address)
         ]);
 
         if (!keyResult || !keyResult.loadedPrivKey) {
@@ -288,7 +325,7 @@ export function useWallet() {
             throw new Error('Failed to load private key. Is PIN correct?');
         }
 
-        const result = await processRefund(utxos, transferRequest, {
+        const result = await processRefund(currentUtxos, transferRequest, {
             privateKey: keyResult.loadedPrivKey,
             dryRun: false,
             t,
@@ -296,10 +333,15 @@ export function useWallet() {
             address,
             setStatus: setTransferStatus,
             setStatusMessage: setTransferMessage,
+            addLog,
         });
 
         if (result?.error === 0) {
-            refreshBalance(address);
+            // Delay refresh by 3 seconds to allow nodes to index the new transaction
+            setTimeout(() => {
+                refreshBalance(address);
+            }, 3000);
+
             const successMessage = {
                 text: t('bsvPayment.statusMessages.transactionSent'),
                 linkUrl: `https://whatsonchain.com/tx/${result.txid}`,
@@ -323,7 +365,7 @@ export function useWallet() {
         }
         throw error;
     }
-}, [address, pubKey, t, ensurePrivateKeyLoaded, refreshBalance, clearTransferStatus]);
+}, [address, pubKey, t, ensurePrivateKeyLoaded, refreshBalance, clearTransferStatus, utxos, balance.total]);
 
   const handleDeleteWallet = useCallback((isReload = true) => {
     const addressToDelete = address;

@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getUTXOs } from '../utils/api';
 import { processRefund } from '../utils/transaction';
+import { useLog, LOG_TYPES } from '../contexts/LogContext';
+import { checkGoogleConnectivity } from '../utils/network';
 
 export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
-  const {
+  const { addLog } = useLog();
+    const {
     refreshBalance,
     ensurePrivateKeyLoaded,
+    utxos: walletUtxos,
   } = wallet;
 
   const [status, setStatus] = useState('waiting');
@@ -34,8 +38,14 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
 
     try {
         let currentBalance = walletBalance;
+        let currentUtxos = walletUtxos;
+
         if (!isInitialCheck) {
-            currentBalance = await refreshBalance(address);
+            const refreshResult = await refreshBalance(address);
+            if (refreshResult) {
+                currentBalance = refreshResult.balance;
+                currentUtxos = refreshResult.utxos;
+            }
         }
 
         if (!currentBalance) {
@@ -44,19 +54,16 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             return false;
         }
 
-        const utxos = await getUTXOs(address);
-
-        if (utxos.length === 0 && currentBalance.total > 0) {
-            setStatus('error');
-            setStatusMessage(t('bsvPayment.statusMessages.errors.utxoFetchFailed'));
-            return false;
+        if (currentUtxos.length === 0 && currentBalance.total > 0) {
+            currentUtxos = await getUTXOs(address);
         }
 
-        const dryRunResult = await processRefund(utxos, currentSendRequest, {
+        const dryRunResult = await processRefund(currentUtxos, currentSendRequest, {
             dryRun: true,
             address,
             t,
             pubKey,
+            addLog,
         });
 
         if (dryRunResult.error === 'insufficient-funds') {
@@ -81,16 +88,20 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             if (keyResult && keyResult.error === 'unlock-cancelled') {
                 // User cancelled the PIN prompt. We should stop.
                 setStatus('error');
-                setStatusMessage(t('bsvPayment.statusMessages.errors.paymentCancelled', 'Payment cancelled.'));
+                const cancelMsg = t('bsvPayment.statusMessages.errors.paymentCancelled', 'Payment cancelled.');
+                addLog(cancelMsg, LOG_TYPES.WARN);
+                setStatusMessage(cancelMsg);
                 return false; 
             }
             // Other errors during key loading
+            const keyError = 'Failed to load private key for payment.';
+            addLog(keyError, LOG_TYPES.ERROR);
             setStatus('error');
-            setStatusMessage('Failed to load private key for payment.');
+            setStatusMessage(keyError);
             return false;
         }
 
-        const processResult = await processRefund(utxos, currentSendRequest, {
+        const processResult = await processRefund(currentUtxos, currentSendRequest, {
             privateKey: keyResult.loadedPrivKey,
             dryRun: false,
             t,
@@ -98,6 +109,7 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
             address,
             setStatus,
             setStatusMessage,
+            addLog,
         });
 
         if (processResult.error === 0) {
@@ -115,7 +127,7 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
         setStatusMessage(error.message || 'Balance check failed.');
         return false;
     }
-  }, [refreshBalance, t, onPaymentSuccess, ensurePrivateKeyLoaded]);
+  }, [refreshBalance, t, onPaymentSuccess, ensurePrivateKeyLoaded, walletUtxos]);
 
   const startBalanceCheck = useCallback((request, walletData) => {
     stopPolling();
@@ -138,15 +150,23 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
   const handlePaymentRequest = useCallback((walletData) => {
     const hash = window.location.hash.substring(1);
     if (hash) {
+        addLog('Payment request detected in URL hash.', LOG_TYPES.INFO);
+        checkGoogleConnectivity().then(isOnline => {
+            addLog(`Connectivity check: ${isOnline ? 'Direct (Google reachable)' : 'Restricted (Google unreachable, using DoH)'}`, isOnline ? LOG_TYPES.SUCCESS : LOG_TYPES.WARN);
+        });
+
         try {
             const decodedHash = decodeURIComponent(hash);
             const params = JSON.parse(decodedHash);
             if (params && params.length > 0) {
+                addLog(`Parsed payment request with ${params.length} outputs.`, LOG_TYPES.SUCCESS);
                 setSendRequest(params);
                 setShowWalletManager(false);
 
                 if (!walletData || !walletData.address) {
-                  console.error("Payment request started without wallet data.");
+                  const errorMsg = "Payment request started without wallet data.";
+                  console.error(errorMsg);
+                  addLog(errorMsg, LOG_TYPES.ERROR);
                   setStatus('error');
                   setStatusMessage('Wallet not ready for payment request.');
                   return;
@@ -154,14 +174,16 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
                 startBalanceCheck(params, walletData);
             }
         } catch (e) {
-            console.error('Failed to parse params from URL hash:', e);
+            const errorMsg = `Failed to parse params from URL hash: ${e.message}`;
+            console.error(errorMsg);
+            addLog(errorMsg, LOG_TYPES.ERROR);
             setStatus('error');
             setStatusMessage(t('bsvPayment.statusMessages.invalidRequest'));
         }
     } else {
         setShowWalletManager(true);
     }
-  }, [t, startBalanceCheck]);
+  }, [t, startBalanceCheck, addLog]);
   
   useEffect(() => {
     return () => stopPolling();
