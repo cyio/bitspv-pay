@@ -1,4 +1,5 @@
 // Service provider health status and selection logic
+import { isWeChat } from './index';
 
 const serviceProviders = {
   whatsOnChain: {
@@ -18,7 +19,8 @@ const serviceProviders = {
   // ... other service providers
 };
 
-let currentPreferredProviderName = 'whatsOnChain'; // Initial default value
+// 如果是微信环境，默认使用 bitails，因为 WOC 的 Cloudflare 防护屏蔽了微信
+let currentPreferredProviderName = isWeChat ? 'bitails' : 'whatsOnChain'; 
 
 /**
  * Updates the health status of a service provider.
@@ -68,11 +70,11 @@ function getRecommendedProvider() {
     return { name: currentPreferredProviderName, ...serviceProviders[currentPreferredProviderName] };
   }
 
-  // If no healthy providers are available, fall back to whatsOnChain
-  console.warn('No healthy providers available. Falling back to whatsOnChain.');
-  currentPreferredProviderName = 'whatsOnChain'; // Reset preferred to fallback option
+  // If no healthy providers are available, fall back to current preferred option
+  // (which is initialized based on isWeChat)
+  console.warn(`No healthy providers available. Falling back to ${currentPreferredProviderName}.`);
   // Return it even if it might be unhealthy to prevent total application failure
-  return { name: 'whatsOnChain', ...serviceProviders.whatsOnChain };
+  return { name: currentPreferredProviderName, ...serviceProviders[currentPreferredProviderName] };
 }
 
 export {

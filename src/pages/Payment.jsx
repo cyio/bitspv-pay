@@ -220,14 +220,15 @@ function WalletUI() {
     importFileInput.current.click();
   };
 
-  const handleRequestCalculateMax = useCallback(async () => {
-    console.log("Request to calculate max transfer amount");
-    const result = await calculateMaxSpendable();
+  const handleRequestCalculateMax = useCallback(async (target = null) => {
+    console.log("Request to calculate max transfer amount for target:", target);
+    const result = await calculateMaxSpendable(target);
     if (result && typeof result.maxAmount === 'number') {
         setMaxTransferAmount(result.maxAmount);
     } else {
-        setMaxTransferAmount(0); // Fallback
+        setMaxTransferAmount(0);
     }
+    return result;
   }, [calculateMaxSpendable]);
 
   const handleTransferFunds = useCallback(async (target, amount) => {
@@ -235,16 +236,12 @@ function WalletUI() {
       const result = await sendTransaction(target, amount);
       console.log('Transfer result:', result);
       if (result.success) {
-        // On success, refresh balance and potentially max spendable amount
         await refreshAll();
-        handleRequestCalculateMax(); // Recalculate max spendable after transfer
       }
     } catch (error) {
-      // Re-throw to allow WalletManager to catch it and update its UI state (e.g., stop loading spinner).
-      // This is critical for proper UI feedback on failure or cancellation.
       throw error;
     }
-  }, [sendTransaction, refreshAll, handleRequestCalculateMax]);
+  }, [sendTransaction, refreshAll]);
 
 
   return (

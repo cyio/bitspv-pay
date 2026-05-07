@@ -229,9 +229,10 @@ async function getBalance(address, network = 'main') {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.warn(`API ${provider.name} (${currentApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      const errorDetail = errorData ? (typeof errorData === 'object' ? JSON.stringify(errorData) : errorData) : '';
+      console.warn(`API ${provider.name} (${currentApi.url}) failed: ${response.status} ${response.statusText}. Data: ${errorDetail}. Updating health.`);
       updateProviderHealth(provider.name, false, latency);
-      throw new Error(`Failed to fetch balance from ${provider.name}: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch balance from ${provider.name} [${response.status}] ${currentApi.url}: ${response.statusText} ${errorDetail}`);
     }
 
     const data = await response.json();
@@ -248,9 +249,13 @@ async function getBalance(address, network = 'main') {
   } catch (error) {
     const endTime = Date.now();
     const latency = endTime - startTime;
-    console.error(`Error fetching balance from ${provider.name} (${apiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    const url = currentApi?.url || 'N/A';
+    console.error(`Error fetching balance from ${provider.name} (${url}):`, error);
     updateProviderHealth(provider.name, false, latency);
-    throw new Error(`Failed to fetch balance: ${error.message}`);
+    if (error.message.includes(url)) {
+      throw error;
+    }
+    throw new Error(`Failed to fetch balance (${url}): ${error.message}`);
   }
 }
 
@@ -416,7 +421,6 @@ const getUTXOs = async (address, network = 'main') => {
       url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/unspent`,
       transform: data =>
         data
-          .filter(utxo => utxo.height > 0)
           .map(utxo => ({
             txid: utxo.tx_hash,
             vout: utxo.tx_pos,
@@ -429,7 +433,6 @@ const getUTXOs = async (address, network = 'main') => {
       url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/unspent`,
       transform: data =>
         data.unspent
-          .filter(utxo => utxo.blockheight > 0)
           .map(utxo => ({
             txid: utxo.txid,
             vout: utxo.vout,
@@ -450,9 +453,10 @@ const getUTXOs = async (address, network = 'main') => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.warn(`API ${provider.name} (${currentUtxoApi.url}) failed: ${response.status} ${response.statusText}. Data: ${JSON.stringify(errorData)}. Updating health.`);
+      const errorDetail = errorData ? (typeof errorData === 'object' ? JSON.stringify(errorData) : errorData) : '';
+      console.warn(`API ${provider.name} (${currentUtxoApi.url}) failed: ${response.status} ${response.statusText}. Data: ${errorDetail}. Updating health.`);
       updateProviderHealth(provider.name, false, latency);
-      throw new Error(`Failed to fetch UTXOs from ${provider.name}: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch UTXOs from ${provider.name} [${response.status}] ${currentUtxoApi.url}: ${response.statusText} ${errorDetail}`);
     }
 
     const data = await response.json();
@@ -468,9 +472,13 @@ const getUTXOs = async (address, network = 'main') => {
   } catch (error) {
     const endTime = Date.now();
     const latency = endTime - startTime;
-    console.error(`Error fetching UTXOs from ${provider.name} (${utxoApiEndpoints[provider.name]?.url || 'N/A'}):`, error);
+    const url = currentUtxoApi?.url || 'N/A';
+    console.error(`Error fetching UTXOs from ${provider.name} (${url}):`, error);
     updateProviderHealth(provider.name, false, latency);
-    throw new Error(`Failed to fetch UTXOs: ${error.message}`);
+    if (error.message.includes(url)) {
+      throw error;
+    }
+    throw new Error(`Failed to fetch UTXOs (${url}): ${error.message}`);
   }
 };
 
@@ -582,14 +590,15 @@ async function fetchAddressTransactions(address) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      const errorDetail = errorData ? (typeof errorData === 'object' ? JSON.stringify(errorData) : errorData) : '';
       console.warn(
         `API ${provider.name} (${currentApi.url}) failed: ${response.status} ${
           response.statusText
-        }. Data: ${JSON.stringify(errorData)}. Updating health.`
+        }. Data: ${errorDetail}. Updating health.`
       );
       updateProviderHealth(provider.name, false, latency);
       throw new Error(
-        `Failed to fetch address transactions from ${provider.name}: ${response.status} ${response.statusText}`
+        `Failed to fetch address transactions from ${provider.name} [${response.status}] ${currentApi.url}: ${response.statusText} ${errorDetail}`
       );
     }
 
@@ -605,14 +614,16 @@ async function fetchAddressTransactions(address) {
   } catch (error) {
     const endTime = Date.now();
     const latency = endTime - startTime;
+    const url = currentApi?.url || 'N/A';
     console.error(
-      `Error fetching address transactions from ${provider.name} (${
-        historyApiEndpoints[provider.name]?.url || 'N/A'
-      }):`,
+      `Error fetching address transactions from ${provider.name} (${url}):`,
       error
     );
     updateProviderHealth(provider.name, false, latency);
-    throw new Error(`Failed to fetch address transactions: ${error.message}`);
+    if (error.message.includes(url)) {
+      throw error;
+    }
+    throw new Error(`Failed to fetch address transactions (${url}): ${error.message}`);
   }
 }
 

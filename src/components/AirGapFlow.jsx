@@ -20,6 +20,7 @@ import {
   convertSatoshisToFiat,
   convertFiatToSatoshis,
 } from '../utils/bsv';
+import { Transaction, P2PKH } from '@bsv/sdk';
 import { buildUnsignedTx, signPsbt, broadcastSignedTx } from '../utils/transaction';
 import { serializePsbt, serializeSignedTx, deserializePsbt, deserializeSignedTx, detectQrType } from '../utils/psbt';
 import { PaymailClient } from '@bsv/paymail/client';
@@ -79,6 +80,10 @@ const StatusLine = ({ status, message }) => {
 // step: 'form' → 'building' → 'show-psbt' → 'scan-signed' → 'broadcasting' → 'done'
 
 export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel }) {
+  React.useEffect(() => {
+    console.log('[DEBUG] AirGapSender mounted');
+    return () => console.log('[DEBUG] AirGapSender unmounting...');
+  }, []);
   const { t } = useTranslation();
   const { addLog } = useLog();
 
@@ -145,7 +150,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       // 获取 UTXO（使用缓存或重新查询）
       let utxos = cachedUtxos.length > 0 ? cachedUtxos : await getUTXOs(address);
 
-      const result = buildUnsignedTx(utxos, resolvedRequest, { address, addLog });
+      const result = await buildUnsignedTx(utxos, resolvedRequest, { address, addLog });
       if (result.error !== 0) {
         setStatus('error'); setStatusMsg(result.message);
         setStep('form'); return;
@@ -196,7 +201,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
     if (broadcastResult.error === 0) {
       setTxid(broadcastResult.txid);
       setStep('done');
-      if (onDone) onDone(broadcastResult.txid);
+      // 不在此处调用 onDone，等用户点击"完成"按钮后再触发，避免组件提前 unmount
     } else {
       setStatus('error'); setStatusMsg(broadcastResult.message);
       setStep('scan-signed');
@@ -262,20 +267,32 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       )}
 
       {/* 步骤 2：展示 PSBT QR① */}
-      {step === 'show-psbt' && (
+      {step === 'show-psbt' && psbtPayload && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             {t('bsvPayment.airGap.sender.showPsbtDesc')}
           </p>
           <QrDisplay dataUrl={psbtQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
-          <div className="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">
-            {t('bsvPayment.airGap.sender.sendLabel')} {convertSatoshisToBSV(psbtPayload?.request?.reduce((s, r) => s + (r.satoshis || 0), 0) ?? 0)} |
-            {t('bsvPayment.airGap.sender.feeShortLabel')} {psbtPayload?.fee} sats
+          
+          <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2 mb-4 mx-4 border border-gray-200 dark:border-gray-600">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 dark:text-gray-400">核对码</span>
+              <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400 font-mono tracking-widest">
+                {psbtPayload.checksum}
+              </span>
+            </div>
+            <div className="flex justify-between text-gray-600 dark:text-gray-300 font-medium">
+              <span className="truncate max-w-[150px]">{target}</span>
+              <span className="font-mono">
+                {convertSatoshisToBSV(transferAmountSatoshis || 0)} BSV
+              </span>
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
+          
+          <div className="flex justify-end gap-2 px-4">
             <Button variant="outline" onClick={() => setStep('form')}>{t('bsvPayment.airGap.sender.rewrite')}</Button>
-            <Button onClick={() => setStep('scan-signed')}>{t('bsvPayment.airGap.sender.scanBack')}</Button>
+            <Button onClick={() => setStep('scan-signed')}>{t('bsvPayment.airGap.sender.scanSignedButton')}</Button>
           </div>
         </>
       )}
@@ -311,21 +328,28 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       {/* 步骤 4：完成 */}
       {step === 'done' && (
         <>
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">✅</div>
-            <p className="font-semibold text-green-600 dark:text-green-400">{t('bsvPayment.airGap.sender.broadcastSuccess')}</p>
+          <div className="text-center py-6 bg-green-50 dark:bg-green-900/20 rounded-lg mb-4">
+            <div className="text-5xl mb-3">✅</div>
+            <p className="font-bold text-lg text-green-700 dark:text-green-400 mb-2">
+              {t('bsvPayment.airGap.sender.broadcastSuccess')}
+            </p>
             {txid && (
-              <a
-                href={`https://whatsonchain.com/tx/${txid}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 underline break-all mt-1 block"
-              >
-                {txid}
-              </a>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                TXID:
+                <a
+                  href={`https://whatsonchain.com/tx/${txid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline break-all ml-1"
+                >
+                  {txid}
+                </a>
+              </div>
             )}
           </div>
-          <Button className="w-full" onClick={onCancel}>{t('bsvPayment.airGap.sender.done')}</Button>
+          <Button className="w-full" onClick={() => onDone(txid)}>
+            {t('bsvPayment.airGap.sender.done')}
+          </Button>
         </>
       )}
     </div>
@@ -335,7 +359,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
 // ─── 冷端：Signer ─────────────────────────────────────────────────────────────
 // step: 'scan-psbt' → 'confirm' → 'signing' → 'show-signed'
 
-export function AirGapSigner({ ensurePrivateKeyLoaded, pubKey, onCancel }) {
+export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel }) {
   const { t } = useTranslation();
   const { addLog } = useLog();
 
@@ -355,7 +379,7 @@ export function AirGapSigner({ ensurePrivateKeyLoaded, pubKey, onCancel }) {
       return;
     }
     const payload = deserializePsbt(result.data);
-    if (!payload?.utxos || !payload?.request) {
+    if (!payload?.utxos || !payload?.unsignedTxHex) {
       setStatus('error'); setStatusMsg(t('bsvPayment.airGap.signer.parsePsbtFailed'));
       return;
     }
@@ -403,14 +427,50 @@ export function AirGapSigner({ ensurePrivateKeyLoaded, pubKey, onCancel }) {
 
   const stepIndex = { 'scan-psbt': 1, confirm: 2, signing: 3, 'show-signed': 4 }[step] || 1;
 
-  // 计算总输出（不含找零）
-  const totalOut = psbtPayload?.request?.reduce((s, r) => s + (r.satoshis || 0), 0) || 0;
+  // ─── 从 Hex 解析详情 ──────────────────────────────────────────────────────────
+  let displayOutputs = [];
+  let displayFee = 0;
+  let displayTotal = 0;
+
+  if (psbtPayload?.unsignedTxHex) {
+    try {
+      const tx = Transaction.fromHex(psbtPayload.unsignedTxHex);
+      const changeScript = new P2PKH().lock(address).toHex();
+
+      // 1. 识别非找零输出
+      // 策略：如果最后一个输出匹配找零脚本，且输出总数 > 1，则认为最后一个是找零，其余为收款。
+      // 这样可以兼容“给自己转账”的情况（收款和找零是同一个地址）。
+      const rawOutputs = tx.outputs;
+      const hasChange = rawOutputs.length > 1 && rawOutputs[rawOutputs.length - 1].lockingScript.toHex() === changeScript;
+      
+      const filteredOutputs = hasChange ? rawOutputs.slice(0, -1) : rawOutputs;
+
+      displayOutputs = filteredOutputs.map(o => {
+        const asm = o.lockingScript.toASM();
+        let displayAddr = 'Custom Script';
+        if (asm.startsWith('OP_DUP OP_HASH160')) {
+          displayAddr = 'P2PKH Address'; // 使用通用标签代替不可用的方法
+        } else if (asm.startsWith('OP_0 OP_RETURN')) {
+          displayAddr = 'OP_RETURN (Data)';
+        }
+        return { satoshis: o.satoshis, address: displayAddr };
+      });
+
+      // 2. 计算手续费：总输入 - 总输出
+      const totalIn = psbtPayload.utxos.reduce((s, u) => s + Number(u.satoshis || 0), 0);
+      const totalOutAll = tx.outputs.reduce((s, o) => s + Number(o.satoshis || 0), 0);
+      displayFee = totalIn - totalOutAll;
+      displayTotal = displayOutputs.reduce((s, o) => s + Number(o.satoshis || 0), 0);
+    } catch (e) {
+      console.error('Failed to parse tx details from hex:', e);
+    }
+  }
 
   return (
     <div className="mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded">
       <StepIndicator current={stepIndex} total={4} labels={STEPS} />
 
-      {/* 步骤 1：扫 PSBT QR① */}
+      {/* 步骤 1：冷端扫描待签名二维码 */}
       {step === 'scan-psbt' && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.signer.scanPsbtTitle')}</h2>
@@ -431,27 +491,43 @@ export function AirGapSigner({ ensurePrivateKeyLoaded, pubKey, onCancel }) {
         </>
       )}
 
-      {/* 步骤 2：确认 */}
+      {/* 步骤 1：热端展示 PSBT QR① */}
+      {step === 'show-psbt' && psbtPayload && (
+        <>
+          <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            {t('bsvPayment.airGap.sender.showPsbtDesc')}
+          </p>
+          <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
+            核对码: {psbtPayload.checksum}
+          </div>
+          <QrDisplay dataUrl={psbtQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
+          <div className="flex justify-end gap-2 mt-3">
+            <Button variant="outline" onClick={() => { setStep('form'); setPsbtPayload(null); }}>{t('bsvPayment.airGap.sender.rewrite')}</Button>
+            <Button onClick={() => setStep('scan-signed')}>{t('bsvPayment.airGap.sender.scanSignedButton')}</Button>
+          </div>
+        </>
+      )}
+
+      {/* 步骤 2：冷端确认 */}
       {step === 'confirm' && psbtPayload && (
         <>
           <h2 className="text-base font-semibold mb-2">{t('bsvPayment.airGap.signer.confirmTitle')}</h2>
           <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2">
-            {psbtPayload.request.map((req, i) => (
-              <div key={i} className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
-                  {req.address || req.script?.slice(0, 12) + '…' || 'OP_RETURN'}
-                </span>
-                <span className="font-mono">{convertSatoshisToBSV(req.satoshis)} BSV</span>
-              </div>
-            ))}
-            <hr className="border-gray-200 dark:border-gray-600" />
-            <div className="flex justify-between text-gray-500 dark:text-gray-400">
-              <span>{t('bsvPayment.airGap.signer.feeLabel')}</span>
-              <span className="font-mono">{psbtPayload.fee} sats</span>
+            <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
+              核对码: {psbtPayload.checksum}
             </div>
-            <div className="flex justify-between font-semibold">
-              <span>{t('bsvPayment.airGap.signer.totalLabel')}</span>
-              <span className="font-mono">{convertSatoshisToBSV(totalOut + psbtPayload.fee)} BSV</span>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">{t('bsvPayment.airGap.signer.totalLabel')}</span>
+              <span className="font-mono">{convertSatoshisToBSV(displayTotal)} BSV</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">{t('bsvPayment.airGap.signer.feeLabel')}</span>
+              <span className="font-mono">{displayFee} sats</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">输出个数</span>
+              <span className="font-mono">{displayOutputs.length}</span>
             </div>
           </div>
           <StatusLine status={status} message={statusMsg} />

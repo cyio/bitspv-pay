@@ -13,7 +13,7 @@ export async function checkGoogleConnectivity() {
     try {
         // We use a no-cors request to a Google endpoint that is likely to be up.
         // We don't need the response, just to see if the request is not blocked.
-        const response = await fetch('https://www.google.com/generate_204', {
+        const response = await fetch('https://dns.google.com/', {
             method: 'HEAD',
             mode: 'no-cors',
             cache: 'no-store'

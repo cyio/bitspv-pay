@@ -1,8 +1,10 @@
-import { Transaction, PrivateKey, Script, P2PKH, LivePolicy } from '@bsv/sdk';
+import { Transaction, PrivateKey, Script, P2PKH, LivePolicy, Hash } from '@bsv/sdk';
 import { MOCK_DRY_RUN_WIF } from './constants';
 import { PaymailClient } from '@bsv/paymail/client';
 import { getGoogleReachable } from './network';
-import { broadcastTransaction } from './api';
+import { broadcastTransaction, getSourceTransaction } from './api';
+
+const sourceTxCache = new Map();
 
 export const processRefund = async (utxos, request, { privateKey, dryRun = false, t, pubKey, address, setStatus, setStatusMessage, addLog }) => {
     if (!request || !Array.isArray(request) || request.length === 0) {
@@ -88,63 +90,94 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
             }
         }
 
-        tx.addOutput({
-            lockingScript: new P2PKH().lock(address),
-            change: true,
-        });
-
         let satsIn = 0;
         let fee = 0;
         const feeModel = new LivePolicy();
         const P2PKH_INPUT_SIZE = 148;
         const minimumFeeForOneInput = Math.ceil(feeModel.value * (P2PKH_INPUT_SIZE / 1000));
 
-        if (!utxos || utxos.length === 0) {
-            fee = (await feeModel.computeFee(tx)) + minimumFeeForOneInput;
-        }
-
-        // 所有 UTXO 属于同一地址，locking script 统一重建，无需网络获取 source TX
-        const lockingScript = new P2PKH().lock(address);
-
         for (const utxo of utxos || []) {
-            const stubTx = new Transaction();
-            stubTx.outputs = Array(utxo.vout + 1).fill(null);
-            stubTx.outputs[utxo.vout] = { satoshis: Number(utxo.satoshis), lockingScript };
-
+            let sourceTxHex = sourceTxCache.get(utxo.txid);
+            if (!sourceTxHex) {
+                sourceTxHex = await getSourceTransaction(utxo.txid);
+                if (sourceTxHex) {
+                    sourceTxCache.set(utxo.txid, sourceTxHex);
+                } else {
+                    const err = `Could not find source transaction ${utxo.txid}`;
+                    if (addLog) addLog(err, 'error');
+                    return { error: 'source-tx-not-found', message: err };
+                }
+            }
+            const sourceTransaction = Transaction.fromHex(sourceTxHex);
             tx.addInput({
                 sourceTXID: utxo.txid,
-                sourceTransaction: stubTx,
+                sourceTransaction,
                 sourceOutputIndex: utxo.vout,
                 unlockingScriptTemplate: new P2PKH().unlock(privateKey),
             });
             satsIn += Number(utxo.satoshis);
+
+            // Re-calculate fee. We calculate it WITHOUT change output first.
             fee = Math.max(await feeModel.computeFee(tx), minimumFeeForOneInput);
-            if (satsIn >= satsOut + fee) break;
+
+            if (satsIn >= satsOut + fee) {
+                // Check if we need a change output
+                const changeAmountBeforeOutput = satsIn - (satsOut + fee);
+
+                // Only attempt to add change if we have more than a tiny bit of dust
+                if (changeAmountBeforeOutput > 0) {
+                    const changeTx = tx.clone();
+                    changeTx.addOutput({
+                        lockingScript: new P2PKH().lock(address),
+                        change: true,
+                    });
+                    const feeWithChange = Math.max(await feeModel.computeFee(changeTx), minimumFeeForOneInput);
+
+                    // CRITICAL FIX: Only add the change output if we can actually afford the NEW fee
+                    // AND the remaining change is positive.
+                    if (satsIn >= satsOut + feeWithChange && (satsIn - (satsOut + feeWithChange)) > 0) {
+                        tx.addOutput({
+                            lockingScript: new P2PKH().lock(address),
+                            change: true,
+                        });
+                        fee = feeWithChange;
+                    } else {
+                        // If adding change output makes it insufficient, or leaves 0 change, 
+                        // we just skip adding it and let the extra sats go to the miner fee.
+                        // This ensures the transaction remains valid.
+                        console.log(`[DEBUG] Skipping change output to keep transaction valid. Extra fee for miner: ${changeAmountBeforeOutput} sats`);
+                    }
+                }
+                break;
+            }
         }
-        
+
         const requiredFee = fee;
         const totalRequired = satsOut + requiredFee;
 
         if (satsIn < totalRequired) {
-            const err = `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`;
+            const err = `Insufficient funds. Needed ${totalRequired}, found ${satsIn}. (satsOut: ${satsOut}, fee: ${fee}, outputs: ${tx.outputs.length})`;
+            console.log(`[DEBUG] processRefund Insufficient Funds:`, {
+                satsIn,
+                satsOut,
+                fee,
+                requiredFee,
+                totalRequired,
+                outputCount: tx.outputs.length,
+                outputs: tx.outputs.map(o => ({ satoshis: o.satoshis, change: o.change }))
+            });
             if (addLog && !dryRun) addLog(err, 'warn');
             return {
                 error: 'insufficient-funds',
-                totalRequired,
-                requiredFee,
-                available: satsIn,
+                message: `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`,
+                totalRequired: totalRequired,
+                continuePolling: false
             };
         }
 
-        if (dryRun) {
-            return { error: 0, requiredFee, totalRequired };
-        }
-        
-        if (addLog) addLog(`Transaction constructed. Fee: ${requiredFee} sats. Signing...`, 'info');
-        await tx.fee(requiredFee);
+        await tx.fee(fee);
         await tx.sign();
 
-        const txHex = tx.toHex();
         if (addLog) addLog('Broadcasting transaction...', 'info');
         const broadcastResult = await tx.broadcast();
 
@@ -159,7 +192,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                             sender: `${walletName} - ${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
                             note: `P2P tx from ${walletName}`
                         };
-                        await client.sendTransactionP2P(ref.paymail, txHex, ref.reference, metadata);
+                        await client.sendTransactionP2P(ref.paymail, tx.toHex(), ref.reference, metadata);
                         if (addLog) addLog(`Paymail P2P notification sent for ${ref.paymail}.`, 'success');
                     } catch (p2pError) {
                         console.error(`Failed to send P2P transaction to ${ref.paymail}:`, p2pError);
@@ -191,46 +224,101 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
 // ─── Air-gap helpers ──────────────────────────────────────────────────────────
 
 /**
- * 热端：构建未签名交易，返回可序列化的 PSBT payload。
- * 不需要私钥，不需要联网（无 source TX 获取）。
- * fee 用 P2PKH 固定尺寸手动估算。
+ * 热端：构建未签名交易，序列化为 hex 写入 payload。
+ * 用 MOCK key + SDK computeFee 准确估算 fee，tx.fee() 后序列化（未签名）。
+ * 同时拉取 source TX 获取真实 lockingScript，写入 payload 供冷端签名使用。
  */
-export const buildUnsignedTx = (utxos, request, { address, addLog }) => {
+export const buildUnsignedTx = async (utxos, request, { address, addLog }) => {
     if (!request || !Array.isArray(request) || request.length === 0) {
         return { error: 'invalid-request', message: 'Payment details are missing or invalid.' };
     }
 
     try {
+        const mockPrivKey = PrivateKey.fromWif(MOCK_DRY_RUN_WIF);
         const feeModel = new LivePolicy();
-        // P2PKH 固定尺寸：input 148B, output 34B, overhead 10B
-        const INPUT_SIZE = 148;
-        const OUTPUT_SIZE = 34;
-        const OVERHEAD = 10;
+        const minimumFee = Math.ceil(feeModel.value * (148 / 1000));
 
-        const satsOut = request.reduce((s, r) => s + r.satoshis, 0);
-        const numOutputs = request.length + 1; // +1 找零
+        const tx = new Transaction();
+        let satsOut = 0;
+
+        for (const req of request) {
+            satsOut += req.satoshis;
+            if (req.address) {
+                tx.addOutput({ satoshis: req.satoshis, lockingScript: new P2PKH().lock(req.address) });
+            } else if (req.script) {
+                tx.addOutput({ satoshis: req.satoshis, lockingScript: Script.fromHex(req.script) });
+            }
+        }
+        tx.addOutput({ lockingScript: new P2PKH().lock(address), change: true });
 
         const selectedUtxos = [];
         let satsIn = 0;
 
         for (const utxo of utxos || []) {
-            selectedUtxos.push({ txid: utxo.txid, vout: utxo.vout, satoshis: Number(utxo.satoshis) });
+            let lockingScriptHex = null;
+            try {
+                let sourceTxHex = sourceTxCache.get(utxo.txid);
+                if (!sourceTxHex) {
+                    sourceTxHex = await getSourceTransaction(utxo.txid);
+                    if (sourceTxHex) sourceTxCache.set(utxo.txid, sourceTxHex);
+                }
+                if (sourceTxHex) {
+                    const sourceTx = Transaction.fromHex(sourceTxHex);
+                    lockingScriptHex = sourceTx.outputs[utxo.vout].lockingScript.toHex();
+                }
+            } catch (e) {
+                if (addLog) addLog(`Failed to fetch source TX for ${utxo.txid}: ${e.message}`, 'warn');
+            }
+
+            const lockingScript = lockingScriptHex
+                ? Script.fromHex(lockingScriptHex)
+                : new P2PKH().lock(address);
+
+            const stubTx = new Transaction();
+            stubTx.outputs = Array(utxo.vout + 1).fill(null);
+            stubTx.outputs[utxo.vout] = { satoshis: Number(utxo.satoshis), lockingScript };
+
+            tx.addInput({
+                sourceTXID: utxo.txid,
+                sourceTransaction: stubTx,
+                sourceOutputIndex: utxo.vout,
+                unlockingScriptTemplate: new P2PKH().unlock(mockPrivKey),
+            });
+
+            selectedUtxos.push({ txid: utxo.txid, vout: utxo.vout, satoshis: Number(utxo.satoshis), lockingScript: lockingScriptHex });
             satsIn += Number(utxo.satoshis);
 
-            const txBytes = selectedUtxos.length * INPUT_SIZE + numOutputs * OUTPUT_SIZE + OVERHEAD;
-            const fee = Math.max(Math.ceil(feeModel.value * txBytes / 1000), 1);
-
+            const fee = Math.max(await feeModel.computeFee(tx), minimumFee);
             if (satsIn >= satsOut + fee) {
-                if (addLog) addLog(`PSBT built: ${selectedUtxos.length} inputs, fee ${fee} sats`, 'info');
+                await tx.fee(fee);
+                // Pre-fill empty unlockingScript to allow serialization without signing
+                tx.inputs.forEach(input => {
+                    input.unlockingScript = { toUint8Array: () => new Uint8Array(0) };
+                });
+                const unsignedTxHex = tx.toHex();
+                
+                // Generate a random 4-char hex checksum for user verification
+                const checksum = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+
+                if (addLog) addLog(`Unsigned TX built: ${selectedUtxos.length} inputs, fee ${fee} sats, checksum: ${checksum}`, 'info');
                 return {
                     error: 0,
-                    psbtPayload: { address, request, utxos: selectedUtxos, fee, createdAt: Date.now() },
+                    psbtPayload: {
+                        unsignedTxHex,
+                        utxos: selectedUtxos.map(u => ({ 
+                            txid: u.txid, 
+                            vout: u.vout, 
+                            satoshis: u.satoshis, 
+                            lockingScript: u.lockingScript || new P2PKH().lock(address).toHex() 
+                        })),
+                        checksum,
+                        createdAt: Date.now()
+                    },
                 };
             }
         }
 
-        const txBytes = selectedUtxos.length * INPUT_SIZE + numOutputs * OUTPUT_SIZE + OVERHEAD;
-        const fee = Math.max(Math.ceil(feeModel.value * txBytes / 1000), 1);
+        const fee = Math.max(await feeModel.computeFee(tx), minimumFee);
         return { error: 'insufficient-funds', message: `Insufficient funds. Needed ${satsOut + fee}, found ${satsIn}.`, totalRequired: satsOut + fee };
     } catch (err) {
         return { error: 'build-error', message: err.message };
@@ -238,51 +326,37 @@ export const buildUnsignedTx = (utxos, request, { address, addLog }) => {
 };
 
 /**
- * 冷端：对 PSBT payload 进行签名，返回已签名的 tx hex。
- * 纯离线，不需要网络。
- *
- * 用 stub sourceTransaction（只含目标 output），sourceTXID 手动设为真实 txid。
- * 依据：SDK 签名时只读 sourceTransaction.outputs[vout].{satoshis, lockingScript}，
- * 与 sourceTransaction 本身的 hash 无关（txid 从 sourceTXID 字段单独读取）。
+ * 冷端：反序列化未签名 tx，附上 source output 上下文后签名。
+ * 纯离线，不需要网络。构建 tx 结构的工作已在热端完成。
  */
 export const signPsbt = async (psbtPayload, privateKey) => {
     try {
-        const { address, request, utxos, fee } = psbtPayload;
-        const tx = new Transaction();
+        const { unsignedTxHex, utxos } = psbtPayload;
+        const tx = Transaction.fromHex(unsignedTxHex);
 
-        for (const req of request) {
-            if (req.address) {
-                tx.addOutput({ satoshis: req.satoshis, lockingScript: new P2PKH().lock(req.address) });
-            } else if (req.script) {
-                tx.addOutput({ satoshis: req.satoshis, lockingScript: Script.fromHex(req.script) });
-            } else if ((req.data || []).length > 0) {
-                const asm = `OP_0 OP_RETURN ${req.data.join(' ')}`;
-                tx.addOutput({ satoshis: req.satoshis, lockingScript: Script.fromASM(asm) });
+        for (let i = 0; i < utxos.length; i++) {
+            const utxo = utxos[i];
+            console.log(`[DEBUG] Signing input ${i}: txid=${utxo.txid}, vout=${utxo.vout}`);
+            if (typeof utxo.vout !== 'number' || utxo.vout < 0) {
+                throw new Error(`Invalid vout: ${utxo.vout}`);
             }
-        }
 
-        tx.addOutput({ lockingScript: new P2PKH().lock(address), change: true });
+            const lockingScript = Script.fromHex(utxo.lockingScript);
 
-        // 所有 UTXO 都属于同一地址，locking script 统一重建
-        const lockingScript = new P2PKH().lock(address);
-
-        for (const utxo of utxos) {
-            // 构造 stub：outputs 数组长度恰好为 vout+1，前面填 null，目标位置放真实 output
             const stubTx = new Transaction();
+            console.log(`[DEBUG] Creating stubTx outputs for vout ${utxo.vout}`);
             stubTx.outputs = Array(utxo.vout + 1).fill(null);
             stubTx.outputs[utxo.vout] = { satoshis: utxo.satoshis, lockingScript };
 
-            tx.addInput({
-                sourceTXID: utxo.txid,       // 真实 txid，用于 sighash outpoint
-                sourceTransaction: stubTx,    // 仅供 SDK 读取 satoshis/lockingScript
-                sourceOutputIndex: utxo.vout,
-                unlockingScriptTemplate: new P2PKH().unlock(privateKey),
-            });
+            if (!tx.inputs[i]) {
+                throw new Error(`Input index ${i} does not exist in tx. Inputs length: ${tx.inputs.length}`);
+            }
+
+            tx.inputs[i].sourceTransaction = stubTx;
+            tx.inputs[i].unlockingScriptTemplate = new P2PKH().unlock(privateKey);
         }
 
-        await tx.fee(fee);
         await tx.sign();
-
         return { error: 0, txHex: tx.toHex() };
     } catch (err) {
         return { error: 'sign-error', message: err.message };

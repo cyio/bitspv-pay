@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isWeChat } from '../utils';
 import {
@@ -207,19 +207,24 @@ const WalletManager = ({
     resetPanels();
     setShowTransferSection(true);
     setInputAmount('');
-    onRequestCalculateMaxTransfer();
   };
 
-  const setAmountToMax = () => {
-    if (maxTransferAmountValue !== null) {
-      if (selectedUnit === 'USD') {
-        // To avoid floating point inaccuracies with fiat conversion,
-        // switch to BSV unit when setting the max amount from USD.
-        setSelectedUnit('BSV');
-        setInputAmount(convertSatoshisToBSV(maxTransferAmountValue).toString());
-      } else {
-        setSatoshiValue(maxTransferAmountValue);
+  const [isCalculatingMax, setIsCalculatingMax] = useState(false);
+
+  const handleSetAmountToMax = async () => {
+    setIsCalculatingMax(true);
+    try {
+      const result = await onRequestCalculateMaxTransfer(targetAddress);
+      const maxSats = result?.maxAmount ?? maxTransferAmountValue;      if (maxSats !== null && maxSats > 0) {
+        if (selectedUnit === 'USD') {
+          setSelectedUnit('BSV');
+          setInputAmount(convertSatoshisToBSV(maxSats).toString());
+        } else {
+          setSatoshiValue(maxSats);
+        }
       }
+    } finally {
+      setIsCalculatingMax(false);
     }
   };
 
@@ -227,10 +232,6 @@ const WalletManager = ({
     setFormError('');
     if (transferStatus) onClearTransferStatus();
 
-    if (maxTransferAmountValue === null) {
-      setFormError(`${t('bsvPayment.transfer.calculating')}...`);
-      return;
-    }
     if (!targetAddress || (!isValidAddress(targetAddress) && !isValidPaymail(targetAddress))) {
       setFormError(t('bsvPayment.statusMessages.errors.invalidTargetAddress'));
       return;
@@ -240,7 +241,7 @@ const WalletManager = ({
       setFormError(t('bsvPayment.transfer.errors.invalidAmount'));
       return;
     }
-    if (amount > maxTransferAmountValue) {
+    if (maxTransferAmountValue !== null && amount > maxTransferAmountValue) {
       setFormError(t('bsvPayment.transfer.errors.amountExceedsMax'));
       return;
     }
@@ -297,6 +298,16 @@ const WalletManager = ({
   const displayMessage = transferMessage || formError;
   const displayStatus = transferStatus || (formError ? 'error' : null);
   
+  const handleAirGapDone = useCallback(() => {
+    console.log('[DEBUG] AirGapSender onDone called');
+    setAirGapMode(null);
+  }, []);
+
+  const handleAirGapCancel = useCallback(() => {
+    console.log('[DEBUG] AirGapSender onCancel called');
+    setAirGapMode(null);
+  }, []);
+
   const getTransferStatusClass = (status) => {
     switch (status) {
       case 'processing':
@@ -316,37 +327,39 @@ const WalletManager = ({
     <div className="relative mt-4">
       {/* ── 观察模式：替换转账按钮 ── */}
       {isWatchOnly ? (
-        <>
-          <Button
-            onClick={() => { resetPanels(); setAirGapMode('sender'); }}
-            className="w-full"
-          >
-            {t('bsvPayment.airGap.transferOffline')}
-          </Button>
-          {airGapMode === 'sender' && (
-            <AirGapSender
-              address={address}
-              rate={rate}
-              utxos={utxos}
-              onDone={() => setAirGapMode(null)}
-              onCancel={() => setAirGapMode(null)}
-            />
-          )}
-        </>
+        <Button
+          onClick={() => { resetPanels(); setAirGapMode('sender'); }}
+          className="w-full"
+        >
+          {t('bsvPayment.airGap.transferOffline')}
+        </Button>
       ) : (
-        <>
-          <Button onClick={toggleTransferSection} className="w-full">
-            {t('bsvPayment.transfer.transferButton')}
-          </Button>
+        <Button onClick={toggleTransferSection} className="w-full">
+          {t('bsvPayment.transfer.transferButton')}
+        </Button>
+      )}
 
-          {airGapMode === 'signer' && (
-            <AirGapSigner
-              ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
-              pubKey={pubKey}
-              onCancel={() => setAirGapMode(null)}
-            />
-          )}
-        </>
+      {/* 独立的 AirGap 组件挂载区，防止被 UI 条件分支拆卸 */}
+      {airGapMode === 'sender' && (
+        <div className="mt-4">
+          <AirGapSender
+            address={address}
+            rate={rate}
+            utxos={utxos}
+            onDone={handleAirGapDone}
+            onCancel={handleAirGapCancel}
+          />
+        </div>
+      )}
+      {airGapMode === 'signer' && (
+        <div className="mt-4">
+          <AirGapSigner
+            address={address}
+            ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
+            pubKey={pubKey}
+            onCancel={handleAirGapCancel}
+          />
+        </div>
       )}
 
       {showTransferSection && (
@@ -402,18 +415,13 @@ const WalletManager = ({
             </SimpleSelect>
             </div>
             <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {maxTransferAmountValue !== null ? (
-                <>
-                  {t('bsvPayment.transfer.maxLabel')}:
-                  <Button onClick={setAmountToMax} variant="link" className="p-0 h-auto">
-                    {selectedUnit === 'BSV' && `${convertSatoshisToBSV(maxTransferAmountValue)} BSV`}
-                    {selectedUnit === 'sats' && `${maxTransferAmountValue} sats`}
-                    {selectedUnit === 'USD' && rate && `$${convertSatoshisToFiat(maxTransferAmountValue, rate)}`}
-                  </Button>
-                </>
-              ) : (
-                `${t('bsvPayment.transfer.calculating')}...`
-              )}
+              <button
+                onClick={handleSetAmountToMax}
+                disabled={isCalculatingMax}
+                className="px-2 py-0.5 text-xs rounded border border-gray-400 dark:border-gray-500 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              >
+                {isCalculatingMax ? `${t('bsvPayment.transfer.calculating')}...` : t('bsvPayment.transfer.maxLabel')}
+              </button>
             </div>
           </div>
           {displayStatus && (

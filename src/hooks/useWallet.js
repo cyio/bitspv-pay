@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrivateKey, PublicKey, Transaction, Script } from '@bsv/sdk';
+import { PaymailClient } from '@bsv/paymail/client';
 import QRCode from 'qrcode';
 import { useStorage } from './useStorage';
-import { getUTXOs } from '../utils/api';
+import { getUTXOs, getBalance } from '../utils/api';
 import { isWeChat } from '../utils';
 import { encryptData, decryptData } from '../utils/webauthn';
 import { usePinManager } from './usePinManager';
@@ -22,6 +23,7 @@ export function useWallet() {
   const [qrcode, setQrcode] = useState('');
   const [walletName, setWalletName] = useState(storage.getWalletName() || '');
   const [utxos, setUtxos] = useState([]);
+  const [walletBalanceState, setWalletBalanceState] = useState({ confirmed: 0, unconfirmed: 0, total: 0 });
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
   const [isWatchOnly, setIsWatchOnly] = useState(storage.getIsWatchOnly());
@@ -32,13 +34,12 @@ export function useWallet() {
     const addr = currentAddress || address;
     if (!addr) return;
     try {
-      const latestUtxos = await getUTXOs(addr);
-      setUtxos(latestUtxos);
-      const provider = latestUtxos[0]?._provider ?? 'unknown';
-      addLog(`Balance refreshed: ${latestUtxos.reduce((s, u) => s + Number(u.satoshis), 0) / 100000000} BSV (${latestUtxos.length} UTXOs) via ${provider}`, LOG_TYPES.SUCCESS);
-      return { utxos: latestUtxos };
+      const result = await getBalance(addr);
+      setWalletBalanceState(result);
+      addLog(`Balance refreshed: ${result.total / 100000000} BSV (confirmed: ${result.confirmed}, unconfirmed: ${result.unconfirmed})`, LOG_TYPES.SUCCESS);
+      return result;
     } catch (error) {
-      const errorMsg = `Failed to refresh balance from UTXOs: ${error.message}`;
+      const errorMsg = `refresh balance: ${error.message}`;
       console.error(errorMsg, error);
       addLog(errorMsg, LOG_TYPES.ERROR);
       return null;
@@ -225,7 +226,7 @@ export function useWallet() {
     return null;
   }, [ensurePrivateKeyLoaded, pubKey, address, walletName, generateEncryptedBackupData, t]);
 
-  const calculateMaxSpendable = useCallback(async () => {
+  const calculateMaxSpendable = useCallback(async (target = null) => {
     if (!address) return { maxAmount: 0, message: 'Address not available' };
     try {
         let currentUtxos = utxos;
@@ -235,55 +236,72 @@ export function useWallet() {
         }
 
         const currentBalance = currentUtxos.reduce((sum, utxo) => sum + Number(utxo.satoshis), 0);
-        addLog(`Calculating Max Spendable for ${address}. UTXOs: ${currentUtxos.length}, Total: ${currentBalance} sats`, LOG_TYPES.INFO);
+        addLog(`Calculating Max Spendable for ${address}. Total: ${currentBalance} sats`, LOG_TYPES.INFO);
 
         if (currentBalance <= 0) {
-            addLog('Balance is zero, cannot calculate max spendable.', LOG_TYPES.WARN);
-            return {
-                maxAmount: 0,
-                message: t('bsvPayment.statusMessages.balanceStatus.zeroBalance')
-            };
+            return { maxAmount: 0, message: t('bsvPayment.statusMessages.balanceStatus.zeroBalance') };
         }
 
-        const dryRunRequest = [{
-            address: address,
-            satoshis: currentBalance,
-        }];
+        // If target is Paymail, we need to resolve it to know the output count
+        let outputCount = 1;
+        let resolvedOutputs = null;
 
-        const dryRunResult = await processRefund(currentUtxos, dryRunRequest, {
-            dryRun: true,
-            t,
-            pubKey,
-            address,
-            setStatus: () => {},
-            setStatusMessage: () => {},
-            addLog,
-        });
-
-        if (dryRunResult.error === 'insufficient-funds' && dryRunResult.requiredFee) {
-            const estimatedFee = dryRunResult.requiredFee;
-            const calculatedMax = currentBalance - estimatedFee;
-            const maxAmount = calculatedMax > 0 ? calculatedMax : 0;
-            return {
-                maxAmount,
-                message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
-            };
-        } else if (dryRunResult.error === 0) {
-            // If error is 0, it means currentBalance is enough to cover the amount + fee.
-            // Since we set satoshis: currentBalance in dryRunRequest, 
-            // the requiredFee is what's needed for this total amount.
-            const maxAmount = currentBalance - dryRunResult.requiredFee;
-            return {
-                maxAmount: maxAmount > 0 ? maxAmount : 0,
-                message: maxAmount <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
-            };
-        } else {
-            const errorMessage = dryRunResult.message || dryRunResult.error;
-            return {
-                maxAmount: 0,
-                message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${errorMessage}`
-            };
+        if (target && isValidPaymail(target)) {
+            try {
+                addLog(`Pre-resolving Paymail for fee estimation: ${target}`, LOG_TYPES.INFO);
+                const client = new PaymailClient();
+                // Use a dummy amount for resolution to get the structure
+                const p2p = await client.getP2pPaymentDestination(target, currentBalance);
+                if (p2p && p2p.outputs) {
+                    outputCount = p2p.outputs.length;
+                    resolvedOutputs = p2p.outputs;
+                    addLog(`Paymail resolved to ${outputCount} outputs.`, LOG_TYPES.INFO);
+                }
+            } catch (e) {
+                console.warn('Paymail pre-resolution failed, falling back to 1 output:', e);
+            }
         }
+
+        const dryRun = async (satoshis) => {
+            let testRequest;
+            if (resolvedOutputs) {
+                // Mimic the Paymail structure
+                testRequest = resolvedOutputs.map((o, idx) => ({
+                    script: o.script,
+                    satoshis: idx === resolvedOutputs.length - 1 ? satoshis : o.satoshis
+                }));
+            } else {
+                testRequest = [{ address: target || address, satoshis }];
+            }
+            
+            return processRefund(currentUtxos, testRequest, {
+                dryRun: true, t, pubKey, address,
+                setStatus: () => {}, setStatusMessage: () => {}, addLog,
+            });
+        };
+
+        const round1 = await dryRun(currentBalance);
+        const fee1 = round1.error === 'insufficient-funds' ? round1.requiredFee
+                   : round1.error === 0                    ? round1.requiredFee
+                   : null;
+
+        if (fee1 === null) {
+            return { maxAmount: 0, message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${round1.message || round1.error}` };
+        }
+
+        const maxAmount = currentBalance - fee1;
+        
+        // Round 2: Re-calculate with actual max
+        const round2 = await dryRun(maxAmount > 0 ? maxAmount : 0);
+        const fee2 = round2.error === 'insufficient-funds' ? round2.requiredFee
+                   : round2.error === 0                    ? round2.requiredFee
+                   : fee1;
+
+        const finalMax = currentBalance - fee2;
+        return {
+            maxAmount: finalMax > 0 ? finalMax : 0,
+            message: finalMax <= 0 ? t('bsvPayment.statusMessages.balanceStatus.insufficientForFee') : ''
+        };
     } catch (error) {
         console.error('Error calculating max spendable:', error);
         return {
@@ -315,6 +333,7 @@ export function useWallet() {
         ...paymentTargetObject,
         satoshis: amount,
     }];
+    console.log(`[DEBUG] sendTransaction initiated:`, { target, amount, transferRequest });
     
     try {
         setTransferStatus('preparing');
@@ -353,11 +372,6 @@ export function useWallet() {
         });
 
         if (result?.error === 0) {
-            // Delay refresh by 3 seconds to allow nodes to index the new transaction
-            setTimeout(() => {
-                refreshBalance(address);
-            }, 3000);
-
             const successMessage = {
                 text: t('bsvPayment.statusMessages.transactionSent'),
                 linkUrl: `https://whatsonchain.com/tx/${result.txid}`,
@@ -508,12 +522,6 @@ export function useWallet() {
     }
   }, [handleDeleteWallet, promptForPin, showInfo, storage, t]);
 
-  const walletBalance = useMemo(() => {
-    const total = utxos.reduce((sum, u) => sum + Number(u.satoshis), 0);
-    const confirmed = utxos.filter(u => u.height > 0).reduce((sum, u) => sum + Number(u.satoshis), 0);
-    return { confirmed, unconfirmed: total - confirmed, total };
-  }, [utxos]);
-
   return {
     pubKey,
     address,
@@ -521,8 +529,8 @@ export function useWallet() {
     qrcode,
     isWalletUiVisible,
     isWatchOnly,
-    balance: walletBalance.total,
-    walletBalance,
+    balance: walletBalanceState.total,
+    walletBalance: walletBalanceState,
     createWallet,
     getWifForBackup,
     handleDeleteWallet,
