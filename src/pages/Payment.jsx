@@ -50,6 +50,7 @@ function WalletUI() {
     transferMessage,
     clearTransferStatus,
     utxos,
+    isBalanceLoading,
   } = wallet;
 
   const { rate, refreshRate } = useRate();
@@ -298,6 +299,7 @@ function WalletUI() {
                 refreshAll={refreshAll}
                 isRefreshing={isRefreshing}
                 showQR={!!sendRequest}
+                isBalanceLoading={isBalanceLoading}
               />
               {showWalletManager && (
                 <WalletManager

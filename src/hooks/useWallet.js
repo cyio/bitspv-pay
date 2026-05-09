@@ -24,6 +24,7 @@ export function useWallet() {
   const [walletName, setWalletName] = useState(storage.getWalletName() || '');
   const [utxos, setUtxos] = useState([]);
   const [walletBalanceState, setWalletBalanceState] = useState({ confirmed: 0, unconfirmed: 0, total: 0 });
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
   const [isWatchOnly, setIsWatchOnly] = useState(storage.getIsWatchOnly());
@@ -33,6 +34,7 @@ export function useWallet() {
   const refreshBalance = useCallback(async (currentAddress) => {
     const addr = currentAddress || address;
     if (!addr) return;
+    setIsBalanceLoading(true);
     try {
       const result = await getBalance(addr);
       setWalletBalanceState(result);
@@ -43,6 +45,8 @@ export function useWallet() {
       console.error(errorMsg, error);
       addLog(errorMsg, LOG_TYPES.ERROR);
       return null;
+    } finally {
+      setIsBalanceLoading(false);
     }
   }, [address]);
 
@@ -150,10 +154,8 @@ export function useWallet() {
           }
           storage.setWalletAddress(watchAddress);
           storage.setIsWatchOnly(true);
-          storage.setWalletName('观察钱包');
           setAddress(watchAddress);
           setIsWatchOnly(true);
-          setWalletName('观察钱包');
           setQrcode(await QRCode.toDataURL(watchAddress));
           await refreshBalance(watchAddress);
           return { error: 0, address: watchAddress, watchOnly: true };
@@ -531,6 +533,7 @@ export function useWallet() {
     isWatchOnly,
     balance: walletBalanceState.total,
     walletBalance: walletBalanceState,
+    isBalanceLoading,
     createWallet,
     getWifForBackup,
     handleDeleteWallet,

@@ -13,6 +13,7 @@ const WalletInfo = ({
   refreshAll,
   isRefreshing,
   showQR = false,
+  isBalanceLoading = false,
 }) => {
   const { t } = useTranslation();
   const [qrExpanded, setQrExpanded] = useState(showQR);
@@ -46,13 +47,20 @@ const WalletInfo = ({
         )}
       </div>
       <div className="text-center text-gray-600 dark:text-gray-300 mb-4 flex items-center justify-center space-x-2">
-        <span>
-          {t('bsvPayment.balanceLabel')}:
-          <span className="font-semibold">
-            {convertSatoshisToBSV(walletBalance.total)} BSV
-            {rate && <span className="font-normal"> (${convertSatoshisToFiat(walletBalance.total, rate)})</span>}
+        {isBalanceLoading ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700 animate-pulse inline-block" />
+            <span className="h-4 w-12 rounded bg-gray-200 dark:bg-gray-700 animate-pulse inline-block" />
           </span>
-        </span>
+        ) : (
+          <span>
+            {t('bsvPayment.balanceLabel')}:
+            <span className="font-semibold">
+              {convertSatoshisToBSV(walletBalance.total)} BSV
+              {rate && <span className="font-normal"> (${convertSatoshisToFiat(walletBalance.total, rate)})</span>}
+            </span>
+          </span>
+        )}
         <button onClick={refreshAll} disabled={isRefreshing} title={t('bsvPayment.refreshBalanceButton')}>
           <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
