@@ -248,25 +248,27 @@ function WalletUI() {
   return (
     <>
       <div className="min-h-screen py-8">
-        <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 relative">
-          <div className="absolute top-4 right-4 flex items-center space-x-2">
-            <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              <Info className="h-5 w-5" />
-            </button>
-            {!sendRequest && (
-              <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                <Coffee className="h-5 w-5" />
+        <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-3">
+            <h1 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('bsvPayment.title')}</h1>
+            <div className="flex items-center space-x-2">
+              <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <Info className="h-5 w-5" />
               </button>
-            )}
-            <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-              <History className="h-5 w-5" />
-            </button>
+              {!sendRequest && (
+                <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <Coffee className="h-5 w-5" />
+                </button>
+              )}
+              <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <History className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-center">{t('bsvPayment.title')}</h1>
 
           {walletName && (
-            <div className="flex items-center justify-center gap-2 mt-1 mb-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{walletName}</span>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">{walletName}</span>
               {isWatchOnly && (
                 <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                   观察钱包

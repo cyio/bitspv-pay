@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isWeChat } from '../utils';
 import {
@@ -21,6 +21,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SimpleSelect, SimpleSelectItem } from '@/components/ui/SimpleSelect';
@@ -30,17 +36,6 @@ const ScanIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-const ChevronDownIcon = ({ rotation }) => (
-  <svg
-    className={`w-4 h-4 transition-transform ${rotation}`}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
   </svg>
 );
 
@@ -66,7 +61,7 @@ const WalletManager = ({
   const { t } = useTranslation();
   const { showDialog } = useDialog();
 
-  const [showManagePanel, setShowManagePanel] = useState(false);
+  const [showManageSheet, setShowManageSheet] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [privateKeyQrCodeUrl, setPrivateKeyQrCodeUrl] = useState('');
   const [showTransferSection, setShowTransferSection] = useState(false);
@@ -135,6 +130,27 @@ const WalletManager = ({
     }
   };
 
+  const pendingActionRef = useRef(null);
+
+  useEffect(() => {
+    if (!showManageSheet && pendingActionRef.current) {
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      const timer = setTimeout(action, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showManageSheet]);
+
+  const closeSheetAndRun = (fn) => () => {
+    pendingActionRef.current = fn;
+    setShowManageSheet(false);
+  };
+
+  const openAirGap = (mode) => {
+    resetPanels();
+    setAirGapMode(mode);
+  };
+
   const resetPanels = () => {
     setShowQrModal(false);
     setPrivateKeyQrCodeUrl('');
@@ -143,10 +159,6 @@ const WalletManager = ({
     setAirGapMode(null);
     setFormError('');
     if (transferStatus) onClearTransferStatus();
-  };
-
-  const toggleManagePanel = () => {
-    setShowManagePanel(!showManagePanel);
   };
 
   const showBackup = async () => {
@@ -308,6 +320,10 @@ const WalletManager = ({
     setAirGapMode(null);
   }, []);
 
+  const airGapSheetTitle = airGapMode === 'sender'
+    ? t('bsvPayment.airGap.transferOffline')
+    : t('bsvPayment.airGap.signerButton');
+
   const getTransferStatusClass = (status) => {
     switch (status) {
       case 'processing':
@@ -328,7 +344,7 @@ const WalletManager = ({
       {/* ── 观察模式：替换转账按钮 ── */}
       {isWatchOnly ? (
         <Button
-          onClick={() => { resetPanels(); setAirGapMode('sender'); }}
+          onClick={() => openAirGap('sender')}
           className="w-full"
         >
           {t('bsvPayment.airGap.transferOffline')}
@@ -337,29 +353,6 @@ const WalletManager = ({
         <Button onClick={toggleTransferSection} className="w-full">
           {t('bsvPayment.transfer.transferButton')}
         </Button>
-      )}
-
-      {/* 独立的 AirGap 组件挂载区，防止被 UI 条件分支拆卸 */}
-      {airGapMode === 'sender' && (
-        <div className="mt-4">
-          <AirGapSender
-            address={address}
-            rate={rate}
-            utxos={utxos}
-            onDone={handleAirGapDone}
-            onCancel={handleAirGapCancel}
-          />
-        </div>
-      )}
-      {airGapMode === 'signer' && (
-        <div className="mt-4">
-          <AirGapSigner
-            address={address}
-            ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
-            pubKey={pubKey}
-            onCancel={handleAirGapCancel}
-          />
-        </div>
       )}
 
       {showTransferSection && (
@@ -460,61 +453,103 @@ const WalletManager = ({
       )}
 
       <Button
-        onClick={toggleManagePanel}
+        onClick={() => setShowManageSheet(true)}
         variant="outline"
-        className="w-full mt-2 flex items-center justify-center gap-2"
+        className="w-full mt-2"
       >
-        <span>{t('bsvPayment.manageWalletButton')}</span>
-        <ChevronDownIcon rotation={showManagePanel ? 'rotate-180' : ''} />
+        {t('bsvPayment.manageWalletButton')}
       </Button>
 
-      {showManagePanel && (
-        <div className="mt-2 py-4 px-1 bg-gray-50 dark:bg-gray-700 rounded shadow-lg">
+      <Sheet open={showManageSheet} onOpenChange={setShowManageSheet}>
+        <SheetContent animated={false} side="bottom" className="rounded-t-xl max-h-[60vh] left-1/2 right-auto -translate-x-1/2 w-full max-w-md">
+          <SheetHeader className="mb-4">
+            <SheetTitle>{t('bsvPayment.manageWalletButton')}</SheetTitle>
+          </SheetHeader>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={showBackup} variant="outline">{t('bsvPayment.backupWalletButton')}</Button>
-            <Button onClick={triggerImportWallet} variant="outline">{t('bsvPayment.importWalletButton')}</Button>
+            <Button
+              onClick={closeSheetAndRun(showBackup)}
+              variant="outline"
+              disabled={isWatchOnly}
+              title={isWatchOnly ? t('bsvPayment.airGap.watchOnlyNoKey') : ''}
+            >
+              {t('bsvPayment.backupWalletButton')}
+            </Button>
+            <Button onClick={closeSheetAndRun(triggerImportWallet)} variant="outline">{t('bsvPayment.importWalletButton')}</Button>
             <Button
               variant="outline"
-              onClick={() => { resetPanels(); setShowManagePanel(false); setAirGapMode('signer'); }}
+              onClick={closeSheetAndRun(() => openAirGap('signer'))}
               disabled={isWatchOnly}
               title={isWatchOnly ? t('bsvPayment.airGap.watchOnlyNoKey') : ''}
             >
               {t('bsvPayment.airGap.signerButton')}
             </Button>
-            <Button onClick={showDeleteWalletConfirm} variant="destructive">{t('bsvPayment.deleteWalletButton')}</Button>
+            <Button onClick={closeSheetAndRun(showDeleteWalletConfirm)} variant="destructive">{t('bsvPayment.deleteWalletButton')}</Button>
           </div>
-            <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t('bsvPayment.privateKeyQrModalTitle')}</DialogTitle>
-                </DialogHeader>
-                <div className="p-4 text-center">
-                  {privateKeyQrCodeUrl ? (
-                    <img src={privateKeyQrCodeUrl} alt="Private Key QR Code" className="w-48 h-48 mx-auto my-4" />
-                  ) : (
-                    <div className="w-48 h-48 bg-gray-200 dark:bg-gray-600 mx-auto my-4 flex items-center justify-center text-xs text-gray-500 dark:text-gray-300">
-                      {t('bsvPayment.qrLoading')}
-                    </div>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('bsvPayment.qrCodeDownloadTip')}</p>
-                  <p className="mt-2 text-xs text-red-500 dark:text-red-400">{t('bsvPayment.privateKeyWarning')}</p>
-                </div>
-                <DialogFooter>
-                  {!isWeChat && (
-                    <Button onClick={downloadPrivateKeyQrCode} className="w-full">
-                      {t('bsvPayment.downloadQrCodeButton')}
-                    </Button>
-                  )}
-                  {isWeChat && (
-                    <p className="w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 py-2">
-                       {t('bsvPayment.qrCodeDownloadTip')}
-                    </p>
-                  )}
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={Boolean(airGapMode)}
+        onOpenChange={(open) => {
+          if (!open) handleAirGapCancel();
+        }}
+      >
+        <SheetContent animated={false} side="bottom" className="rounded-t-xl max-h-[85dvh] left-1/2 right-auto -translate-x-1/2 w-full max-w-md overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>{airGapSheetTitle}</SheetTitle>
+          </SheetHeader>
+          {airGapMode === 'sender' && (
+            <AirGapSender
+              address={address}
+              rate={rate}
+              utxos={utxos}
+              onDone={handleAirGapDone}
+              onCancel={handleAirGapCancel}
+              className="pt-1"
+            />
+          )}
+          {airGapMode === 'signer' && (
+            <AirGapSigner
+              address={address}
+              ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
+              pubKey={pubKey}
+              onCancel={handleAirGapCancel}
+              className="pt-1"
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('bsvPayment.privateKeyQrModalTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 text-center">
+            {privateKeyQrCodeUrl ? (
+              <img src={privateKeyQrCodeUrl} alt="Private Key QR Code" className="w-48 h-48 mx-auto my-4" />
+            ) : (
+              <div className="w-48 h-48 bg-gray-200 dark:bg-gray-600 mx-auto my-4 flex items-center justify-center text-xs text-gray-500 dark:text-gray-300">
+                {t('bsvPayment.qrLoading')}
+              </div>
+            )}
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('bsvPayment.qrCodeDownloadTip')}</p>
+            <p className="mt-2 text-xs text-red-500 dark:text-red-400">{t('bsvPayment.privateKeyWarning')}</p>
+          </div>
+          <DialogFooter>
+            {!isWeChat && (
+              <Button onClick={downloadPrivateKeyQrCode} className="w-full">
+                {t('bsvPayment.downloadQrCodeButton')}
+              </Button>
+            )}
+            {isWeChat && (
+              <p className="w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 py-2">
+                 {t('bsvPayment.qrCodeDownloadTip')}
+              </p>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

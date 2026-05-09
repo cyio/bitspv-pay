@@ -79,7 +79,7 @@ const StatusLine = ({ status, message }) => {
 // ─── 热端：Sender ─────────────────────────────────────────────────────────────
 // step: 'form' → 'building' → 'show-psbt' → 'scan-signed' → 'broadcasting' → 'done'
 
-export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel }) {
+export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
   React.useEffect(() => {
     console.log('[DEBUG] AirGapSender mounted');
     return () => console.log('[DEBUG] AirGapSender unmounting...');
@@ -212,7 +212,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
   const stepIndex = { form: 1, building: 1, 'show-psbt': 2, 'scan-signed': 3, broadcasting: 3, done: 4 }[step] || 1;
 
   return (
-    <div className="mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded">
+    <div className={className}>
       <StepIndicator current={stepIndex} total={4} labels={STEPS} />
 
       {/* 步骤 1：填写表单 */}
@@ -359,7 +359,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
 // ─── 冷端：Signer ─────────────────────────────────────────────────────────────
 // step: 'scan-psbt' → 'confirm' → 'signing' → 'show-signed'
 
-export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel }) {
+export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
   const { t } = useTranslation();
   const { addLog } = useLog();
 
@@ -467,7 +467,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
   }
 
   return (
-    <div className="mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded">
+    <div className={className}>
       <StepIndicator current={stepIndex} total={4} labels={STEPS} />
 
       {/* 步骤 1：冷端扫描待签名二维码 */}

@@ -6,10 +6,11 @@
   "scripts": {
     "start": "npm run dev",
     "dev": "vite",
-    "predeploy": "node scripts/copy-js-files",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss,less,json,md}\""
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss,less,json,md}\"",
+    "ship": "URL=$(vercel 2>&1 | grep -o 'https://[^ ]*\\.vercel\\.app' | tail -1) && ./scripts/notify.sh \"🚀 Preview: $URL\"",
+    "ship:prod": "URL=$(vercel --prod 2>&1 | grep -o 'https://[^ ]*\\.vercel\\.app' | tail -1) && ./scripts/notify.sh \"✅ Production: $URL\""
   },
   "dependencies": {
     "@bsv/paymail": "^2.1.1",
