@@ -262,7 +262,17 @@ function WalletUI() {
             </button>
           </div>
           <h1 className="text-2xl font-bold text-center">{t('bsvPayment.title')}</h1>
-           {!sendRequest && <p className="text-sm text-center text-gray-500 mb-4">{t('bsvPayment.statusMessages.notSafeForStorage')}</p>}
+
+          {walletName && (
+            <div className="flex items-center justify-center gap-2 mt-1 mb-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{walletName}</span>
+              {isWatchOnly && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  观察钱包
+                </span>
+              )}
+            </div>
+          )}
 
           {sendRequest && (
             <PaymentStatus
@@ -276,13 +286,6 @@ function WalletUI() {
             />
           )}
 
-
-          {walletName && (
-            <div className="text-center text-gray-600 dark:text-gray-300">
-              <span className="text-sm"><span className="font-semibold">{walletName}</span></span>
-            </div>
-          )}
-
           {isWalletUiVisible ? (
             <>
               <WalletInfo
@@ -294,6 +297,7 @@ function WalletUI() {
                 rate={rate}
                 refreshAll={refreshAll}
                 isRefreshing={isRefreshing}
+                showQR={!!sendRequest}
               />
               {showWalletManager && (
                 <WalletManager
