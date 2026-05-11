@@ -172,6 +172,8 @@ export default {
       validation: {
         required: '请输入{{field}}',
         maxLength: '{{field}}不能超过 {{max}} 个字符',
+        minLength: '{{field}}不能少于 {{min}} 个字符',
+        pattern: 'PIN 码必须同时包含字母和数字',
       },
     },
     walletNameLabel: '钱包名称', // 新增

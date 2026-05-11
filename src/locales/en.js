@@ -182,6 +182,8 @@ export default {
       validation: {
         required: '{{field}} is required',
         maxLength: '{{field}} cannot exceed {{max}} characters',
+        minLength: '{{field}} must be at least {{min}} characters',
+        pattern: 'PIN must contain both letters and numbers',
       },
     },
     walletNameLabel: 'Wallet Name', // New

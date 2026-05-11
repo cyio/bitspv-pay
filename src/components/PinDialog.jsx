@@ -127,10 +127,22 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
             if (input.required) {
               rules.required = t('bsvPayment.pinModal.validation.required', { field: input.label });
             }
+            if (input.minLength) {
+              rules.minLength = {
+                value: input.minLength,
+                message: t('bsvPayment.pinModal.validation.minLength', { field: input.label, min: input.minLength }),
+              };
+            }
             if (input.maxLength) {
               rules.maxLength = {
                 value: input.maxLength,
                 message: t('bsvPayment.pinModal.validation.maxLength', { field: input.label, max: input.maxLength }),
+              };
+            }
+            if (input.pattern) {
+              rules.pattern = {
+                value: input.pattern,
+                message: t('bsvPayment.pinModal.validation.pattern'),
               };
             }
             return (
