@@ -1,7 +1,7 @@
 /**
- * PSBT (Partially Signed Bitcoin Transaction) 序列化工具
+ * BSV 自定义签名请求载体序列化工具（非 BIP-174 PSBT）
  *
- * 热端 → 冷端：PsbtPayload  （前缀 "psbt:"）
+ * 热端 → 冷端：SigningRequest  （前缀 "txreq:"）
  * 冷端 → 热端：SignedTxPayload（前缀 "signed:"）
  *
  * 编码：JSON → pako.deflate（gzip）→ base64url
@@ -10,7 +10,7 @@
 
 import { deflate, inflate } from 'pako';
 
-const PSBT_PREFIX = 'psbt:';
+const SIGNING_REQUEST_PREFIX = 'txreq:';
 const SIGNED_PREFIX = 'signed:';
 
 // base64url（不含 padding），与 URL 安全且对 QR 友好
@@ -51,7 +51,7 @@ function decode(str) {
 }
 
 /**
- * 序列化 PSBT Payload（热端构建，冷端签名）
+ * 序列化 SigningRequest（热端构建，冷端签名）
  *
  * @param {Object} payload
  * @param {string}   payload.address        发送方地址（找零用）
@@ -59,28 +59,27 @@ function decode(str) {
  * @param {Array}    payload.utxos          选中的 UTXO，每项包含 { txid, vout, satoshis, sourceTxHex }
  * @param {number}   payload.fee            热端计算的 fee（sats）
  * @param {number}   payload.createdAt      Unix timestamp（ms）
- * @returns {string}  以 "psbt:" 开头的 QR 字符串
+ * @returns {string}  以 "txreq:" 开头的 QR 字符串
  */
-export function serializePsbt(payload) {
-  return PSBT_PREFIX + encode({ version: 1, ...payload });
+export function serializeSigningRequest(payload) {
+  return SIGNING_REQUEST_PREFIX + encode({ version: 1, ...payload });
 }
 
 /**
- * 反序列化 PSBT Payload
+ * 反序列化 SigningRequest
  * @param {string} str
  * @returns {Object|null}
  */
-export function deserializePsbt(str) {
-  if (typeof str !== 'string' || !str.startsWith(PSBT_PREFIX)) return null;
-  return decode(str.slice(PSBT_PREFIX.length));
+export function deserializeSigningRequest(str) {
+  if (typeof str !== 'string' || !str.startsWith(SIGNING_REQUEST_PREFIX)) return null;
+  return decode(str.slice(SIGNING_REQUEST_PREFIX.length));
 }
 
 /**
  * 序列化已签名 Tx Payload（冷端签名，热端广播）
  *
  * @param {Object} payload
- * @param {string}   payload.txHex          完整已签名交易 hex
- * @param {Array}    [payload.paymailRefs]  Paymail P2P 通知数据（若有）
+ * @param {string}   payload.txHex  完整已签名交易 hex
  * @returns {string}  以 "signed:" 开头的 QR 字符串
  */
 export function serializeSignedTx(payload) {
@@ -100,11 +99,11 @@ export function deserializeSignedTx(str) {
 /**
  * 判断 QR 字符串类型
  * @param {string} str
- * @returns {'psbt' | 'signed' | null}
+ * @returns {'signing-request' | 'signed' | null}
  */
 export function detectQrType(str) {
   if (typeof str !== 'string') return null;
-  if (str.startsWith(PSBT_PREFIX)) return 'psbt';
+  if (str.startsWith(SIGNING_REQUEST_PREFIX)) return 'signing-request';
   if (str.startsWith(SIGNED_PREFIX)) return 'signed';
   return null;
 }

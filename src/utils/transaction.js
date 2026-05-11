@@ -303,7 +303,7 @@ export const buildUnsignedTx = async (utxos, request, { address, addLog }) => {
                 if (addLog) addLog(`Unsigned TX built: ${selectedUtxos.length} inputs, fee ${fee} sats, checksum: ${checksum}`, 'info');
                 return {
                     error: 0,
-                    psbtPayload: {
+                    signingRequest: {
                         unsignedTxHex,
                         utxos: selectedUtxos.map(u => ({ 
                             txid: u.txid, 
@@ -329,9 +329,9 @@ export const buildUnsignedTx = async (utxos, request, { address, addLog }) => {
  * 冷端：反序列化未签名 tx，附上 source output 上下文后签名。
  * 纯离线，不需要网络。构建 tx 结构的工作已在热端完成。
  */
-export const signPsbt = async (psbtPayload, privateKey) => {
+export const signTransaction = async (signingRequest, privateKey) => {
     try {
-        const { unsignedTxHex, utxos } = psbtPayload;
+        const { unsignedTxHex, utxos } = signingRequest;
         const tx = Transaction.fromHex(unsignedTxHex);
 
         for (let i = 0; i < utxos.length; i++) {
@@ -373,7 +373,7 @@ export const signPsbt = async (psbtPayload, privateKey) => {
  * @param {Function} [opts.addLog]
  * @returns {Promise<{error: 0, txid: string} | {error: string, message: string}>}
  */
-export const broadcastSignedTx = async (txHex, { address, paymailRefs = [], addLog } = {}) => {
+export const broadcastSignedTx = async (txHex, { address, paymailRefs = [], addLog, onPaymailWarning } = {}) => {
     try {
         const tx = Transaction.fromHex(txHex);
         if (addLog) addLog('Broadcasting signed transaction...', 'info');
@@ -401,9 +401,9 @@ export const broadcastSignedTx = async (txHex, { address, paymailRefs = [], addL
                             await client.sendTransactionP2P(ref.paymail, txHex, ref.reference, metadata);
                             if (addLog) addLog(`Paymail P2P notification sent for ${ref.paymail}.`, 'success');
                         } catch (e) {
-                            // P2P 通知失败不影响交易本身，仅记录日志
                             if (addLog) addLog(`Paymail P2P notification failed for ${ref.paymail} (non-fatal): ${e.message}`, 'warn');
                             console.warn(`Failed to send P2P transaction to ${ref.paymail}:`, e);
+                            if (onPaymailWarning) onPaymailWarning(ref.paymail);
                         }
                     }
                 })();

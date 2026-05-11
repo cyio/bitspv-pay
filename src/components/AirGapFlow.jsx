@@ -2,7 +2,7 @@
  * AirGapFlow.jsx
  *
  * 两种使用场景：
- *   mode="sender"  — 热端：输入收款方+金额 → 构建 PSBT → 展示 QR① → 扫 QR② → 广播
+ *   mode="sender"  — 热端：输入收款方+金额 → 构建 SigningRequest → 展示 QR① → 扫 QR② → 广播
  *   mode="signer"  — 冷端：扫 QR① → 确认 → PIN 签名 → 展示 QR②
  */
 
@@ -21,8 +21,8 @@ import {
   convertFiatToSatoshis,
 } from '../utils/bsv';
 import { Transaction, P2PKH } from '@bsv/sdk';
-import { buildUnsignedTx, signPsbt, broadcastSignedTx } from '../utils/transaction';
-import { serializePsbt, serializeSignedTx, deserializePsbt, deserializeSignedTx, detectQrType } from '../utils/psbt';
+import { buildUnsignedTx, signTransaction, broadcastSignedTx } from '../utils/transaction';
+import { serializeSigningRequest, serializeSignedTx, deserializeSigningRequest, deserializeSignedTx, detectQrType } from '../utils/signing-request';
 import { PaymailClient } from '@bsv/paymail/client';
 import { getGoogleReachable } from '../utils/network';
 import { getUTXOs } from '../utils/api';
@@ -77,7 +77,7 @@ const StatusLine = ({ status, message }) => {
 };
 
 // ─── 热端：Sender ─────────────────────────────────────────────────────────────
-// step: 'form' → 'building' → 'show-psbt' → 'scan-signed' → 'broadcasting' → 'done'
+// step: 'form' → 'building' → 'show-signing-request' → 'scan-signed' → 'broadcasting' → 'done'
 
 export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
   React.useEffect(() => {
@@ -92,11 +92,12 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
   const [inputAmount, setInputAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('BSV');
   const [formError, setFormError] = useState('');
-  const [psbtQrUrl, setPsbtQrUrl] = useState('');
-  const [psbtPayload, setPsbtPayload] = useState(null);
+  const [signingRequestQrUrl, setSigningRequestQrUrl] = useState('');
+  const [signingRequest, setSigningRequest] = useState(null);
   const [status, setStatus] = useState(null);   // 'error' | 'success'
   const [statusMsg, setStatusMsg] = useState('');
   const [txid, setTxid] = useState('');
+  const [paymailWarning, setPaymailWarning] = useState('');
 
   const STEPS = t('bsvPayment.airGap.sender.steps', { returnObjects: true });
 
@@ -157,19 +158,19 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       }
 
       // 附加 paymailRef 以便广播时通知
-      const payload = result.psbtPayload;
+      const payload = result.signingRequest;
       if (resolvedRequest._paymailRef) {
         payload.paymailRefs = [resolvedRequest._paymailRef];
       }
 
-      setPsbtPayload(payload);
+      setSigningRequest(payload);
 
       // 生成 QR
-      const qrStr = serializePsbt(payload);
-      addLog(`PSBT QR string length: ${qrStr.length} chars`, 'info');
+      const qrStr = serializeSigningRequest(payload);
+      addLog(`Signing request QR string length: ${qrStr.length} chars`, 'info');
       const url = await QRCode.toDataURL(qrStr, { errorCorrectionLevel: 'L', width: 280 });
-      setPsbtQrUrl(url);
-      setStep('show-psbt');
+      setSigningRequestQrUrl(url);
+      setStep('show-signing-request');
     } catch (err) {
       setStatus('error'); setStatusMsg(err.message);
       setStep('form');
@@ -194,8 +195,9 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
 
     const broadcastResult = await broadcastSignedTx(signedPayload.txHex, {
       address,
-      paymailRefs: psbtPayload?.paymailRefs || signedPayload.paymailRefs || [],
+      paymailRefs: signingRequest?.paymailRefs || [],
       addLog,
+      onPaymailWarning: (paymail) => setPaymailWarning(`Paymail P2P 通知发送失败（${paymail}），对方钱包可能需要手动刷新才能看到这笔收款。交易已成功广播，资金不受影响。`),
     });
 
     if (broadcastResult.error === 0) {
@@ -206,10 +208,10 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       setStatus('error'); setStatusMsg(broadcastResult.message);
       setStep('scan-signed');
     }
-  }, [address, psbtPayload, addLog, onDone]);
+  }, [address, signingRequest, addLog, onDone]);
 
   // ── render ──
-  const stepIndex = { form: 1, building: 1, 'show-psbt': 2, 'scan-signed': 3, broadcasting: 3, done: 4 }[step] || 1;
+  const stepIndex = { form: 1, building: 1, 'show-signing-request': 2, 'scan-signed': 3, broadcasting: 3, done: 4 }[step] || 1;
 
   return (
     <div className={className}>
@@ -266,20 +268,20 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
         </>
       )}
 
-      {/* 步骤 2：展示 PSBT QR① */}
-      {step === 'show-psbt' && psbtPayload && (
+      {/* 步骤 2：展示签名请求 QR① */}
+      {step === 'show-signing-request' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             {t('bsvPayment.airGap.sender.showPsbtDesc')}
           </p>
-          <QrDisplay dataUrl={psbtQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
-          
+          <QrDisplay dataUrl={signingRequestQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
+
           <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2 mb-4 mx-4 border border-gray-200 dark:border-gray-600">
             <div className="flex justify-between items-center">
               <span className="text-gray-500 dark:text-gray-400">核对码</span>
               <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400 font-mono tracking-widest">
-                {psbtPayload.checksum}
+                {signingRequest.checksum}
               </span>
             </div>
             <div className="flex justify-between text-gray-600 dark:text-gray-300 font-medium">
@@ -318,7 +320,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
             </QRScanner>
           )}
           <div className="flex justify-end gap-2 mt-3">
-            <Button variant="outline" onClick={() => setStep('show-psbt')} disabled={step === 'broadcasting'}>
+            <Button variant="outline" onClick={() => setStep('show-signing-request')} disabled={step === 'broadcasting'}>
               {t('bsvPayment.airGap.sender.back')}
             </Button>
           </div>
@@ -346,6 +348,9 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
                 </a>
               </div>
             )}
+            {paymailWarning && (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-3 px-2">{paymailWarning}</p>
+            )}
           </div>
           <Button className="w-full" onClick={() => onDone(txid)}>
             {t('bsvPayment.airGap.sender.done')}
@@ -357,28 +362,28 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
 }
 
 // ─── 冷端：Signer ─────────────────────────────────────────────────────────────
-// step: 'scan-psbt' → 'confirm' → 'signing' → 'show-signed'
+// step: 'scan-signing-request' → 'confirm' → 'signing' → 'show-signed'
 
 export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
   const { t } = useTranslation();
   const { addLog } = useLog();
 
-  const [step, setStep] = useState('scan-psbt');
-  const [psbtPayload, setPsbtPayload] = useState(null);
+  const [step, setStep] = useState('scan-signing-request');
+  const [signingRequest, setSigningRequest] = useState(null);
   const [signedQrUrl, setSignedQrUrl] = useState('');
   const [status, setStatus] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
 
   const STEPS = t('bsvPayment.airGap.signer.steps', { returnObjects: true });
 
-  const handlePsbtScan = useCallback(async (result) => {
+  const handleSigningRequestScan = useCallback(async (result) => {
     if (result.error) { setStatus('error'); setStatusMsg(result.error); return; }
     const type = detectQrType(result.data);
-    if (type !== 'psbt') {
+    if (type !== 'signing-request') {
       setStatus('error'); setStatusMsg(t('bsvPayment.airGap.signer.unrecognizedQr'));
       return;
     }
-    const payload = deserializePsbt(result.data);
+    const payload = deserializeSigningRequest(result.data);
     if (!payload?.utxos || !payload?.unsignedTxHex) {
       setStatus('error'); setStatusMsg(t('bsvPayment.airGap.signer.parsePsbtFailed'));
       return;
@@ -391,7 +396,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       setStatus('error');
     }
 
-    setPsbtPayload(payload);
+    setSigningRequest(payload);
     setStep('confirm');
   }, []);
 
@@ -407,7 +412,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       return;
     }
 
-    const result = await signPsbt(psbtPayload, keyResult.loadedPrivKey);
+    const result = await signTransaction(signingRequest, keyResult.loadedPrivKey);
     if (result.error !== 0) {
       setStatus('error'); setStatusMsg(result.message);
       setStep('confirm');
@@ -415,26 +420,23 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
     }
 
     // 生成 QR②
-    const signedStr = serializeSignedTx({
-      txHex: result.txHex,
-      paymailRefs: psbtPayload.paymailRefs,
-    });
+    const signedStr = serializeSignedTx({ txHex: result.txHex });
     addLog(`Signed TX QR string length: ${signedStr.length} chars`, 'info');
     const url = await QRCode.toDataURL(signedStr, { errorCorrectionLevel: 'L', width: 280 });
     setSignedQrUrl(url);
     setStep('show-signed');
-  }, [psbtPayload, ensurePrivateKeyLoaded, pubKey, addLog]);
+  }, [signingRequest, ensurePrivateKeyLoaded, pubKey, addLog]);
 
-  const stepIndex = { 'scan-psbt': 1, confirm: 2, signing: 3, 'show-signed': 4 }[step] || 1;
+  const stepIndex = { 'scan-signing-request': 1, confirm: 2, signing: 3, 'show-signed': 4 }[step] || 1;
 
   // ─── 从 Hex 解析详情 ──────────────────────────────────────────────────────────
   let displayOutputs = [];
   let displayFee = 0;
   let displayTotal = 0;
 
-  if (psbtPayload?.unsignedTxHex) {
+  if (signingRequest?.unsignedTxHex) {
     try {
-      const tx = Transaction.fromHex(psbtPayload.unsignedTxHex);
+      const tx = Transaction.fromHex(signingRequest.unsignedTxHex);
       const changeScript = new P2PKH().lock(address).toHex();
 
       // 1. 识别非找零输出
@@ -457,7 +459,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       });
 
       // 2. 计算手续费：总输入 - 总输出
-      const totalIn = psbtPayload.utxos.reduce((s, u) => s + Number(u.satoshis || 0), 0);
+      const totalIn = signingRequest.utxos.reduce((s, u) => s + Number(u.satoshis || 0), 0);
       const totalOutAll = tx.outputs.reduce((s, o) => s + Number(o.satoshis || 0), 0);
       displayFee = totalIn - totalOutAll;
       displayTotal = displayOutputs.reduce((s, o) => s + Number(o.satoshis || 0), 0);
@@ -471,14 +473,14 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       <StepIndicator current={stepIndex} total={4} labels={STEPS} />
 
       {/* 步骤 1：冷端扫描待签名二维码 */}
-      {step === 'scan-psbt' && (
+      {step === 'scan-signing-request' && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.signer.scanPsbtTitle')}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
             {t('bsvPayment.airGap.signer.scanPsbtDesc')}
           </p>
           <StatusLine status={status} message={statusMsg} />
-          <QRScanner onScanResult={handlePsbtScan}>
+          <QRScanner onScanResult={handleSigningRequestScan}>
             {({ scan }) => (
               <Button className="w-full mt-2" onClick={scan}>
                 <span className="mr-2"><ScanIcon /></span>{t('bsvPayment.airGap.signer.scanButton')}
@@ -491,31 +493,31 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
         </>
       )}
 
-      {/* 步骤 1：热端展示 PSBT QR① */}
-      {step === 'show-psbt' && psbtPayload && (
+      {/* 步骤 1：热端展示签名请求 QR① */}
+      {step === 'show-signing-request' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             {t('bsvPayment.airGap.sender.showPsbtDesc')}
           </p>
           <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
-            核对码: {psbtPayload.checksum}
+            核对码: {signingRequest.checksum}
           </div>
-          <QrDisplay dataUrl={psbtQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
+          <QrDisplay dataUrl={signingRequestQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
           <div className="flex justify-end gap-2 mt-3">
-            <Button variant="outline" onClick={() => { setStep('form'); setPsbtPayload(null); }}>{t('bsvPayment.airGap.sender.rewrite')}</Button>
+            <Button variant="outline" onClick={() => { setStep('form'); setSigningRequest(null); }}>{t('bsvPayment.airGap.sender.rewrite')}</Button>
             <Button onClick={() => setStep('scan-signed')}>{t('bsvPayment.airGap.sender.scanSignedButton')}</Button>
           </div>
         </>
       )}
 
       {/* 步骤 2：冷端确认 */}
-      {step === 'confirm' && psbtPayload && (
+      {step === 'confirm' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-2">{t('bsvPayment.airGap.signer.confirmTitle')}</h2>
           <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2">
             <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
-              核对码: {psbtPayload.checksum}
+              核对码: {signingRequest.checksum}
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">{t('bsvPayment.airGap.signer.totalLabel')}</span>
@@ -532,7 +534,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
           </div>
           <StatusLine status={status} message={statusMsg} />
           <div className="flex justify-end gap-2 mt-3">
-            <Button variant="outline" onClick={() => setStep('scan-psbt')}>{t('bsvPayment.airGap.signer.rescan')}</Button>
+            <Button variant="outline" onClick={() => setStep('scan-signing-request')}>{t('bsvPayment.airGap.signer.rescan')}</Button>
             <Button onClick={handleSign}>{t('bsvPayment.airGap.signer.confirmButton')}</Button>
           </div>
         </>
@@ -555,7 +557,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
           </p>
           <QrDisplay dataUrl={signedQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
           <div className="flex justify-end gap-2 mt-3">
-            <Button variant="outline" onClick={() => { setStep('scan-psbt'); setPsbtPayload(null); setSignedQrUrl(''); }}>
+            <Button variant="outline" onClick={() => { setStep('scan-signing-request'); setSigningRequest(null); setSignedQrUrl(''); }}>
               {t('bsvPayment.airGap.signer.resign')}
             </Button>
             <Button onClick={onCancel}>{t('bsvPayment.airGap.signer.done')}</Button>
