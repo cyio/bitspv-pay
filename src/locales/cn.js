@@ -122,7 +122,7 @@ export default {
     },
     pinModal: {
       setTitle: '设置新钱包', // 修改标题
-      setPrompt: '为您的钱包输入一个新的PIN码（至少6位）：', // PIN 提示语
+      setPrompt: '为您的钱包设置 PIN 码：',
       setButton: '设置PIN码',
       confirmTitle: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
       confirmPrompt: '重新输入您的PIN码以确认：', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
@@ -154,7 +154,7 @@ export default {
       unlockCancelledMessage: '解锁已取消。钱包仍处于锁定状态。',
       decryptionFailedTitle: '解密失败',
       decryptionFailedMessage: '解密钱包数据失败。PIN码可能不正确或数据已损坏。请重试。',
-      pinHintForSet: 'PIN 码用于加密私钥，本网站不会保存您的PIN码，它将在转账等操作时使用。',
+      pinHintForSet: '至少 8 位，需同时包含字母和数字。PIN 码用于加密私钥，本网站不会保存，请务必牢记。',
       pinIsMandatoryTitle: '需要设置 PIN',
       pinIsMandatoryMessage: '为了保护您的资金安全，必须设置 PIN 码。此步骤无法跳过。',
       confirmPinCancelledTitle: '确认 PIN 已取消', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
@@ -174,6 +174,7 @@ export default {
         maxLength: '{{field}}不能超过 {{max}} 个字符',
         minLength: '{{field}}不能少于 {{min}} 个字符',
         pattern: 'PIN 码必须同时包含字母和数字',
+        pinStrength: 'PIN 码至少 8 位，且必须同时包含字母和数字',
       },
     },
     walletNameLabel: '钱包名称', // 新增

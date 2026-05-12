@@ -124,6 +124,9 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
         <div className="py-4">
           {inputs.map((input, index) => {
             const rules = {};
+            if (input.validate) {
+              rules.validate = input.validate;
+            }
             if (input.required) {
               rules.required = t('bsvPayment.pinModal.validation.required', { field: input.label });
             }

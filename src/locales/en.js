@@ -127,7 +127,7 @@ export default {
     },
     pinModal: {
       setTitle: 'Set new wallet', // Modified title
-      setPrompt: 'Enter a new PIN (minimum 6 digits) for your wallet:', // PIN prompt
+      setPrompt: 'Set a PIN for your wallet:',
       setButton: 'Set PIN',
       confirmTitle: 'Confirm PIN', // Retained for consistency, though no longer used in combined flow
       confirmPrompt: 'Re-enter your PIN to confirm:', // Retained for consistency
@@ -161,8 +161,7 @@ export default {
       decryptionFailedTitle: 'Decryption Failed',
       decryptionFailedMessage:
         'Failed to decrypt wallet data. The PIN might be incorrect or data corrupted. Please try again.',
-      pinHintForSet:
-        'The PIN is used to encrypt your private key. This website will not save your PIN. It will be required for operations like transfers.',
+      pinHintForSet: 'At least 8 characters, must include both letters and numbers. Your PIN encrypts your private key and is never saved by this site — keep it safe.',
       pinIsMandatoryTitle: 'PIN Required',
       pinIsMandatoryMessage:
         'To protect your funds, setting a PIN is mandatory. This step cannot be skipped.',
@@ -184,6 +183,7 @@ export default {
         maxLength: '{{field}} cannot exceed {{max}} characters',
         minLength: '{{field}} must be at least {{min}} characters',
         pattern: 'PIN must contain both letters and numbers',
+        pinStrength: 'PIN must be at least 8 characters and contain both letters and numbers',
       },
     },
     walletNameLabel: 'Wallet Name', // New

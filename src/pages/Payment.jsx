@@ -422,7 +422,8 @@ export default function Payment() {
           title: t('bsvPayment.pinModal.setTitle'),
           inputs: [
             { id: 'walletName', label: t('bsvPayment.pinModal.walletNamePrompt'), type: 'text', placeholder: t('bsvPayment.pinModal.walletNamePlaceholder'), defaultValue: defaultWalletName, maxLength: 20 },
-            { id: 'pin', label: t('bsvPayment.pinModal.setPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, minLength: 8, maxLength: 20, pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/, hintMessage: t('bsvPayment.pinModal.pinHintForSet') },
+            { id: 'pin', label: t('bsvPayment.pinModal.setPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20, hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
+              validate: (v) => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) || t('bsvPayment.pinModal.validation.pinStrength') },
           ],
           confirmButtonText: t('bsvPayment.pinModal.setButton'),
           showCancelButton: false,
