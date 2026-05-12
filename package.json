@@ -53,5 +53,8 @@
     "vite-plugin-html": "^3.2.2",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-singlefile": "^2.3.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "unrs-resolver"]
   }
 }
