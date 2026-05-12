@@ -11,7 +11,7 @@ import {
 
 const PaymentAbout = ({ show, onClose }) => {
   const { t } = useTranslation();
-  const version = '1.0.0';
+  const version = import.meta.env.VITE_APP_VERSION;
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
@@ -27,14 +27,16 @@ const PaymentAbout = ({ show, onClose }) => {
             <ul className="list-disc list-inside text-sm">
               <li>{t('paymentAbout.security.provider')}</li>
               <li>{t('paymentAbout.security.browserEnvironment')}</li>
+              <li>{t('paymentAbout.security.coldWallet')}</li>
             </ul>
           </div>
-          
+
           <div className="mb-4">
             <h3 className="font-bold mb-2">{t('paymentAbout.usage.title')}</h3>
             <ul className="list-disc list-inside text-sm">
               <li>{t('paymentAbout.usage.disposableAmount')}</li>
               <li>{t('paymentAbout.usage.mobileRecommendation')}</li>
+              <li>{t('paymentAbout.usage.coldWallet')}</li>
               <li>{t('paymentAbout.usage.desktopComparison')}</li>
             </ul>
           </div>
@@ -43,13 +45,23 @@ const PaymentAbout = ({ show, onClose }) => {
             <h3 className="font-bold mb-2">{t('paymentAbout.tools')}</h3>
             <ul className="list-disc list-inside text-sm">
               <li>
-                <a 
-                  href="https://bitspv.com/wallet-decrypt" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href="https://bitspv.com/wallet-decrypt"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
                 >
                   {t('paymentAbout.walletDecryptTool')}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/cyio/bitspv-pay/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  {t('paymentAbout.offlineRelease')}
                 </a>
               </li>
             </ul>

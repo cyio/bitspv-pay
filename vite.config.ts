@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+
+const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
@@ -107,6 +110,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: { esbuildOptions: { target: 'esnext' } }, // <-- Set this to resolve dev issue.
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(version),
+    },
     build: {
       target: 'ES2022',
       rollupOptions: {

@@ -1,7 +1,7 @@
 {
-  "name": "bitspv",
+  "name": "bitspv-pay",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "npm run dev",
@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss,less,json,md}\"",
     "ship": "URL=$(vercel 2>&1 | grep -o 'https://[^ ]*\\.vercel\\.app' | tail -1) && ./scripts/notify.sh \"🚀 Preview: $URL\"",
-    "ship:prod": "vercel --prod"
+    "ship:prod": "vercel --prod",
+    "build:offline": "vite build --config vite.config.offline.ts && node scripts/release-offline.mjs"
   },
   "dependencies": {
     "@bsv/paymail": "^2.1.1",
@@ -50,6 +51,7 @@
     "typescript": "^5.0.2",
     "vite": "^7.3.1",
     "vite-plugin-html": "^3.2.2",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

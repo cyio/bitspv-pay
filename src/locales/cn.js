@@ -358,26 +358,27 @@ export default {
   paymentAbout: {
     title: '关于',
     description:
-      '非托管网页钱包，仅适用于临时小额支付。安全性低，不适合存储资金，使用请自行承担风险。',
+      '非托管 BSV 钱包，支持在线热钱包和离线冷钱包两种模式。热钱包适合日常小额支付，冷钱包支持气隙离线签名，适合安全存储。',
     security: {
       title: '安全性说明',
-      provider: '基于 BSV TS-SDK 和公开免费的 API 服务提供商',
-      browserEnvironment: '钱包的安全性取决于你的 浏览器环境 与 使用习惯',
+      provider: '基于 BSV TS-SDK，代码开源可审计。',
+      browserEnvironment: '热钱包安全性取决于浏览器环境与使用习惯。',
+      coldWallet:
+        '冷钱包：私钥不接触联网设备。在气隙设备上离线签名，通过二维码传输，由在线设备广播交易。',
     },
     usage: {
       title: '使用建议',
       disposableAmount:
-        '仅存放可承受损失的金额，视作“随身零钱包”。浏览器数据被清除、设备丢失或备份丢失等情况，可导致资金丢失，无法找回。',
+        '热钱包仅存放可承受损失的金额。浏览器数据清除、设备丢失或备份失败均可导致资金永久丢失。',
       mobileRecommendation:
-        '推荐使用手机设备：某些 App 提供内置的类沙盒浏览器环境，能提供更高的隔离性与安全性',
-      desktopComparison: '桌面端操作更便捷，但相较而言安全性稍低',
+        '热钱包推荐使用手机：部分 App 内置沙盒浏览器，隔离性与安全性更好。',
+      coldWallet:
+        '冷钱包：从 GitHub Releases 下载离线单文件，校验 SHA256 后在气隙设备上打开使用。',
+      desktopComparison: '桌面端操作便捷，但隔离性低于手机沙盒环境。',
     },
     walletDecryptTool: 'BitSPV 钱包备份解密工具（开源）',
+    offlineRelease: '离线单文件构建（GitHub Releases）',
     tools: '相关工具',
-    content: {
-      paragraph1: '这是一个支付功能的示例实现，用于演示 BSV 小额支付的能力。',
-      paragraph2: '所有交易均在 BSV 网络上进行，公开透明。请注意保管好您的私钥。',
-    },
     versionLabel: '版本',
     tipLabel: '打赏',
     closeButton: '关闭',

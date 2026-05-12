@@ -365,29 +365,28 @@ export default {
   paymentAbout: {
     title: 'About',
     description:
-      'Non-custodial web wallet for temporary small payments only. Not safe for storing funds. Use at your own risk.',
+      'Non-custodial BSV wallet with online and offline modes. Use as a hot wallet for everyday small payments, or as a cold wallet with air-gapped signing for secure storage.',
     security: {
       title: 'Security Notes',
-      provider: 'Based on BSV TS-SDK and publicly available free API service providers.',
+      provider: 'Built on BSV TS-SDK with open-source, auditable code.',
       browserEnvironment:
-        'The security of the wallet depends on your browser environment and usage habits.',
+        'Hot wallet security depends on your browser environment and usage habits.',
+      coldWallet:
+        'Cold wallet: private keys never touch a networked device. Sign transactions offline via QR code, then broadcast from a separate online device.',
     },
     usage: {
       title: 'Usage Recommendations',
       disposableAmount:
-        'Store only what you can afford to lose — like a pocket wallet. Clearing browser data, losing your device, or backup failure can lead to unrecoverable funds.',
+        'Hot wallet — store only what you can afford to lose. Clearing browser data, losing your device, or backup failure can lead to unrecoverable funds.',
       mobileRecommendation:
-        'It is recommended to use a mobile device: some Apps provide a built-in sandbox-like browser environment, which can offer higher isolation and security.',
-      desktopComparison: 'Desktop operation is more convenient, but relatively less secure.',
+        'For hot wallet use, mobile Apps with built-in sandboxed browsers offer higher isolation and security.',
+      coldWallet:
+        'For cold wallet use, download the offline single-file build, verify its SHA256 checksum, and open it on an air-gapped device.',
+      desktopComparison: 'Desktop is more convenient but less isolated than mobile sandbox environments.',
     },
-    walletDecryptTool: 'BitSPV Wallet Backup Decryption Tool(Open Source)',
+    walletDecryptTool: 'BitSPV Wallet Backup Decryption Tool (Open Source)',
+    offlineRelease: 'Offline Single-File Build (GitHub Releases)',
     tools: 'Related Tools',
-    content: {
-      paragraph1:
-        'This is an example implementation of a payment feature to demonstrate the capabilities of BSV micropayments.',
-      paragraph2:
-        'All transactions are conducted on the BSV network and are publicly transparent. Please ensure to keep your private key secure.',
-    },
     versionLabel: 'Version',
     tipLabel: 'Tip',
     closeButton: 'Close',
