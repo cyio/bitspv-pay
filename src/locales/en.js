@@ -329,6 +329,10 @@ export default {
     },
     qrErrorNotSupported: 'Your browser does not support QR code scanning.',
     qrErrorCameraAccessFailed: 'Failed to access camera',
+    qrCameraFallbackHint: 'Camera access was denied. Please take a photo to scan the QR code.',
+    qrCameraFallbackCamera: 'Take Photo',
+    qrCameraFallbackGallery: 'Choose from Gallery',
+    qrErrorDecodeFailedFromPhoto: 'No QR code found in the photo. Please try again.',
     viewOnExplorer: 'View on Explorer',
   },
   modal: {

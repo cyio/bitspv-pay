@@ -10,9 +10,12 @@ const hasNativeDetector = () =>
 const QRScanner = ({ onScanResult, children }) => {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   // 控制扫描循环生命周期，避免组件卸载后回调
   const activeRef = useRef(false);
 
@@ -27,11 +30,12 @@ const QRScanner = ({ onScanResult, children }) => {
       streamRef.current = null;
     }
     setShowPreview(false);
+    setShowFallback(false);
   };
 
   const scan = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      onScanResult({ error: t('bsvPayment.qrErrorNotSupported') });
+      setShowFallback(true);
       return;
     }
 
@@ -46,10 +50,93 @@ const QRScanner = ({ onScanResult, children }) => {
       streamRef.current = stream;
       setShowPreview(true);
     } catch (error) {
-      onScanResult({
-        error: `${t('bsvPayment.qrErrorCameraAccessFailed')}: ${error.message}`,
-      });
+      // file:// 协议下 Android Chrome 会抛 NotAllowedError，降级为拍照识别
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setShowFallback(true);
+      } else {
+        onScanResult({
+          error: `${t('bsvPayment.qrErrorCameraAccessFailed')}: ${error.message}`,
+        });
+      }
     }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reset = () => {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      setShowFallback(false);
+    };
+
+    try {
+      if (hasNativeDetector()) {
+        // BarcodeDetector: createImageBitmap(Blob) bypasses canvas entirely,
+        // no taint issue on file:// protocol.
+        const bitmap = await createImageBitmap(file);
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const codes = await detector.detect(bitmap);
+        bitmap.close();
+        reset();
+        if (codes.length > 0) {
+          onScanResult({ data: codes[0].rawValue });
+        } else {
+          onScanResult({ error: t('bsvPayment.qrErrorDecodeFailedFromPhoto') });
+        }
+        return;
+      }
+    } catch {
+      // BarcodeDetector failed, fall through to jsQR
+    }
+
+    // jsQR fallback: use FileReader (data URL) — not createObjectURL, which
+    // produces blob:null on file:// and taints the canvas.
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 2000;
+        let dw = img.width, dh = img.height;
+        if (dw > MAX || dh > MAX) {
+          const scale = MAX / Math.max(dw, dh);
+          dw = Math.round(dw * scale);
+          dh = Math.round(dh * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = dw;
+        canvas.height = dh;
+        const ctx = canvas.getContext('2d');
+        ctx.filter = 'contrast(1.5) brightness(1.05)';
+        ctx.drawImage(img, 0, 0, dw, dh);
+        ctx.filter = 'none';
+        let imageData;
+        try {
+          imageData = ctx.getImageData(0, 0, dw, dh);
+        } catch {
+          reset();
+          onScanResult({ error: t('bsvPayment.qrErrorDecodeFailedFromPhoto') });
+          return;
+        }
+        const code = jsQR(imageData.data, dw, dh);
+        reset();
+        if (code) {
+          onScanResult({ data: code.data });
+        } else {
+          onScanResult({ error: t('bsvPayment.qrErrorDecodeFailedFromPhoto') });
+        }
+      };
+      img.onerror = () => {
+        reset();
+        onScanResult({ error: t('bsvPayment.qrErrorDecodeFailedFromPhoto') });
+      };
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => {
+      onScanResult({ error: t('bsvPayment.qrErrorDecodeFailedFromPhoto') });
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -154,6 +241,48 @@ const QRScanner = ({ onScanResult, children }) => {
   return (
     <>
       {children({ scan })}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      {showFallback && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center px-6">
+          <button
+            onClick={stopScanning}
+            className="absolute top-4 right-4 text-white text-xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70"
+          >
+            ×
+          </button>
+          <p className="text-white text-center text-sm opacity-80 mb-6">
+            {t('bsvPayment.qrCameraFallbackHint')}
+          </p>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              className="bg-white text-black font-semibold px-6 py-3 rounded-lg text-base"
+            >
+              {t('bsvPayment.qrCameraFallbackCamera')}
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-white bg-opacity-20 text-white font-semibold px-6 py-3 rounded-lg text-base"
+            >
+              {t('bsvPayment.qrCameraFallbackGallery')}
+            </button>
+          </div>
+        </div>
+      )}
       {showPreview && (
         <div className="fixed inset-0 z-50 bg-black">
           <button

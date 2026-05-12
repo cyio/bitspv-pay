@@ -319,6 +319,10 @@ export default {
     },
     qrErrorNotSupported: '您的浏览器不支持扫码功能',
     qrErrorCameraAccessFailed: '无法访问摄像头',
+    qrCameraFallbackHint: '摄像头权限被拒绝，请拍照后识别二维码',
+    qrCameraFallbackCamera: '拍照扫描',
+    qrCameraFallbackGallery: '从相册选择',
+    qrErrorDecodeFailedFromPhoto: '未能识别照片中的二维码，请重试',
     viewOnExplorer: '在浏览器中查看',
     viewHistoryButton: '查看交易记录', // 新增：查看交易记录按钮
   },
@@ -358,13 +362,13 @@ export default {
   paymentAbout: {
     title: '关于',
     description:
-      '非托管 BSV 钱包，支持在线热钱包和离线冷钱包两种模式。热钱包适合日常小额支付，冷钱包支持气隙离线签名，适合安全存储。',
+      '非托管 BSV 钱包，支持在线热钱包和离线冷钱包两种模式。热钱包适合日常小额支付，冷钱包支持离线签名，适合安全存储。',
     security: {
       title: '安全性说明',
       provider: '基于 BSV TS-SDK，代码开源可审计。',
       browserEnvironment: '热钱包安全性取决于浏览器环境与使用习惯。',
       coldWallet:
-        '冷钱包：私钥不接触联网设备。在气隙设备上离线签名，通过二维码传输，由在线设备广播交易。',
+        '冷钱包：私钥不接触联网设备。在物理隔离设备上离线签名，通过二维码传输，由在线设备广播交易。',
     },
     usage: {
       title: '使用建议',
@@ -373,7 +377,7 @@ export default {
       mobileRecommendation:
         '热钱包推荐使用手机：部分 App 内置沙盒浏览器，隔离性与安全性更好。',
       coldWallet:
-        '冷钱包：从 GitHub Releases 下载离线单文件，校验 SHA256 后在气隙设备上打开使用。',
+        '冷钱包：从 GitHub Releases 下载离线单文件，校验 SHA256 后在离线设备上打开使用。',
       desktopComparison: '桌面端操作便捷，但隔离性低于手机沙盒环境。',
     },
     walletDecryptTool: 'BitSPV 钱包备份解密工具（开源）',
