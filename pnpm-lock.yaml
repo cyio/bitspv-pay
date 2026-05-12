@@ -1,11 +1,12 @@
 lockfileVersion: '9.0'
 
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  onlyBuiltDependencies:
-    - esbuild
-    - unrs-resolver
 
 importers:
 
