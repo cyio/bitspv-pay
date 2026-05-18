@@ -7,7 +7,7 @@ const version = pkg.version;
 const gitHash = execSync('git rev-parse --short HEAD').toString().trim();
 
 const srcPath = 'dist-offline/index.offline.html';
-const destName = `bitspv-offline-v${version}-${gitHash}.html`;
+const destName = `bitspv-pay-offline-v${version}-${gitHash}.html`;
 const destPath = `dist-offline/${destName}`;
 
 const content = readFileSync(srcPath);

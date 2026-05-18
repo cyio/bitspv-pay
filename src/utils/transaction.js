@@ -187,7 +187,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                 for (const ref of paymailRefs) {
                     try {
                         if (addLog) addLog(`Notifying Paymail P2P server: ${ref.paymail}...`, 'info');
-                        const walletName = 'BitSPV.com';
+                        const walletName = 'pay.BitSPV.com';
                         const metadata = {
                             sender: `${walletName} - ${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
                             note: `P2P tx from ${walletName}`
@@ -391,7 +391,7 @@ export const broadcastSignedTx = async (txHex, { address, paymailRefs = [], addL
                     } else {
                         client = new PaymailClient();
                     }
-                    const walletName = 'BitSPV.com';
+                    const walletName = 'pay.BitSPV.com';
                     for (const ref of paymailRefs) {
                         try {
                             const metadata = {

@@ -214,8 +214,8 @@ async function getBalance(address, network = 'main') {
       transform: data => ({ confirmed: data.confirmed, unconfirmed: data.unconfirmed }),
     },
     bitails: {
-      url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/balance`, // Assuming Bitails has a separate balance API
-      transform: data => ({ confirmed: data.balance, unconfirmed: 0 }), // Assuming Bitails returns different fields
+      url: `${BITAILS_ADDRESS_BALANCE_API}/${address}/balance`,
+      transform: data => ({ confirmed: data.confirmed, unconfirmed: data.unconfirmed }),
     },
   };
 
