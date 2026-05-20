@@ -199,6 +199,7 @@ export default {
       addressLabel: 'BSV Address',
       placeholder: 'Enter or paste BSV address',
       confirmButton: 'Confirm',
+      badge: 'Watch-only',
     },
     airGap: {
       transferOffline: 'Transfer (Offline Sign)',

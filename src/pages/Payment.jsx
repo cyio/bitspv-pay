@@ -266,12 +266,12 @@ function WalletUI() {
             </div>
           </div>
 
-          {walletName && (
+          {(walletName || isWatchOnly) && (
             <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">{walletName}</span>
+              {walletName && <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">{walletName}</span>}
               {isWatchOnly && (
                 <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                  观察钱包
+                  {t('bsvPayment.watchAddress.badge')}
                 </span>
               )}
             </div>

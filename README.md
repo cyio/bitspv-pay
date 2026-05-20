@@ -12,6 +12,8 @@ As a lightweight wrapper for the BSV SDK, this project aims for minimal dependen
 - **Easy Integration**: Can be used as a standalone payment page or integrated with third-party sites.
 - **Non-custodial**: Users have full control of their private keys, which are stored locally.
 - **Flexible Payments**: Supports sending to both legacy BSV addresses and Paymail.
+- **Watch-only Wallet & Air-gap Signing**: Add a watch address without a private key, then sign transactions offline via QR code on an air-gapped device.
+- **Offline Single-file Build**: A self-contained HTML build for cold wallet use — no network required after download.
 - **Internationalization**: Multi-language support.
 
 ## Tech Stack
@@ -85,6 +87,8 @@ graph TD
     4. **Return Result**: Communicates the transaction ID back to the originating site using `postMessage` (popup mode) or a URL redirect (redirect mode).
 - **Wallet Management**:
     - Create, import, and back up the wallet.
+    - Add a watch-only address (no private key) for monitoring balances.
+    - Sign transactions offline via QR code for air-gapped cold wallet use.
     - Manually send BSV to legacy addresses or Paymail.
     - View transaction history.
 - **Security**:
@@ -118,6 +122,13 @@ For instructions on how to integrate the payment tool with your website, please 
 pnpm build
 ```
 The build artifacts will be located in the `dist/` directory.
+
+### Offline Single-file Build (Cold Wallet)
+
+```bash
+pnpm build:offline
+```
+Produces a self-contained HTML file with no external dependencies, suitable for use on an air-gapped device.
 
 ## Contributing
 

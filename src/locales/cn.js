@@ -190,6 +190,7 @@ export default {
       addressLabel: 'BSV 地址',
       placeholder: '输入或粘贴 BSV 地址',
       confirmButton: '确认',
+      badge: '观察钱包',
     },
     airGap: {
       transferOffline: '转账（离线签名）',
