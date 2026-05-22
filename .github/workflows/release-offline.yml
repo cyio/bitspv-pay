@@ -36,12 +36,12 @@ jobs:
 
           Download the `.html` file and verify integrity before use:
           ```
-          shasum -a 256 -c bitspv-offline-*.html.sha256
+          shasum -a 256 -c bitspv-pay-offline-*.html.sha256
           ```
           Then open the `.html` file directly in your browser — no server needed.
           EOF
           gh release create ${{ github.ref_name }} \
-            dist-offline/bitspv-offline-*.html \
-            dist-offline/bitspv-offline-*.html.sha256 \
+            dist-offline/bitspv-pay-offline-*.html \
+            dist-offline/bitspv-pay-offline-*.html.sha256 \
             --title "${{ github.ref_name }}" \
             --notes-file release-notes.md
