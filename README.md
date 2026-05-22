@@ -6,6 +6,23 @@ A lightweight, non-custodial BSV web wallet and payment tool for sending and rec
 
 As a lightweight wrapper for the BSV SDK, this project aims for minimal dependencies and enhanced security via a strict Content Security Policy (CSP). It relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
 
+## Why a Web Wallet?
+
+- **Long-term sustainability**: Native apps depend on app store approval, platform SDKs, and ongoing revenue to survive. A web wallet runs in any browser, has no gatekeepers, and can be maintained at near-zero cost — eliminating the risk of an abandoned app forcing users to migrate their funds.
+- **Native-performance QR scanning**: Chrome's built-in `BarcodeDetector` API provides hardware-accelerated barcode parsing on par with native apps — no JS library needed on supported browsers. This has been one of the key advantages of this project from the start.
+
+## Usage Scenarios
+
+### Hot Wallet (Daily Use)
+
+Suitable for small, everyday payments where some risk is acceptable. Access the hosted version directly — no installation required. At payment time, the app decrypts the private key locally and signs the transaction on-device; the key never leaves the browser.
+
+> Store only what you can afford to lose. Browser data loss, device theft, or a missed backup can be unrecoverable.
+
+### Cold Storage (Offline)
+
+For securing larger amounts. Download the offline single-file build and pin it to a specific release — it will never auto-update. Create or import your wallet on an air-gapped device; use a watch-only wallet on your online device and sign transactions via QR code. Back up both the encrypted wallet file and the offline HTML together so the wallet remains self-contained and independently recoverable.
+
 ## Features
 
 - **Lightweight & Focused**: A simple interface for core payment tasks.
@@ -100,7 +117,7 @@ For instructions on how to integrate the payment tool with your website, please 
 
 ## Tools
 
-- **[Wallet Backup Decryption Tool](https://cyio.github.io/bitspv-open/)**: A standalone tool to decrypt exported wallet backups.
+- **[Wallet Backup Decryption Tool](https://cyio.github.io/bitspv-open/wallet-decrypt/)**: A standalone tool to decrypt exported wallet backups.
 
 ## Development and Deployment
 

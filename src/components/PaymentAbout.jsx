@@ -11,7 +11,6 @@ import {
 
 const PaymentAbout = ({ show, onClose }) => {
   const { t } = useTranslation();
-  const version = import.meta.env.VITE_APP_VERSION;
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
@@ -46,7 +45,7 @@ const PaymentAbout = ({ show, onClose }) => {
             <ul className="list-disc list-inside text-sm">
               <li>
                 <a
-                  href="https://bitspv.com/wallet-decrypt"
+                  href="https://cyio.github.io/bitspv-open/wallet-decrypt/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
@@ -67,9 +66,6 @@ const PaymentAbout = ({ show, onClose }) => {
             </ul>
           </div>
 
-          <div className="mt-4 text-sm text-gray-500">
-            <span>{t('paymentAbout.versionLabel')}: {version}</span>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

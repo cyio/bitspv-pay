@@ -111,6 +111,7 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: { esbuildOptions: { target: 'esnext' } }, // <-- Set this to resolve dev issue.
     define: {
+      __APP_VERSION__: JSON.stringify(version),
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(version),
     },
     build: {
