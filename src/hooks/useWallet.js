@@ -8,6 +8,7 @@ import { getUTXOs, getBalance } from '../utils/api';
 import { isWeChat } from '../utils';
 import { encryptData, decryptData } from '../utils/webauthn';
 import { usePinManager } from './usePinManager';
+import { getTxExplorerUrl } from '../utils/apiProviderHealth';
 import { processRefund } from '../utils/transaction';
 import { isValidAddress, isValidPaymail } from '../utils/bsv';
 import { useLog, LOG_TYPES } from '../contexts/LogContext';
@@ -376,7 +377,7 @@ export function useWallet() {
         if (result?.error === 0) {
             const successMessage = {
                 text: t('bsvPayment.statusMessages.transactionSent'),
-                linkUrl: `https://whatsonchain.com/tx/${result.txid}`,
+                linkUrl: getTxExplorerUrl(result.txid),
                 linkText: t('bsvPayment.viewOnExplorer'),
             };
             setTransferMessage(successMessage);

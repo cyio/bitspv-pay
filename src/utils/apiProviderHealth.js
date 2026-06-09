@@ -1,7 +1,19 @@
 // Service provider health status and selection logic
-import { isWeChat } from './index';
+
+const explorerUrls = {
+  bananablocks: 'https://bananablocks.com/tx/',
+  whatsOnChain: 'https://whatsonchain.com/tx/',
+  bitails: 'https://bitails.io/tx/',
+};
 
 const serviceProviders = {
+  bananablocks: {
+    name: 'bananablocks',
+    healthy: true,
+    latency: 0,
+    lastChecked: 0,
+    failures: 0,
+  },
   whatsOnChain: {
     name: 'whatsOnChain',
     healthy: true,
@@ -19,8 +31,18 @@ const serviceProviders = {
   // ... other service providers
 };
 
-// 如果是微信环境，默认使用 bitails，因为 WOC 的 Cloudflare 防护屏蔽了微信
-let currentPreferredProviderName = isWeChat ? 'bitails' : 'whatsOnChain'; 
+const STORAGE_KEY = 'preferred_api_provider';
+let currentPreferredProviderName = localStorage.getItem(STORAGE_KEY) || 'bananablocks';
+
+function setPreferredProvider(name) {
+  if (!serviceProviders[name]) return;
+  currentPreferredProviderName = name;
+  localStorage.setItem(STORAGE_KEY, name);
+}
+
+function getAvailableProviders() {
+  return Object.keys(serviceProviders);
+}
 
 /**
  * Updates the health status of a service provider.
@@ -45,7 +67,8 @@ function updateProviderHealth(providerName, success, latency = 0) {
     provider.latency = Infinity; // Mark as unavailable
     // If the currently unhealthy provider is the preferred one, reset the preference
     if (currentPreferredProviderName === providerName) {
-      currentPreferredProviderName = null; // Force re-selection
+      currentPreferredProviderName = null;
+      localStorage.removeItem(STORAGE_KEY);
     }
   }
 }
@@ -77,7 +100,16 @@ function getRecommendedProvider() {
   return { name: currentPreferredProviderName, ...serviceProviders[currentPreferredProviderName] };
 }
 
+function getTxExplorerUrl(txid) {
+  const provider = currentPreferredProviderName || 'whatsOnChain';
+  const base = explorerUrls[provider] || explorerUrls.whatsOnChain;
+  return `${base}${txid}`;
+}
+
 export {
   updateProviderHealth,
   getRecommendedProvider,
+  getTxExplorerUrl,
+  setPreferredProvider,
+  getAvailableProviders,
 };

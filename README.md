@@ -9,7 +9,7 @@ As a lightweight wrapper for the BSV SDK, this project aims for minimal dependen
 ## Why a Web Wallet?
 
 - **Long-term sustainability**: Native apps depend on app store approval, platform SDKs, and ongoing revenue to survive. A web wallet runs in any browser, has no gatekeepers, and can be maintained at near-zero cost — eliminating the risk of an abandoned app forcing users to migrate their funds.
-- **Native-performance QR scanning**: Chrome's built-in `BarcodeDetector` API provides hardware-accelerated barcode parsing on par with native apps — no JS library needed on supported browsers. This has been one of the key advantages of this project from the start.
+- **Fast, native QR scanning**: Uses the browser-native BarcodeDetector API where available, delegating barcode parsing to the OS-level implementation — significantly faster than any JS library, with zero bundle overhead. This has been one of the key advantages of this project from the start.
 
 ## Usage Scenarios
 

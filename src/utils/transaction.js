@@ -1,8 +1,8 @@
-import { Transaction, PrivateKey, Script, P2PKH, LivePolicy, Hash } from '@bsv/sdk';
+import { Transaction, PrivateKey, Script, P2PKH, LivePolicy, SatoshisPerKilobyte, Hash } from '@bsv/sdk';
 import { MOCK_DRY_RUN_WIF } from './constants';
 import { PaymailClient } from '@bsv/paymail/client';
 import { getGoogleReachable } from './network';
-import { broadcastTransaction, getSourceTransaction } from './api';
+import { broadcastTransaction, getSourceTransaction, fetchMinerFee } from './api';
 
 const sourceTxCache = new Map();
 
@@ -93,6 +93,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
         let satsIn = 0;
         let fee = 0;
         const feeModel = new LivePolicy();
+        // const feeModel = new SatoshisPerKilobyte(await fetchMinerFee());
         const P2PKH_INPUT_SIZE = 148;
         const minimumFeeForOneInput = Math.ceil(feeModel.value * (P2PKH_INPUT_SIZE / 1000));
 
@@ -126,26 +127,13 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
 
                 // Only attempt to add change if we have more than a tiny bit of dust
                 if (changeAmountBeforeOutput > 0) {
-                    const changeTx = tx.clone();
-                    changeTx.addOutput({
-                        lockingScript: new P2PKH().lock(address),
-                        change: true,
-                    });
-                    const feeWithChange = Math.max(await feeModel.computeFee(changeTx), minimumFeeForOneInput);
+                    tx.addOutput({ lockingScript: new P2PKH().lock(address), change: true });
+                    const feeWithChange = Math.max(await feeModel.computeFee(tx), minimumFeeForOneInput);
 
-                    // CRITICAL FIX: Only add the change output if we can actually afford the NEW fee
-                    // AND the remaining change is positive.
                     if (satsIn >= satsOut + feeWithChange && (satsIn - (satsOut + feeWithChange)) > 0) {
-                        tx.addOutput({
-                            lockingScript: new P2PKH().lock(address),
-                            change: true,
-                        });
                         fee = feeWithChange;
                     } else {
-                        // If adding change output makes it insufficient, or leaves 0 change, 
-                        // we just skip adding it and let the extra sats go to the miner fee.
-                        // This ensures the transaction remains valid.
-                        console.log(`[DEBUG] Skipping change output to keep transaction valid. Extra fee for miner: ${changeAmountBeforeOutput} sats`);
+                        tx.outputs.pop();
                     }
                 }
                 break;
@@ -176,6 +164,11 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
         }
 
         await tx.fee(fee);
+
+        if (dryRun) {
+            return { error: 0, fee, requiredFee: fee, satsOut, total: satsOut + fee };
+        }
+
         await tx.sign();
 
         if (addLog) addLog('Broadcasting transaction...', 'info');
@@ -235,7 +228,7 @@ export const buildUnsignedTx = async (utxos, request, { address, addLog }) => {
 
     try {
         const mockPrivKey = PrivateKey.fromWif(MOCK_DRY_RUN_WIF);
-        const feeModel = new LivePolicy();
+        const feeModel = new SatoshisPerKilobyte(await fetchMinerFee());
         const minimumFee = Math.ceil(feeModel.value * (148 / 1000));
 
         const tx = new Transaction();

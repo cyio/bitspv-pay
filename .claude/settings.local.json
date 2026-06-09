@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pnpm build:*)",
-      "Bash(pnpm build:offline *)"
+      "Bash(pnpm build:offline *)",
+      "Bash(curl -s 'https://bananablocks.com/api/v1/exchangerate')",
+      "Bash(curl -s 'https://bananablocks.com/api/v1/block/tip')"
     ]
   }
 }

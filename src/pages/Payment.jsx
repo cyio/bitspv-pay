@@ -4,8 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import WalletManager from '../components/WalletManager';
 import { useRate } from '../hooks/useRate';
-import { Info, Coffee, History } from 'lucide-react';
+import { Info, Coffee, History, Settings } from 'lucide-react';
 import TransactionHistory from '../components/TransactionHistory.jsx';
+import SettingsModal from '../components/SettingsModal.jsx';
+import { getRecommendedProvider } from '../utils/apiProviderHealth';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +85,8 @@ function WalletUI() {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [currentProvider, setCurrentProvider] = useState(() => getRecommendedProvider()?.name || 'bananablocks');
   const isInitializing = useRef(false);
 
   const statusColor = useMemo(() => {
@@ -264,6 +268,9 @@ function WalletUI() {
               <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <History className="h-5 w-5" />
               </button>
+              <button onClick={() => setShowSettingsModal(true)} title="设置" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <Settings className="h-5 w-5" />
+              </button>
             </div>
           </div>
 
@@ -356,6 +363,13 @@ function WalletUI() {
           </Dialog>
 
           <PaymentAbout show={showAboutModal} onClose={() => setShowAboutModal(false)} />
+
+          <SettingsModal
+            show={showSettingsModal}
+            onClose={() => setShowSettingsModal(false)}
+            currentProvider={currentProvider}
+            onProviderChange={setCurrentProvider}
+          />
 
           <DonationModal
             show={isDonationModalVisible}

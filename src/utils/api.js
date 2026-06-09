@@ -2,6 +2,7 @@
 import { updateProviderHealth, getRecommendedProvider } from './apiProviderHealth';
 
 const WOC_API_BASE = import.meta.env.PROD ? 'https://api.whatsonchain.com' : '/whatsonchain';
+const BANANABLOCKS_API_BASE = 'https://bananablocks.com/api/v1';
 
 const WHATS_ON_CHAIN_API = `${WOC_API_BASE}/v1/bsv/main/tx/raw`;
 const BITAILS_BROADCAST_API = 'https://api.bitails.io/tx/broadcast';
@@ -26,7 +27,7 @@ const WHATS_ON_CHAIN_EXCHANGE_RATE_API = `${WOC_API_BASE}/v1/bsv/main/exchangera
  */
 async function getExchangeRate() {
   try {
-    const response = await fetch(WHATS_ON_CHAIN_EXCHANGE_RATE_API);
+    const response = await fetch(`${BANANABLOCKS_API_BASE}/exchangerate`);
     if (!response.ok) {
       throw new Error(`Failed to fetch exchange rate: ${response.status} ${response.statusText}`);
     }
@@ -49,12 +50,10 @@ async function broadcastTransaction(txHex) {
   }
 
   try {
-    const response = await fetch(WHATS_ON_CHAIN_API, {
+    const response = await fetch(`${BANANABLOCKS_API_BASE}/tx/broadcast`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ txhex: txHex }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawtx: txHex }),
     });
 
     if (!response.ok) {
@@ -126,6 +125,10 @@ const getSourceTransaction = async txid => {
   }
 
   const sourceApiEndpoints = {
+    bananablocks: {
+      url: `${BANANABLOCKS_API_BASE}/tx/${txid}/hex`,
+      transform: data => data,
+    },
     whatsOnChain: {
       url: `${WHATS_ON_CHAIN_TX_API}/${txid}/hex`,
       transform: data => data,
@@ -209,6 +212,10 @@ async function getBalance(address, network = 'main') {
   }
 
   const apiEndpoints = {
+    bananablocks: {
+      url: `${BANANABLOCKS_API_BASE}/address/${address}/balance`,
+      transform: data => ({ confirmed: data.balance, unconfirmed: 0 }),
+    },
     whatsOnChain: {
       url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/balance`,
       transform: data => ({ confirmed: data.confirmed, unconfirmed: data.unconfirmed }),
@@ -417,6 +424,17 @@ const getUTXOs = async (address, network = 'main') => {
   }
 
   const utxoApiEndpoints = {
+    bananablocks: {
+      url: `${BANANABLOCKS_API_BASE}/address/${address}/utxos`,
+      transform: data =>
+        data.items.map(utxo => ({
+          txid: utxo.txid,
+          vout: utxo.vout,
+          satoshis: utxo.value,
+          height: utxo.block_height,
+          _provider: 'bananablocks',
+        })),
+    },
     whatsOnChain: {
       url: `${WHATS_ON_CHAIN_ADDRESS_BALANCE_API}/${network}/address/${address}/unspent`,
       transform: data =>
@@ -507,12 +525,12 @@ async function getAddressDetail(addr) {
 
 const fetchMinerFee = async () => {
   try {
-    const now = Math.floor(Date.now() / 1000);
-    const oneDayAgo = now - 86400;
-    const response = await fetch(`${WHATS_ON_CHAIN_MINER_FEES_API}?from=${oneDayAgo}&to=${now}`);
+    const response = await fetch(`${BANANABLOCKS_API_BASE}/mempool/stats`);
     const data = await response.json();
-    const minFee = Math.min(...data.map(item => item.min_fee_rate));
-    return Math.max(minFee, 1.0011);
+    // Use the lowest non-zero fee rate bucket, minimum 1 sat/kb
+    const bucket = data.fee_rate_buckets?.find(b => b.count > 0 && b.min >= 1);
+    const rate = bucket ? bucket.min : 1;
+    return Math.max(rate, 1.0011);
   } catch (error) {
     console.error('Failed to fetch miner fees:', error);
     return 1.0011;
@@ -534,6 +552,14 @@ async function fetchAddressTransactions(address) {
   }
 
   const historyApiEndpoints = {
+    bananablocks: {
+      url: `${BANANABLOCKS_API_BASE}/address/${address}/txs`,
+      transform: data =>
+        data.txs.map(tx => ({
+          tx_hash: tx.txid,
+          height: tx.block_height ?? 0,
+        })),
+    },
     whatsOnChain: {
       url: WHATS_ON_CHAIN_ADDRESS_HISTORY_API,
       method: 'POST',
