@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { truncate } from '../utils/bsv';
 import { Copy, Check } from 'lucide-react';
+import { getTxExplorerUrl } from '../utils/apiProviderHealth';
 
 const TransactionHistory = ({ address, pubKey }) => {
   const { t } = useTranslation();
@@ -28,6 +29,11 @@ const TransactionHistory = ({ address, pubKey }) => {
     if (!timestamp) return t('transactionHistory.unconfirmed');
     const date = new Date(timestamp * 1000);
     return date.toLocaleString();
+  };
+
+  const formatAmount = (amount) => {
+    if (amount === undefined || amount === null) return '0';
+    return Number(amount).toFixed(8).replace(/\.?0+$/, '') || '0';
   };
 
   const copyTxid = async (txid) => {
@@ -84,12 +90,18 @@ const TransactionHistory = ({ address, pubKey }) => {
                 <div className="flex-1 mb-2 sm:mb-0 flex flex-col">
                   <div className="flex justify-between items-center mb-1">
                     {pubKey && (
-                      <span
-                        className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                      >
-                        {tx.type === 'income' ? '+' : '-'}
-                        {tx.amount}
-                      </span>
+                      tx.type === 'data/internal' ? (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+                          {t('transactionHistory.internalTransfer')}
+                        </span>
+                      ) : (
+                        <span
+                          className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                        >
+                          {tx.type === 'income' ? '+' : '-'}
+                          {formatAmount(tx.amount)}
+                        </span>
+                      )
                     )}
                     <span className="text-sm text-gray-500 dark:text-gray-300">
                       {formatDate(tx.time)}
@@ -98,7 +110,7 @@ const TransactionHistory = ({ address, pubKey }) => {
                   <div className="text-xs text-gray-400 dark:text-gray-500 flex justify-end">
                     <div>
                       <a
-                        href={`https://whatsonchain.com/tx/${tx.txid}`}
+                        href={getTxExplorerUrl(tx.txid)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline hover:text-blue-500 dark:hover:text-blue-300"

@@ -354,6 +354,7 @@ export default {
     unconfirmed: 'Unconfirmed',
     loadedCount: 'Loaded {{count}} items',
     allLoaded: 'All items loaded',
+    internalTransfer: 'Internal Transfer',
   },
 
   donationModal: {

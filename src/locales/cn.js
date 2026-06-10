@@ -347,6 +347,7 @@ export default {
     unconfirmed: '待确认',
     loadedCount: '已加载 {{count}} 条',
     allLoaded: '已加载全部',
+    internalTransfer: '内部转账',
   },
 
   donationModal: {

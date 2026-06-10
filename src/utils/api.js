@@ -394,22 +394,73 @@ async function fetchTransactionDetailsBatch(txids) {
     return [];
   }
 
+  const provider = getRecommendedProvider();
+
+  const txDetailEndpoints = {
+    bananablocks: {
+      url: txid => `${BANANABLOCKS_API_BASE}/tx/${txid}`,
+      transform: tx => ({
+        txid: tx.txid,
+        time: tx.block_time,
+        blockheight: tx.block_height,
+        vin: (tx.inputs || []).map(inp => ({
+          scriptSig: { hex: inp.script_sig || '' },
+          value: (inp.value || 0) / 1e8,
+        })),
+        vout: (tx.outputs || []).map(out => ({
+          value: (out.value || 0) / 1e8,
+          scriptPubKey: {
+            asm: '',
+            addresses: out.address ? [out.address] : [],
+            hex: out.script_pubkey || '',
+          },
+        })),
+      }),
+    },
+    whatsOnChain: {
+      url: txid => `${WHATS_ON_CHAIN_TX_BATCH_API}/${txid}`,
+      transform: tx => tx,
+    },
+    bitails: {
+      url: txid => `https://api.bitails.io/tx/${txid}`,
+      transform: tx => ({
+        txid: tx.txid,
+        time: tx.blocktime,
+        blockheight: tx.blockheight,
+        vin: (tx.inputs || []).map(inp => ({
+          scriptSig: { hex: inp.scriptSig || '' },
+          value: (inp.source?.satoshis || 0) / 1e8,
+        })),
+        vout: (tx.outputs || []).map(out => ({
+          value: (out.satoshis || 0) / 1e8,
+          scriptPubKey: {
+            asm: '',
+            addresses: out.address ? [out.address] : [],
+            hex: out.script || '',
+          },
+        })),
+      }),
+    },
+  };
+
+  const endpoint = txDetailEndpoints[provider?.name] || txDetailEndpoints.whatsOnChain;
+
   try {
     const results = await Promise.all(
       txids.map(async (txid) => {
-        const response = await fetch(`${WHATS_ON_CHAIN_TX_BATCH_API}/${txid}`);
+        const response = await fetch(endpoint.url(txid));
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.warn(
             `Failed to fetch transaction details for ${txid}: ${response.status} ${response.statusText} ` +
               JSON.stringify(errorData)
           );
-          return null; // Return null or throw an error, depending on the error handling strategy
+          return null;
         }
-        return response.json();
+        const data = await response.json();
+        return endpoint.transform(data);
       })
     );
-    // Filter out failed requests (if they return null)
     return results.filter(result => result !== null);
   } catch (error) {
     console.error('Error fetching transaction details in batch:', error);
@@ -552,14 +603,8 @@ async function fetchAddressTransactions(address) {
   }
 
   const historyApiEndpoints = {
-    bananablocks: {
-      url: `${BANANABLOCKS_API_BASE}/address/${address}/txs`,
-      transform: data =>
-        data.txs.map(tx => ({
-          tx_hash: tx.txid,
-          height: tx.block_height ?? 0,
-        })),
-    },
+    // bananablocks /txs uses cursor pagination (oldest→newest), no way to fetch
+    // newest-first without knowing total count. Disabled until API supports it.
     whatsOnChain: {
       url: WHATS_ON_CHAIN_ADDRESS_HISTORY_API,
       method: 'POST',
