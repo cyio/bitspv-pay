@@ -26,3 +26,4 @@ public/js/*
 *.sw?
 .vercel
 dev-dist/*
+.claude/
