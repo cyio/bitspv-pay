@@ -14,7 +14,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      react(),
+      react({
+        babel: {
+          plugins: [['babel-plugin-react-compiler', { target: '19' }]],
+        },
+      }),
       // visualizer({
       //   open: true, // 在默认浏览器中打开分析报告
       //   gzipSize: true, // 显示 gzip 压缩后的大小
