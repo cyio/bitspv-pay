@@ -144,8 +144,13 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
         const totalRequired = satsOut + requiredFee;
 
         if (satsIn < totalRequired) {
-            const err = `Insufficient funds. Needed ${totalRequired}, found ${satsIn}. (satsOut: ${satsOut}, fee: ${fee}, outputs: ${tx.outputs.length})`;
+            const spendableUtxoCount = (utxos || []).length;
+            const err = spendableUtxoCount === 0
+                ? `No spendable UTXOs found for ${address || 'the wallet'}. Needed ${totalRequired}.`
+                : `Insufficient funds. Needed ${totalRequired}, found ${satsIn}. (satsOut: ${satsOut}, fee: ${fee}, outputs: ${tx.outputs.length})`;
             console.log(`[DEBUG] processRefund Insufficient Funds:`, {
+                address,
+                utxoCount: spendableUtxoCount,
                 satsIn,
                 satsOut,
                 fee,
@@ -154,7 +159,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
                 outputCount: tx.outputs.length,
                 outputs: tx.outputs.map(o => ({ satoshis: o.satoshis, change: o.change }))
             });
-            if (addLog && !dryRun) addLog(err, 'warn');
+            if (addLog && (!dryRun || spendableUtxoCount === 0)) addLog(err, 'warn');
             return {
                 error: 'insufficient-funds',
                 message: `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`,

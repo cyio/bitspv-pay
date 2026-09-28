@@ -40,7 +40,21 @@ export function useWallet() {
       const result = await getBalance(addr);
       setWalletBalanceState(result);
       addLog(`Balance refreshed: ${result.total / 100000000} BSV (confirmed: ${result.confirmed}, unconfirmed: ${result.unconfirmed})`, LOG_TYPES.SUCCESS);
-      return result;
+
+      // Fetch the UTXOs together with the balance. Callers (payment flow, air-gap
+      // sender) need the actual spendable outputs, and a freshly loaded wallet has
+      // none cached yet. A UTXO failure must not break the balance refresh itself.
+      let currentUtxos = [];
+      try {
+        currentUtxos = await getUTXOs(addr);
+        setUtxos(currentUtxos);
+      } catch (utxoError) {
+        const utxoErrorMsg = `refresh UTXOs: ${utxoError.message}`;
+        console.error(utxoErrorMsg, utxoError);
+        addLog(utxoErrorMsg, LOG_TYPES.ERROR);
+      }
+
+      return { ...result, utxos: currentUtxos };
     } catch (error) {
       const errorMsg = `refresh balance: ${error.message}`;
       console.error(errorMsg, error);
@@ -49,7 +63,7 @@ export function useWallet() {
     } finally {
       setIsBalanceLoading(false);
     }
-  }, [address]);
+  }, [address, addLog]);
 
   const createWallet = useCallback(async (options = {}) => {
     console.log('begin createWallet');

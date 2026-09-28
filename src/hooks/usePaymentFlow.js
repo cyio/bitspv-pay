@@ -38,10 +38,15 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
     try {
         let currentUtxos = walletUtxos;
 
-        if (!isInitialCheck) {
+        // Refresh on every poll, and also on the first check when nothing is cached
+        // yet (right after the wallet was created/unlocked) - otherwise processRefund
+        // would run with zero inputs and always report insufficient funds.
+        if (!isInitialCheck || currentUtxos.length === 0) {
             const refreshResult = await refreshBalance(address);
-            if (refreshResult) {
+            if (refreshResult && Array.isArray(refreshResult.utxos)) {
                 currentUtxos = refreshResult.utxos;
+            } else {
+                currentUtxos = [];
             }
         }
 
@@ -67,7 +72,7 @@ export const usePaymentFlow = ({ onPaymentSuccess, wallet, t }) => {
 
         // Funds are sufficient, now we can request PIN
         setIsAmountCalculated(true);
-        setMinCost(dryRunResult.totalRequired);
+        setMinCost(dryRunResult.total);
 
         const keyResult = await ensurePrivateKeyLoaded(pubKey, address);
         
