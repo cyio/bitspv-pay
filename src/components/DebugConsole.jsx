@@ -1,16 +1,40 @@
 import React, { useRef, useEffect } from 'react';
 import { useLog } from '../contexts/LogContext';
-import { ChevronUp, ChevronDown, Trash2, X } from 'lucide-react';
+import { collectDiagnostics, formatDiagnosticsReport, logSecurityAudit } from '../utils/runtimeDiagnostics';
+import { ChevronUp, ChevronDown, Trash2, ShieldCheck, ClipboardCopy } from 'lucide-react';
 
 const DebugConsole = () => {
-  const { logs, clearLogs, isConsoleVisible, toggleConsole } = useLog();
+  const { logs, clearLogs, isConsoleVisible, toggleConsole, addLog } = useLog();
   const scrollRef = useRef(null);
+  const [isChecking, setIsChecking] = React.useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [logs]);
+
+  const handleSecurityCheck = async () => {
+    if (isChecking) return;
+    setIsChecking(true);
+    try {
+      await logSecurityAudit(addLog);
+    } catch (err) {
+      addLog(`安全自检失败: ${err?.message || err}`, 'error');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleCopyReport = async () => {
+    try {
+      const report = formatDiagnosticsReport(await collectDiagnostics());
+      await navigator.clipboard.writeText(report);
+      addLog('诊断报告已复制到剪贴板', 'success');
+    } catch (err) {
+      addLog(`复制诊断报告失败: ${err?.message || err}`, 'error');
+    }
+  };
 
   if (!isConsoleVisible) {
     return (
@@ -32,6 +56,21 @@ const DebugConsole = () => {
           <span className="text-[10px] bg-gray-700 px-2 py-0.5 rounded text-gray-300">{logs.length} entries</span>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={handleSecurityCheck}
+            disabled={isChecking}
+            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="运行安全与完整性自检"
+          >
+            <ShieldCheck size={14} className={isChecking ? 'animate-pulse' : ''} />
+          </button>
+          <button 
+            onClick={handleCopyReport}
+            className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+            title="复制诊断报告"
+          >
+            <ClipboardCopy size={14} />
+          </button>
           <button 
             onClick={clearLogs}
             className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"

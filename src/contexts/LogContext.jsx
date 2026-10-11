@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { logSecurityAudit } from '../utils/runtimeDiagnostics';
 
 const LogContext = createContext();
 
@@ -11,6 +12,18 @@ export const LogProvider = ({ children }) => {
     const newEntry = { timestamp, message: String(message), type };
     setLogs(prev => [...prev.slice(-99), newEntry]); // Keep last 100 logs
   }, []);
+
+  // Run a security / integrity audit automatically when the app boots.
+  // The `cancelled` guard keeps React StrictMode from logging the audit twice.
+  useEffect(() => {
+    let cancelled = false;
+    logSecurityAudit((message, type) => {
+      if (!cancelled) addLog(message, type);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [addLog]);
 
   const clearLogs = useCallback(() => setLogs([]), []);
 
