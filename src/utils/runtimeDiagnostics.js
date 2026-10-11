@@ -275,86 +275,91 @@ async function runChecks() {
 
     scriptSrc = csp['script-src'] || defaultSrc;
 
-    // --- Outbound (data exfiltration) allowlist ---------------------------
-    const outboundSources = extractSources(csp['connect-src'] || defaultSrc);
-    const outboundDomains = domainsOf(outboundSources);
-    const outboundCompare = compareSets(EXPECTED_CSP_ORIGINS['connect-src'] || [], outboundDomains);
-    const outboundFp = await fingerprint(outboundDomains);
+    if (IS_OFFLINE) {
+      // The offline single-file build deliberately relaxes CSP (it needs no
+      // network at all), so the web outbound-allowlist comparison does not
+      // apply. Report it as informational instead of alarming the user.
+      add(
+        'csp-offline',
+        '离线版 CSP（有意放宽）',
+        'skip',
+        "离线单文件：connect-src 为 * 、无 script-src 哈希，跳过 Web 出站白名单比对"
+      );
+      cspReport = { offline: true, directives: buildDirectiveReport(csp) };
+    } else {
+      // --- Outbound (data exfiltration) allowlist -------------------------
+      const outboundSources = extractSources(csp['connect-src'] || defaultSrc);
+      const outboundDomains = domainsOf(outboundSources);
+      const outboundCompare = compareSets(EXPECTED_CSP_ORIGINS['connect-src'] || [], outboundDomains);
+      const outboundFp = await fingerprint(outboundDomains);
 
-    add(
-      'csp-connect-src',
-      'CSP 出站白名单 (connect-src)',
-      outboundCompare.added.length ? 'warn' : 'pass',
-      `${outboundDomains.length} 个来源 · 指纹 sha256:${outboundFp}${
-        outboundCompare.added.length ? ` · 新增: ${outboundCompare.added.join(', ')}` : ' · 与预期一致'
-      }`
-    );
+      add(
+        'csp-connect-src',
+        'CSP 出站白名单 (connect-src)',
+        outboundCompare.added.length ? 'warn' : 'pass',
+        `${outboundDomains.length} 个来源 · 指纹 sha256:${outboundFp}${
+          outboundCompare.added.length ? ` · 新增: ${outboundCompare.added.join(', ')}` : ' · 与预期一致'
+        }`
+      );
 
-    // --- Script execution allowlist ---------------------------------------
-    const scriptSources = extractSources(scriptSrc);
-    const scriptDomains = domainsOf(scriptSources);
-    const scriptCompare = compareSets(EXPECTED_CSP_ORIGINS['script-src'] || [], scriptDomains);
+      // --- Script execution allowlist -------------------------------------
+      const scriptSources = extractSources(scriptSrc);
+      const scriptDomains = domainsOf(scriptSources);
+      const scriptCompare = compareSets(EXPECTED_CSP_ORIGINS['script-src'] || [], scriptDomains);
 
-    add(
-      'csp-script-src',
-      'CSP 脚本白名单 (script-src)',
-      scriptCompare.added.length ? 'warn' : 'pass',
-      `${scriptDomains.length} 个来源${scriptCompare.added.length ? ` · 新增: ${scriptCompare.added.join(', ')}` : ' · 与预期一致'}`
-    );
+      add(
+        'csp-script-src',
+        'CSP 脚本白名单 (script-src)',
+        scriptCompare.added.length ? 'warn' : 'pass',
+        `${scriptDomains.length} 个来源${
+          scriptCompare.added.length ? ` · 新增: ${scriptCompare.added.join(', ')}` : ' · 与预期一致'
+        }`
+      );
 
-    // --- Anomalous sources across all directives --------------------------
-    const anomalies = collectAnomalies(csp);
-    add(
-      'csp-anomaly',
-      'CSP 来源异常 (punycode / 裸 IP / http / 通配)',
-      anomalies.unexpected.length ? 'warn' : 'pass',
-      anomalies.unexpected.length
-        ? anomalies.unexpected.map((a) => `${a.value}: ${a.label}`).join('；')
-        : undefined
-    );
+      // --- Anomalous sources across all directives ------------------------
+      const anomalies = collectAnomalies(csp);
+      add(
+        'csp-anomaly',
+        'CSP 来源异常 (punycode / 裸 IP / http / 通配)',
+        anomalies.unexpected.length ? 'warn' : 'pass',
+        anomalies.unexpected.length
+          ? anomalies.unexpected.map((a) => `${a.value}: ${a.label}`).join('；')
+          : undefined
+      );
 
-    // --- Script-src strength ----------------------------------------------
-    if (scriptSrc.includes("'unsafe-inline'")) {
+      // --- Script-src strength --------------------------------------------
       add(
         'csp-unsafe-inline',
         "script-src 禁止 'unsafe-inline'",
-        IS_OFFLINE ? 'pass' : 'fail',
-        IS_OFFLINE ? '离线单文件构建，属预期放宽' : "script-src 含 'unsafe-inline'，XSS 防护被削弱"
+        scriptSrc.includes("'unsafe-inline'") ? 'fail' : 'pass',
+        scriptSrc.includes("'unsafe-inline'") ? "script-src 含 'unsafe-inline'，XSS 防护被削弱" : undefined
       );
-    } else {
-      add('csp-unsafe-inline', "script-src 禁止 'unsafe-inline'", 'pass');
-    }
 
-    if (scriptSrc.includes("'unsafe-eval'")) {
       add(
         'csp-unsafe-eval',
         "script-src 禁止 'unsafe-eval'",
-        IS_OFFLINE ? 'pass' : 'warn',
-        IS_OFFLINE ? '离线单文件构建，属预期放宽' : "script-src 含 'unsafe-eval'"
+        scriptSrc.includes("'unsafe-eval'") ? 'warn' : 'pass',
+        scriptSrc.includes("'unsafe-eval'") ? "script-src 含 'unsafe-eval'" : undefined
       );
-    } else {
-      add('csp-unsafe-eval', "script-src 禁止 'unsafe-eval'", 'pass');
-    }
 
-    if (IS_OFFLINE) {
-      add('trusted-types', 'Trusted Types 强制 (require-trusted-types-for)', 'skip', '离线构建未启用');
-    } else if ((csp['require-trusted-types-for'] || []).includes("'script'")) {
-      add('trusted-types', 'Trusted Types 强制 (require-trusted-types-for)', 'pass');
-    } else {
-      add(
-        'trusted-types',
-        'Trusted Types 强制 (require-trusted-types-for)',
-        'warn',
-        "未设置 require-trusted-types-for 'script'"
-      );
-    }
+      if ((csp['require-trusted-types-for'] || []).includes("'script'")) {
+        add('trusted-types', 'Trusted Types 强制 (require-trusted-types-for)', 'pass');
+      } else {
+        add(
+          'trusted-types',
+          'Trusted Types 强制 (require-trusted-types-for)',
+          'warn',
+          "未设置 require-trusted-types-for 'script'"
+        );
+      }
 
-    cspReport = {
-      outbound: { domains: outboundDomains, compare: outboundCompare, fingerprint: outboundFp },
-      scripts: { domains: scriptDomains, compare: scriptCompare },
-      anomalies,
-      directives: buildDirectiveReport(csp),
-    };
+      cspReport = {
+        outbound: { domains: outboundDomains, compare: outboundCompare, fingerprint: outboundFp },
+        scripts: { domains: scriptDomains, compare: scriptCompare },
+        anomalies,
+        directives: buildDirectiveReport(csp),
+      };
+    }
   }
 
   // --- Subresource Integrity: external scripts only -------------------------
@@ -393,6 +398,8 @@ async function runChecks() {
   // --- Inline script hash integrity (production only) -----------------------
   if (IS_DEV) {
     add('inline-integrity', '内联脚本哈希校验', 'skip', '开发模式跳过（dev server 会注入内联脚本）');
+  } else if (IS_OFFLINE) {
+    add('inline-integrity', '内联脚本哈希校验', 'skip', '离线单文件构建跳过（整包内联，CSP 不含哈希）');
   } else if (!meta) {
     add('inline-integrity', '内联脚本哈希校验', 'skip', '无 CSP，无法比对');
   } else {
@@ -536,6 +543,11 @@ export function formatAuditEntries(diag) {
     if (added.length) compareMsg = `⚠️ 新增未预期来源：${added.join(', ')}`;
     if (removed.length) compareMsg += `${added.length ? ' · ' : ''}较预期减少：${removed.join(', ')}`;
     entries.push({ type: added.length ? 'warn' : 'info', message: `出站白名单指纹 ${fp} · ${compareMsg}` });
+  } else if (csp?.offline) {
+    entries.push({
+      type: 'info',
+      message: '🔒 离线版：CSP 有意放宽（单文件、无网络需求），跳过 Web 出站白名单比对',
+    });
   }
 
   // CSP details are already shown above; don't repeat them as issue lines.

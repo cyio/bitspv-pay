@@ -31,7 +31,17 @@ For securing larger amounts. Download the offline single-file build and pin it t
 - **Flexible Payments**: Supports sending to both legacy BSV addresses and Paymail.
 - **Watch-only Wallet & Air-gap Signing**: Add a watch address without a private key, then sign transactions offline via QR code on an air-gapped device.
 - **Offline Single-file Build**: A self-contained HTML build for cold wallet use — no network required after download.
+- **Runtime Security Self-Check**: Built-in diagnostics in the log console that surface the CSP outbound allowlist, a change-detecting allowlist fingerprint, and integrity/version checks.
 - **Internationalization**: Multi-language support.
+
+## Security
+
+Security is layered — no single mechanism is trusted on its own. See [docs/security.md](./docs/security.md) for the full picture.
+
+- **Non-custodial, locally encrypted keys**: The private key is encrypted with a user PIN (PBKDF2 + AES-GCM) and stored only in the browser; it is decrypted locally at signing time and never leaves the device. Details and threat model: [docs/pin-security.md](./docs/pin-security.md).
+- **Strict CSP network isolation**: A Content Security Policy (`connect-src` / `img-src` / `script-src`) restricts all outbound traffic to a small allowlist, so even an injected script cannot exfiltrate data to an arbitrary domain.
+- **Runtime security self-check**: The built-in console exposes the *current* CSP outbound allowlist plus a SHA-256 **fingerprint** that changes whenever a domain is added or removed, and diffs it against an expected baseline shipped in the repo. Ordinary users get a one-glance “no risks / N items to review” summary; power users can copy the full report and pin the fingerprint across releases.
+- **Air-gapped signing & offline build**: Keep the key on an offline device and sign via QR code; the offline single-file build needs no network after download.
 
 ## Tech Stack
 

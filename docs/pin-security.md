@@ -55,6 +55,10 @@ img-src     'self' data: https://api.qrserver.com
 
 CSP 和 PIN 加密互补：CSP 阻止加密数据通过网络泄露，PIN 加密保证数据即使泄露也难以解密。两者同时存在才构成完整防护。
 
+**运行时可见性**
+
+CSP 自身不可见，用户难以判断「实际放开了哪些域名」。应用内置的运行时安全自检（Console → 盾牌按钮）会实时解析当前页面的 CSP，列出 `connect-src` 出站白名单、给出可跨版本比对的指纹，并与仓库中的预期基准比对。详见 [security.md](./security.md)。
+
 ---
 
 ## 威胁模型
