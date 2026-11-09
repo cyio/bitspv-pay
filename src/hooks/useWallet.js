@@ -97,7 +97,8 @@ export function useWallet() {
             if (potentialPubKey instanceof PublicKey && potentialPubKey.toAddress().toString() === addressFromStorage) {
               setPubKey(potentialPubKey);
               setAddress(addressFromStorage);
-              console.log('Public key and address loaded from cache for PIN-protected wallet.');
+              console.log('[wallet] publicKey', potentialPubKey.toDER('hex'));
+              addLog(`Public key: ${potentialPubKey.toDER('hex')}`, LOG_TYPES.INFO);
             } else {
               console.warn('Encrypted WIF exists, but public key/address cache is invalid. Clearing cache.');
               storage.removePublicKey();
@@ -208,7 +209,8 @@ export function useWallet() {
         setWalletName(newWalletName);
         storage.setPublicKey(newPubKey.toDER('hex'));
         storage.setWalletAddress(newAddress);
-        console.log('Public key and address derived and cached.');
+        console.log('[wallet] publicKey', newPubKey.toDER('hex'));
+        addLog(`Public key: ${newPubKey.toDER('hex')}`, LOG_TYPES.INFO);
       }
 
       const currentAddress = tempPrivKey ? tempPrivKey.toPublicKey().toAddress().toString() : addressFromStorage;
@@ -233,7 +235,7 @@ export function useWallet() {
       console.error('Failed to create wallet:', error);
       return { error: 'wallet-creation-failed', message: t('bsvPayment.statusMessages.walletCreateFailed') };
     }
-  }, [storage, autoBackupPrivateKeyToFile, showInfo, promptForPin, t, refreshBalance]);
+  }, [storage, autoBackupPrivateKeyToFile, showInfo, promptForPin, t, refreshBalance, addLog]);
 
   const getWifForBackup = useCallback(async () => {
     const result = await ensurePrivateKeyLoaded(pubKey, address);

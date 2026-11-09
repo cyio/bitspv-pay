@@ -24,6 +24,7 @@ import WalletInfo from '../components/WalletInfo.jsx';
 import DebugConsole from '../components/DebugConsole.jsx';
 import jsQR from 'jsqr';
 import { checkGoogleConnectivity } from '../utils/network';
+import { copyText } from '../utils/clipboard';
 
 function WalletUI() {
   const { t } = useTranslation();
@@ -100,12 +101,12 @@ function WalletUI() {
   }, [status]);
 
   const copyAddress = async () => {
-    try {
-      await navigator.clipboard.writeText(address);
+    const copied = await copyText(address);
+    if (copied) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy address:', error);
+    } else {
+      console.error('Failed to copy address');
     }
   };
 

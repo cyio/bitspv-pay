@@ -270,6 +270,15 @@ export default {
     balanceLabel: 'Balance',
     refreshBalanceButton: 'Refresh Balance',
     copyButton: 'Copy',
+    viewPublicKeyButton: 'View Public Key',
+    publicKeyModalTitle: 'Public Key',
+    publicKeyFormat: 'DER compressed · hex · 66 characters',
+    publicKeyAddressLabel: 'Corresponding Address',
+    publicKeyDescription:
+      'A public key can be shared publicly to verify signatures or identify the wallet. It cannot be used to spend funds.',
+    publicKeyCopied: 'Copied',
+    publicKeyCopyFailed: 'Copy failed. Select the text and copy it manually.',
+    publicKeyUnavailable: 'Watch-only wallets have no private key, so the public key is unavailable.',
     backupWalletButton: 'Backup Wallet',
     importWalletButton: 'Import Wallet',
     privateKeyWarning:

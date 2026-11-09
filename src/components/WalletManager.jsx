@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Copy, Check } from 'lucide-react';
 import { isWeChat } from '../utils';
+import { copyText } from '../utils/clipboard';
 import {
   isValidAddress,
   convertSatoshisToBSV,
@@ -17,6 +19,7 @@ import { AirGapSender, AirGapSigner } from './AirGapFlow';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -70,6 +73,9 @@ const WalletManager = ({
   const [formError, setFormError] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('BSV');
   const [inputAmount, setInputAmount] = useState('');
+  const [showPubKeyModal, setShowPubKeyModal] = useState(false);
+  const [isPubKeyCopied, setIsPubKeyCopied] = useState(false);
+  const [pubKeyCopyError, setPubKeyCopyError] = useState('');
 
   // air-gap 模式：'sender' | 'signer' | null
   const [airGapMode, setAirGapMode] = useState(null);
@@ -90,6 +96,31 @@ const WalletManager = ({
         return null;
     }
   }, [inputAmount, selectedUnit, rate]);
+
+  const pubKeyHex = useMemo(() => {
+    try {
+      return pubKey ? pubKey.toDER('hex') : '';
+    } catch {
+      return '';
+    }
+  }, [pubKey]);
+
+  const openPubKeyModal = () => {
+    setIsPubKeyCopied(false);
+    setPubKeyCopyError('');
+    setShowPubKeyModal(true);
+  };
+
+  const copyPublicKey = async () => {
+    const copied = await copyText(pubKeyHex);
+    if (copied) {
+      setIsPubKeyCopied(true);
+      setPubKeyCopyError('');
+      setTimeout(() => setIsPubKeyCopied(false), 2000);
+    } else {
+      setPubKeyCopyError(t('bsvPayment.publicKeyCopyFailed'));
+    }
+  };
 
   const setSatoshiValue = (satoshiValue) => {
     if (satoshiValue === null) {
@@ -467,6 +498,14 @@ const WalletManager = ({
           </SheetHeader>
           <div className="flex flex-wrap justify-center gap-2">
             <Button
+              onClick={closeSheetAndRun(openPubKeyModal)}
+              variant="outline"
+              disabled={isWatchOnly || !pubKeyHex}
+              title={isWatchOnly ? t('bsvPayment.publicKeyUnavailable') : ''}
+            >
+              {t('bsvPayment.viewPublicKeyButton')}
+            </Button>
+            <Button
               onClick={closeSheetAndRun(showBackup)}
               variant="outline"
               disabled={isWatchOnly}
@@ -519,6 +558,52 @@ const WalletManager = ({
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog
+        open={showPubKeyModal}
+        onOpenChange={(open) => {
+          setShowPubKeyModal(open);
+          if (!open) {
+            setIsPubKeyCopied(false);
+            setPubKeyCopyError('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('bsvPayment.publicKeyModalTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded bg-gray-50 p-3 dark:bg-gray-950">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 select-all break-all font-mono text-sm">{pubKeyHex}</div>
+                <button
+                  onClick={copyPublicKey}
+                  title={isPubKeyCopied ? t('bsvPayment.publicKeyCopied') : t('bsvPayment.copyButton')}
+                  className="shrink-0 rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
+                  {isPubKeyCopied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {t('bsvPayment.publicKeyFormat')}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                {t('bsvPayment.publicKeyAddressLabel')}
+              </p>
+              <p className="break-all font-mono text-sm">{address}</p>
+            </div>
+            <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+              {t('bsvPayment.publicKeyDescription')}
+            </DialogDescription>
+            {pubKeyCopyError && (
+              <p className="text-xs text-red-500 dark:text-red-400">{pubKeyCopyError}</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
         <DialogContent>
