@@ -27,6 +27,7 @@ const PaymentAbout = ({ show, onClose }) => {
               <li>{t('paymentAbout.security.provider')}</li>
               <li>{t('paymentAbout.security.browserEnvironment')}</li>
               <li>{t('paymentAbout.security.coldWallet')}</li>
+              <li>{t('paymentAbout.security.singleAddress')}</li>
             </ul>
           </div>
 

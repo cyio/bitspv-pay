@@ -248,7 +248,10 @@ function WalletUI() {
       <div className="min-h-screen py-8">
         <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-3">
-            <h1 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('bsvPayment.title')}</h1>
+            <div>
+              <h1 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('bsvPayment.title')}</h1>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{t('bsvPayment.tagline')}</p>
+            </div>
             <div className="flex items-center space-x-2">
               <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <Info className="h-5 w-5" />

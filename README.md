@@ -2,9 +2,11 @@
 
 **Live Demo: https://pay.bitspv.com/**
 
-A non-custodial BSV wallet that runs in your browser. Its distinguishing feature is the offline build: **one self-contained HTML file** you can checksum, pin to a release, and open on an air-gapped machine — no install, no app store, no network.
+A minimal, non-custodial BSV wallet that runs in your browser: one address, nothing to install, no account. Its second mode is the offline build: **one self-contained HTML file** you can checksum, pin to a release, and open on an air-gapped machine — no install, no app store, no network.
 
 It supports legacy addresses and Paymail, and relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
+
+**Single address, by design.** One private key maps to one address, and change returns to it. The interface stays minimal and the balance is one number you can check on any explorer — or verify offline. It does not rotate addresses, and it is not built for collecting payments at volume.
 
 If you only want the cold-storage path, download the offline build from [GitHub Releases](https://github.com/cyio/bitspv-pay/releases/latest) and read [Usage Scenarios → Cold Storage](#cold-storage-offline) first.
 

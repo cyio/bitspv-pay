@@ -1,8 +1,8 @@
 export default {
   bsvPayment: {
-    title: 'BSV 钱包',
+    title: 'BitSPV Pay',
     manageWalletButton: '管理钱包',
-    description: '一种简单快捷的比特币SV支付方式。',
+    tagline: '单地址极简钱包 · 浏览器即用 · 支持离线签名',
     totalAmountLabel: '支付总金额',
     supplementAmountLabel: '需至少再支付 {{amount}} BSV',
     statusMessages: {
@@ -119,12 +119,6 @@ export default {
       },
     },
     backupDataNote: '二维码丢失或泄露将导致资金永久性损失。请在安全环境下查看并备份。',
-    paymentResult: {
-      title: '支付结果',
-      statusLabel: '状态',
-      transactionIdLabel: '交易ID',
-      unknownStatus: '未知状态',
-    },
     pinModal: {
       setTitle: '设置新钱包', // 修改标题
       setPrompt: '为您的钱包设置 PIN 码：',
@@ -385,13 +379,15 @@ export default {
   paymentAbout: {
     title: '关于',
     description:
-      '非托管 BSV 钱包，支持在线热钱包和离线冷钱包两种模式。热钱包适合日常小额支付，冷钱包支持离线签名，适合安全存储。',
+      '非托管 BSV 钱包：单地址极简，浏览器里直接用，不用安装。需要长期保管时，可导出为单文件离线版，在断网设备上签名。',
     security: {
       title: '安全性说明',
       provider: '基于 BSV TS-SDK，代码开源可审计。',
       browserEnvironment: '热钱包安全性取决于浏览器环境与使用习惯。',
       coldWallet:
         '冷钱包：私钥不接触联网设备。在物理隔离设备上离线签名，通过二维码传输，由在线设备广播交易。',
+      singleAddress:
+        '单地址：一把私钥对应一个地址，找零回到该地址。界面简单、账目一眼可核；它不做地址轮换。',
     },
     usage: {
       title: '使用建议',

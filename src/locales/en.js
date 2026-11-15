@@ -1,8 +1,8 @@
 export default {
   bsvPayment: {
-    title: 'BSV Wallet',
+    title: 'BitSPV Pay',
     manageWalletButton: 'Manage Wallet',
-    description: 'A simple and fast way to pay with Bitcoin SV.',
+    tagline: 'Minimal single-address wallet · Runs in your browser · Offline signing',
     processingButton: 'Processing...',
     totalAmountLabel: 'Total Payment',
     supplementAmountLabel: 'An additional {{amount}} BSV is required."',
@@ -125,12 +125,6 @@ export default {
       },
     },
     backupDataNote: 'QR code loss or leakage will result in permanent loss of funds. Please view and back it up in a secure environment.',
-    paymentResult: {
-      title: 'Payment Result',
-      statusLabel: 'Status',
-      transactionIdLabel: 'Transaction ID',
-      unknownStatus: 'Unknown Status',
-    },
     pinModal: {
       setTitle: 'Set new wallet', // Modified title
       setPrompt: 'Set a PIN for your wallet:',
@@ -394,7 +388,7 @@ export default {
   paymentAbout: {
     title: 'About',
     description:
-      'Non-custodial BSV wallet with online and offline modes. Use as a hot wallet for everyday small payments, or as a cold wallet with air-gapped signing for secure storage.',
+      'Non-custodial BSV wallet: minimal, single address, runs in your browser with nothing to install. For long-term storage, export it as a single-file offline build and sign on an air-gapped device.',
     security: {
       title: 'Security Notes',
       provider: 'Built on BSV TS-SDK with open-source, auditable code.',
@@ -402,6 +396,8 @@ export default {
         'Hot wallet security depends on your browser environment and usage habits.',
       coldWallet:
         'Cold wallet: private keys never touch a networked device. Sign transactions offline via QR code, then broadcast from a separate online device.',
+      singleAddress:
+        'Single address: one private key maps to one address, and change returns to it. Simple to read at a glance; it does not rotate addresses.',
     },
     usage: {
       title: 'Usage Recommendations',

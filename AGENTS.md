@@ -3,7 +3,7 @@
 > 跨仓规则、产品清单、域名与部署登记：`~/Projects/bitspv-workspace/AGENTS.md`（清单 `workspace.json`）。
 > 这份只写**本仓**的事。
 
-非托管 BSV 钱包：热钱包收发 + 观察地址监控 + 断网离线签名（单文件冷端）。React + Vite + Tailwind 3 + Radix，纯前端，无后端。
+非托管 BSV 钱包，**单地址极简**：浏览器即用的轻量热钱包 + 同一把钥匙的单文件离线签名。找零回原地址，不做地址轮换。React + Vite + Tailwind 3 + Radix，纯前端，无后端。
 
 ```bash
 pnpm dev            # 本地

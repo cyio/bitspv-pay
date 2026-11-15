@@ -36,8 +36,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'BitSPV',
-          short_name: 'BitSPV',
+          name: 'BitSPV Pay',
+          short_name: 'Pay',
           description: 'Bitcoin Satoshi (Payment) Vision',
           theme_color: '#ffffff',
           icons: [

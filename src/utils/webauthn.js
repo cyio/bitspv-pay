@@ -133,7 +133,7 @@ export async function registerPasskey(username, displayName) {
     const publicKeyCredentialCreationOptions = {
       challenge: challenge,
       rp: {
-        name: document.title || 'BitSPV Pay',
+        name: 'BitSPV Pay',
         id: window.location.hostname,
       },
       user: {
