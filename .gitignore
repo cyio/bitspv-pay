@@ -27,3 +27,8 @@ public/js/*
 .vercel
 dev-dist/*
 .claude/
+# env：真正放值的只有 .env.local（已被上面的 *.local 覆盖）。
+# 显式挡住 .env 系列，防止有人习惯性地往 .env 里填密钥再提交。
+.env
+.env.*
+!.env.example
