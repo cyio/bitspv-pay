@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { OFFLINE_RELEASE_URL } from '../utils/links';
 
 const FormItem = ({ children, className }) => <div className={className}>{children}</div>;
 const FormLabel = ({ children }) => <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</label>;
@@ -187,6 +188,25 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
         <Button variant="outline" onClick={() => onResolve({ action: 'watch' })}>
           {t('bsvPayment.walletSetup.watchButton')}
         </Button>
+      </div>
+
+      {/* 冷存储是同一把钥匙的第二种用法，但它不属于这个网页：
+          只想离线保管的人应该拿到一个文件，而不是被要求先建个热钱包。 */}
+      <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {t('bsvPayment.coldStorage.setupTitle')}
+        </p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {t('bsvPayment.coldStorage.setupHint')}
+        </p>
+        <a
+          href={OFFLINE_RELEASE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {t('bsvPayment.coldStorage.setupLink')} →
+        </a>
       </div>
     </div>
   );

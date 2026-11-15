@@ -187,6 +187,12 @@ export default {
       watchButton: '添加观察地址（无私钥）',
       backToSetup: '返回钱包设置',
     },
+    coldStorage: {
+      footer: '离线版',
+      setupTitle: '只想离线保管？',
+      setupHint: '下载单文件离线版，在断网设备上创建钱包并签名。每个 release 都附带 SHA256 校验值。',
+      setupLink: '下载离线单文件',
+    },
     watchAddress: {
       title: '添加观察地址',
       addressLabel: 'BSV 地址',

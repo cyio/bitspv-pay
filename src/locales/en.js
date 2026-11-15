@@ -197,6 +197,13 @@ export default {
       watchButton: 'Add Watch Address (No Private Key)',
       backToSetup: 'Back to setup',
     },
+    coldStorage: {
+      footer: 'Offline build',
+      setupTitle: 'Only need cold storage?',
+      setupHint:
+        'Download the single-file offline build, then create your wallet and sign on an air-gapped device. Every release ships a SHA256 checksum.',
+      setupLink: 'Download the offline build',
+    },
     watchAddress: {
       title: 'Add Watch Address',
       addressLabel: 'BSV Address',
