@@ -1,38 +1,42 @@
-# BitSPV MicroPay
+# BitSPV Pay
 
 **Live Demo: https://pay.bitspv.com/**
 
-A lightweight, non-custodial BSV web wallet and payment tool for sending and receiving payments. It supports both legacy addresses and Paymail, and can be integrated with third-party websites to facilitate payment flows.
+A non-custodial BSV wallet that runs in your browser. Its distinguishing feature is the offline build: **one self-contained HTML file** you can checksum, pin to a release, and open on an air-gapped machine — no install, no app store, no network.
 
-As a lightweight wrapper for the BSV SDK, this project aims for minimal dependencies and enhanced security via a strict Content Security Policy (CSP). It relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
+It supports legacy addresses and Paymail, and relies on public indexer services like `Whatsonchain` and `Bitails` for blockchain data.
+
+If you only want the cold-storage path, download the offline build from [GitHub Releases](https://github.com/cyio/bitspv-pay/releases/latest) and read [Usage Scenarios → Cold Storage](#cold-storage-offline) first.
 
 ## Why a Web Wallet?
 
 - **Long-term sustainability**: Native apps depend on app store approval, platform SDKs, and ongoing revenue to survive. A web wallet runs in any browser, has no gatekeepers, and can be maintained at near-zero cost — eliminating the risk of an abandoned app forcing users to migrate their funds.
 - **Fast, native QR scanning**: Uses the browser-native BarcodeDetector API where available, delegating barcode parsing to the OS-level implementation — significantly faster than any JS library, with zero bundle overhead. This has been one of the key advantages of this project from the start.
+- **Auditable offline signer**: The cold path is a single HTML file, so "what actually signs my transaction" is a file you can hash and compare across releases — something a native binary makes much harder.
 
 ## Usage Scenarios
-
-### Hot Wallet (Daily Use)
-
-Suitable for small, everyday payments where some risk is acceptable. Access the hosted version directly — no installation required. At payment time, the app decrypts the private key locally and signs the transaction on-device; the key never leaves the browser.
-
-> Store only what you can afford to lose. Browser data loss, device theft, or a missed backup can be unrecoverable.
 
 ### Cold Storage (Offline)
 
 For securing larger amounts. Download the offline single-file build and pin it to a specific release — it will never auto-update. Create or import your wallet on an air-gapped device; use a watch-only wallet on your online device and sign transactions via QR code. Back up both the encrypted wallet file and the offline HTML together so the wallet remains self-contained and independently recoverable.
 
+### Hot Wallet (Daily Use)
+
+Suitable for small, everyday payments where some risk is acceptable. Access the hosted version directly — no installation required. At signing time, the app decrypts the private key locally and signs the transaction on-device; the key never leaves the browser.
+
+> Store only what you can afford to lose. Browser data loss, device theft, or a missed backup can be unrecoverable.
+
 ## Features
 
-- **Lightweight & Focused**: A simple interface for core payment tasks.
-- **Easy Integration**: Can be used as a standalone payment page or integrated with third-party sites.
-- **Non-custodial**: Users have full control of their private keys, which are stored locally.
-- **Flexible Payments**: Supports sending to both legacy BSV addresses and Paymail.
+- **Offline Single-file Build**: A self-contained HTML build for cold wallet use — no network required after download. This is the part you can verify and pin.
 - **Watch-only Wallet & Air-gap Signing**: Add a watch address without a private key, then sign transactions offline via QR code on an air-gapped device.
-- **Offline Single-file Build**: A self-contained HTML build for cold wallet use — no network required after download.
 - **Runtime Security Self-Check**: Built-in diagnostics in the log console that surface the CSP outbound allowlist, a change-detecting allowlist fingerprint, and integrity/version checks.
+- **Non-custodial**: Users have full control of their private keys, which are stored locally.
+- **Send & Receive**: Supports both legacy BSV addresses and Paymail.
+- **Standalone Wallet**: Send, receive, back up, and monitor balances in the browser — nothing external calls into it.
+- **Lightweight & Focused**: A small interface for core wallet tasks.
 - **Internationalization**: Multi-language support.
+
 
 ## Security
 
@@ -49,29 +53,24 @@ Security is layered — no single mechanism is trusted on its own. See [docs/sec
 - **Build Tool**: Vite
 - **Styling**: TailwindCSS
 - **UI Component Library**: shadcn/ui
-- **Payment Processing**: `@bsv/sdk` and `@bsv/paymail`
+- **Wallet & Signing**: `@bsv/sdk` and `@bsv/paymail`
 - **Internationalization**: `react-i18next`
 - **State Management**: React Hooks
 
 ## Architecture Overview
 
-This diagram illustrates the flow for handling a payment request from an integrated third-party site.
+This diagram illustrates the wallet flow: the page is opened directly by the user, the key is unlocked locally with a PIN, and the transaction is built, signed and broadcast in the browser.
 
 ```mermaid
 graph TD
-    subgraph "Browser"
-        A["Parent/Calling Window"]
-    end
-
-    subgraph "BitSPV Payment App"
+    subgraph "BitSPV Wallet Page"
         subgraph "UI Components (React)"
-            B[Payment Page]
+            B[Wallet Page]
             D[Wallet Manager]
             P[PIN Prompt Dialog]
         end
 
         subgraph "Core Logic (Hooks)"
-            C[usePaymentFlow]
             E[useWallet]
             F[usePinManager]
             G[useStorage]
@@ -88,30 +87,20 @@ graph TD
         K[API Provider]
     end
 
-    A -- "1. Opens with payment params in URL" --> B
-    B -- "2. Triggers" --> C
-    C -- "3. Polls for sufficient balance" --> E
-    E -- "4. Needs private key to send" --> F
-    F -- "5. Prompts user" --> P
-    P -- "6. User enters PIN" --> F
-    F -- "7. Unlocks key from" --> G
-    G -- "8. Provides key" --> E
-    E -- "9. Creates & signs transaction via" --> H
-    E -- "10. Broadcasts transaction via" --> I
-    I -- "11. Submits to" --> K
-    K -- "12. Relays to" --> J
-    E -- "13. Returns txid" --> C
-    C -- "14. Triggers onPaymentSuccess" --> B
-    B -- "15. Returns result to" --> A
+    B -- "1. Creates / imports / unlocks the wallet" --> E
+    E -- "2. Needs the private key to sign" --> F
+    F -- "3. Prompts the user" --> P
+    P -- "4. User enters PIN" --> F
+    F -- "5. Unlocks the key from" --> G
+    G -- "6. Provides the key to" --> E
+    E -- "7. Builds & signs the transaction via" --> H
+    E -- "8. Broadcasts the transaction via" --> I
+    I -- "9. Submits to" --> K
+    K -- "10. Relays to" --> J
 ```
 
 **Key Business Logic:**
 
-- **Integration Payment Flow**:
-    1. **Receive Request**: The payment page loads with payment details in the URL hash.
-    2. **Check Balance**: It polls the wallet balance to see if funds are sufficient for the transaction.
-    3. **Process Payment**: Once the balance is confirmed, it prompts for a PIN (if required), constructs the transaction, and broadcasts it.
-    4. **Return Result**: Communicates the transaction ID back to the originating site using `postMessage` (popup mode) or a URL redirect (redirect mode).
 - **Wallet Management**:
     - Create, import, and back up the wallet.
     - Add a watch-only address (no private key) for monitoring balances.
@@ -121,9 +110,15 @@ graph TD
 - **Security**:
     - Private keys are encrypted with a user-defined PIN and stored in the browser's local storage.
 
-## Integration
+## Removed: third-party payment-request entry
 
-For instructions on how to integrate the payment tool with your website, please see the [HTML Integration Guide](./docs/pay_html_integration.md).
+Earlier versions could be called from other sites as a payment handler — payment parameters came in the URL hash, and the result went back via `postMessage` or a `callbackUrl` redirect. **That entry point has been removed**: the page no longer reads payment parameters from the URL, never posts messages to `window.opener`, and never redirects to a `callbackUrl`.
+
+Old links of the form `https://pay.bitspv.com/#<paymentParams>` now show a one-time notice and load as a normal wallet. The historical protocol is documented in [docs/pay_html_integration.md](./docs/pay_html_integration.md) for reference only.
+
+**Why it was removed, not deprecated:** that contract cannot be honoured by a pure front-end. A `payment_success` message only proves *this window said so* — `event.source` checks the sender window, not the payment: anything running in that page (devtools, a compromised extension, one XSS) can forge it. The `callbackUrl` redirect is weaker still, since `?status=success&data=<txid>` is a URL the user can type. And what the wallet actually knows is "a transaction was broadcast", not "it confirmed, for the right amount, to the right address".
+
+So don't build on this page: **no amount of front-end checking turns its output into proof of payment.** If you need a trustworthy result you need a server that verifies the txid on-chain against an idempotent order id — that's a payment gateway, which is a different product with a different trust model.
 
 ## Tools
 

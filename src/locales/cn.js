@@ -1,6 +1,6 @@
 export default {
   bsvPayment: {
-    title: 'BSV微支付',
+    title: 'BSV 钱包',
     manageWalletButton: '管理钱包',
     description: '一种简单快捷的比特币SV支付方式。',
     totalAmountLabel: '支付总金额',
@@ -50,6 +50,9 @@ export default {
         imageLoadError: '图片加载失败。',
         fileReadError: '文件读取失败。',
         invalidImportData: '无效的导入数据。请确保是有效的WIF私钥或JSON格式。',
+        addressMismatchTitle: '备份与私钥不匹配',
+        addressMismatch:
+          '备份文件里记录的地址，与解密出的私钥推导出的地址不一致。文件可能已损坏或被修改 —— 本次导入已中止，现有钱包未受影响。',
         invalidQrCode: '无效的二维码。',
         utxoFetchFailed: '无法获取交易输出（UTXO）。请检查网络连接或稍后重试。',
         passkeyNotFoundInStorage: '本地未找到 Passkey 信息。请设置新钱包或尝试恢复。',
@@ -67,6 +70,8 @@ export default {
         wifImportFailed: '导入WIF失败',
         importUiNotAvailable: '导入钱包界面不可用，请刷新页面或尝试手动操作。',
         unlockCancelled: '操作已取消。',
+        walletRecoveryNeeded: '本地存有加密钱包，但地址缓存丢失。解锁一次即可恢复，无需重新导入。',
+        walletRecoveryCancelled: '未解锁，钱包地址尚未恢复。可点下方按钮重试。',
       },
       backupSuccessQr: '私钥二维码已备份下载为 {{filename}}',
       initializingWallet: '正在初始化钱包...',
@@ -155,6 +160,7 @@ export default {
       decryptionFailedTitle: '解密失败',
       decryptionFailedMessage: '解密钱包数据失败。PIN码可能不正确或数据已损坏。请重试。',
       pinHintForSet: '至少 8 位，需同时包含字母和数字。PIN 码用于加密私钥，本网站不会保存，请务必牢记。',
+      pinConfirmPrompt: '再次输入 PIN 码：',
       pinIsMandatoryTitle: '需要设置 PIN',
       pinIsMandatoryMessage: '为了保护您的资金安全，必须设置 PIN 码。此步骤无法跳过。',
       confirmPinCancelledTitle: '确认 PIN 已取消', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
@@ -175,6 +181,7 @@ export default {
         minLength: '{{field}}不能少于 {{min}} 个字符',
         pattern: 'PIN 码必须同时包含字母和数字',
         pinStrength: 'PIN 码至少 8 位，且必须同时包含字母和数字',
+        pinMismatch: '两次输入的 PIN 码不一致',
       },
     },
     walletNameLabel: '钱包名称', // 新增
@@ -184,6 +191,7 @@ export default {
       createButton: '创建新钱包',
       importButton: '导入钱包',
       watchButton: '添加观察地址（无私钥）',
+      backToSetup: '返回钱包设置',
     },
     watchAddress: {
       title: '添加观察地址',
@@ -191,6 +199,11 @@ export default {
       placeholder: '输入或粘贴 BSV 地址',
       confirmButton: '确认',
       badge: '观察钱包',
+    },
+    retiredPaymentRequest: {
+      title: '该付款链接已停用',
+      message:
+        '本页已不再处理第三方页面发起的付款请求（URL 中的付款参数）。你仍可以在这里收发 BSV、查看收款码，或使用离线签名。请回到发起方，改用其他方式完成付款。',
     },
     airGap: {
       transferOffline: '转账（离线签名）',

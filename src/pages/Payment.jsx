@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import WalletManager from '../components/WalletManager';
 import { useRate } from '../hooks/useRate';
@@ -18,8 +17,7 @@ import PaymentAbout from '../components/PaymentAbout.jsx';
 import DonationModal from '../components/DonationModal.jsx';
 import PinDialog from '../components/PinDialog.jsx';
 import { PinPromptContext } from '../contexts/PinPromptContext';
-import { usePaymentFlow } from '../hooks/usePaymentFlow';
-import PaymentStatus from '../components/PaymentStatus.jsx';
+import { usePinManager } from '../hooks/usePinManager';
 import WalletInfo from '../components/WalletInfo.jsx';
 import DebugConsole from '../components/DebugConsole.jsx';
 import jsQR from 'jsqr';
@@ -28,7 +26,7 @@ import { copyText } from '../utils/clipboard';
 
 function WalletUI() {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
+  const { showInfo } = usePinManager();
   const importFileInput = useRef(null);
   const walletManagerRef = useRef(null);
   const appVersion = __APP_VERSION__;
@@ -59,29 +57,13 @@ function WalletUI() {
 
   const { rate, refreshRate } = useRate();
 
-  const onPaymentSuccess = useCallback((data) => {
-    console.log('onPaymentSuccess called with data:', data);
-    if (window.opener) {
-        sendDataToParent(data);
-    } else {
-        redirectBack(data);
-    }
-  }, [searchParams]);
-
-  const {
-    status,
-    statusMessage,
-    minCost,
-    isAmountCalculated,
-    sendRequest,
-    showWalletManager,
-    handlePaymentRequest,
-    setStatus,
-    setStatusMessage,
-  } = usePaymentFlow({ onPaymentSuccess, wallet, t });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [maxTransferAmount, setMaxTransferAmount] = useState(null);
+  const [initError, setInitError] = useState('');
+  const [needsRecovery, setNeedsRecovery] = useState(false);
+  // 用户在「设置钱包」里选了导入，文件选择框已经打开（或刚被取消）。
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
@@ -89,16 +71,6 @@ function WalletUI() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [currentProvider, setCurrentProvider] = useState(() => getRecommendedProvider()?.name || 'bananablocks');
   const isInitializing = useRef(false);
-
-  const statusColor = useMemo(() => {
-    switch (status) {
-      case 'received': return 'text-green-600 dark:text-green-300';
-      case 'processing': return 'text-blue-600 dark:text-blue-300';
-      case 'completed': return 'text-green-600 dark:text-green-300';
-      case 'error': return 'text-red-600 dark:text-red-300';
-      default: return 'text-gray-600 dark:text-gray-400';
-    }
-  }, [status]);
 
   const copyAddress = async () => {
     const copied = await copyText(address);
@@ -124,41 +96,24 @@ function WalletUI() {
     }
   }, [isRefreshing, refreshBalance]);
 
-    const sendDataToParent = (data) => {
-        console.log('sendDataToParent ', data);
-        if (window.opener) {
-            window.opener.postMessage({ type: 'payment_success', payload: { txid: data } }, '*');
-            const handleConfirmation = (event) => {
-                if (event.data && event.data.type === 'message_received') {
-                    console.log('Received confirmation from parent, closing window.');
-                    window.removeEventListener('message', handleConfirmation);
-                    window.close();
-                }
-            };
-            window.addEventListener('message', handleConfirmation);
-        } else {
-            console.error('No parent window found, falling back to redirect.');
-            redirectBack(data);
-        }
-    };
-
-    const redirectBack = (data) => {
-        const callbackUrl = searchParams.get('callbackUrl');
-        if (callbackUrl) {
-            const paymentResult = new URLSearchParams({ status: 'success', data });
-            const separator = callbackUrl.includes('?') ? '&' : '?';
-            const redirectUrl = `${callbackUrl}${separator}${paymentResult.toString()}`;
-            window.location.replace(redirectUrl);
-        } else {
-            console.error('No callbackUrl found in query parameters');
-        }
-    };
-
     useEffect(() => {
         if (isInitializing.current) return;
         isInitializing.current = true;
 
-        const initializeAndPay = async () => {
+        const initializeWallet = async () => {
+            // 第三方付款请求入口（URL hash 形式的 paymentParams）已下线。
+            // 这里仍识别旧链接：清掉 hash 并提示一次，避免调用方误以为页面卡住。
+            // 注意：离线单文件版用 HashRouter（#/…），不能把路由 hash 当成旧付款参数。
+            const legacyHash = window.location.hash;
+            if (legacyHash.length > 1 && !legacyHash.startsWith('#/')) {
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                console.warn('[payment] Legacy payment-request entry point is retired; URL hash cleared.');
+                await showInfo(
+                    t('bsvPayment.retiredPaymentRequest.title'),
+                    t('bsvPayment.retiredPaymentRequest.message')
+                );
+            }
+
             checkGoogleConnectivity();
 
             const result = await createWallet({
@@ -166,26 +121,45 @@ function WalletUI() {
                     handleRequestImportWallet();
                 }
             });
-            
-            if (result?.error) {
-                if (result.error === 'import-requested') {
-                    setStatus('error');
-                    setStatusMessage(t('bsvPayment.statusMessages.info.importCancelled') + ' ' + t('bsvPayment.statusMessages.importUiNotAvailable'));
-                } else {
-                    setStatus('error');
-                    setStatusMessage(result.message);
-                }
-            } else {
-                // Wallet initialized successfully, start payment flow immediately with the new data
-                handlePaymentRequest({
-                    address: result.address,
-                    pubKey: pubKey,
-                });
-            }
+
+            applyInitResult(result);
         };
 
-        initializeAndPay();
-    }, [createWallet, handlePaymentRequest, setStatus, setStatusMessage, t, pubKey]);
+        initializeWallet();
+    }, [createWallet, showInfo, t]);
+
+    const applyInitResult = (result) => {
+        if (!result?.error) {
+            setNeedsRecovery(false);
+            setNeedsSetup(false);
+            return;
+        }
+        if (result.error === 'import-requested') {
+            // 这不是失败：createWallet 已经替我们把文件选择框打开了，接下来会走
+            // handleFileChange → handleImportData。以前这里被当成错误，于是用户一
+            // 点「导入钱包」、文件框刚弹出来就看到「导入已取消 / 导入界面不可用」。
+            // 只在「用户取消了文件选择」之后才需要给出路，所以这里留一张重试卡片。
+            setNeedsSetup(true);
+        } else if (result.error === 'wallet-needs-recovery' || result.error === 'wallet-unrecoverable') {
+            // 加密私钥还在，只是地址缓存丢了，或者用户刚才取消了 PIN 解锁。
+            // 不能把页面留给一个空地址的转圈，要给一个明确的重试入口。
+            setNeedsRecovery(true);
+            setInitError(result.message || t('bsvPayment.statusMessages.errors.walletRecoveryNeeded'));
+        } else {
+            setInitError(result.message);
+        }
+    };
+
+    const handleRetryRecovery = async () => {
+        setInitError('');
+        setNeedsSetup(false);
+        const result = await createWallet({
+            onImport: () => {
+                handleRequestImportWallet();
+            }
+        });
+        applyInitResult(result);
+    };
 
     const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -213,14 +187,32 @@ function WalletUI() {
             console.log('Wallet imported successfully:', result.walletName);
           }
         } else {
-          await handleImportData(file);
+          await importFromTextFile(file);
         }
+      };
+      // 选了张不含二维码的图，或者根本不是图片（.bsv 备份文件就是纯文本/JSON），
+      // 一律退回按文本读。老代码这里直接把 File 对象交给 handleImportData，
+      // 而它只接受字符串，于是「导入 .bsv 备份文件」永远报 unexpected-data-type。
+      img.onerror = async () => {
+        await importFromTextFile(file);
       };
       img.src = imageData;
     };
     reader.readAsDataURL(file);
     // Reset file input to allow importing the same file again
     event.target.value = '';
+  };
+
+  const importFromTextFile = async (file) => {
+    try {
+      const text = await file.text();
+      const result = await handleImportData(text);
+      if (result?.error && walletManagerRef.current?.updateTransferStatus) {
+        walletManagerRef.current.updateTransferStatus('error', result.message);
+      }
+    } catch (error) {
+      console.error('Failed to read import file as text:', error);
+    }
   };
 
   const handleRequestImportWallet = () => {
@@ -261,11 +253,9 @@ function WalletUI() {
               <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <Info className="h-5 w-5" />
               </button>
-              {!sendRequest && (
-                <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                  <Coffee className="h-5 w-5" />
-                </button>
-              )}
+              <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <Coffee className="h-5 w-5" />
+              </button>
               <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <History className="h-5 w-5" />
               </button>
@@ -286,16 +276,10 @@ function WalletUI() {
             </div>
           )}
 
-          {sendRequest && (
-            <PaymentStatus
-              status={status}
-              statusMessage={statusMessage}
-              isAmountCalculated={isAmountCalculated}
-              minCost={minCost}
-              rate={rate}
-              walletBalance={walletBalance}
-              statusColor={statusColor}
-            />
+          {initError && (
+            <div className="mb-3 p-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/30 dark:border-red-800">
+              <p className="text-center text-sm text-red-700 dark:text-red-300">{initError}</p>
+            </div>
           )}
 
           {isWalletUiVisible ? (
@@ -309,31 +293,59 @@ function WalletUI() {
                 rate={rate}
                 refreshAll={refreshAll}
                 isRefreshing={isRefreshing}
-                showQR={!!sendRequest}
+                showQR={false}
                 isBalanceLoading={isBalanceLoading}
               />
-              {showWalletManager && (
-                <WalletManager
-                  ref={walletManagerRef}
-                  address={address}
-                  pubKey={pubKey}
-                  isWatchOnly={isWatchOnly}
-                  utxos={utxos}
-                  ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
-                  maxTransferAmountValue={maxTransferAmount}
-                  isWalletMode={isWalletUiVisible}
-                  getWifForBackup={getWifForBackup}
-                  rate={rate}
-                  onDeleteWallet={handleDeleteWallet}
-                  onRequestCalculateMaxTransfer={handleRequestCalculateMax}
-                  onTransferFunds={handleTransferFunds}
-                  onRequestImportWallet={handleRequestImportWallet}
-                  transferStatus={transferStatus}
-                  transferMessage={transferMessage}
-                  onClearTransferStatus={clearTransferStatus}
-                />
-              )}
+              <WalletManager
+                ref={walletManagerRef}
+                address={address}
+                pubKey={pubKey}
+                isWatchOnly={isWatchOnly}
+                utxos={utxos}
+                ensurePrivateKeyLoaded={ensurePrivateKeyLoaded}
+                maxTransferAmountValue={maxTransferAmount}
+                isWalletMode={isWalletUiVisible}
+                getWifForBackup={getWifForBackup}
+                rate={rate}
+                onDeleteWallet={handleDeleteWallet}
+                onRequestCalculateMaxTransfer={handleRequestCalculateMax}
+                onTransferFunds={handleTransferFunds}
+                onRequestImportWallet={handleRequestImportWallet}
+                transferStatus={transferStatus}
+                transferMessage={transferMessage}
+                onClearTransferStatus={clearTransferStatus}
+              />
             </>
+          ) : needsRecovery ? (
+            <div className="flex flex-col gap-2 py-4">
+              <button
+                onClick={handleRetryRecovery}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {t('bsvPayment.pinModal.unlockButton')}
+              </button>
+              <button
+                onClick={handleRequestImportWallet}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                {t('bsvPayment.walletSetup.importButton')}
+              </button>
+            </div>
+          ) : needsSetup ? (
+            <div className="flex flex-col gap-2 py-4">
+              <button
+                onClick={handleRequestImportWallet}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {t('bsvPayment.walletSetup.importButton')}
+              </button>
+              <button
+                onClick={handleRetryRecovery}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+              >
+                {t('bsvPayment.walletSetup.backToSetup')}
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8">
               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -419,7 +431,11 @@ export default function Payment() {
       setPinState({
         ...options,
         isOpen: true,
-        onResolve: () => handlePinResolve(resolve),
+        // PinDialog 的 onResolve 已经是 handlePinResolve，这里必须直接把 resolve 挂上。
+        // 曾经写成 `() => handlePinResolve(resolve)`，会变成 handlePinResolve 反过来
+        // 再调 pinState.onResolve 的无限递归，导致这个 Promise 永远不 resolve
+        // （所有 `await showInfo(...)` 的流程都会卡死）。
+        onResolve: resolve,
         onReject: () => { // Should not happen for info
           setPinState({ isOpen: false });
           resolve();
@@ -441,6 +457,10 @@ export default function Payment() {
             { id: 'walletName', label: t('bsvPayment.pinModal.walletNamePrompt'), type: 'text', placeholder: t('bsvPayment.pinModal.walletNamePlaceholder'), defaultValue: defaultWalletName, maxLength: 20 },
             { id: 'pin', label: t('bsvPayment.pinModal.setPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20, hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
               validate: (v) => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) || t('bsvPayment.pinModal.validation.pinStrength') },
+            // 二次输入：PIN 只存在于用户脑子里，输错一个字符就等于把钱包（以及同 PIN
+            // 加密的备份文件）永久锁死。这一栏是唯一能在资金不可用之前发现笔误的地方。
+            { id: 'pinConfirm', label: t('bsvPayment.pinModal.pinConfirmPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20,
+              validate: (v, allValues) => v === allValues?.pin || t('bsvPayment.pinModal.validation.pinMismatch') },
           ],
           confirmButtonText: t('bsvPayment.pinModal.setButton'),
           showCancelButton: false,

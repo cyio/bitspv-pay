@@ -1,6 +1,6 @@
 export default {
   bsvPayment: {
-    title: 'BSV MicroPay',
+    title: 'BSV Wallet',
     manageWalletButton: 'Manage Wallet',
     description: 'A simple and fast way to pay with Bitcoin SV.',
     processingButton: 'Processing...',
@@ -50,6 +50,9 @@ export default {
         imageLoadError: 'Image load failed.',
         fileReadError: 'File read failed.',
         invalidImportData: 'Invalid import data. Please ensure it is a valid WIF private key or JSON format.',
+        addressMismatchTitle: 'Backup does not match',
+        addressMismatch:
+          'The address recorded in this backup does not match the address derived from the decrypted key. The file may be corrupted or edited — import was aborted and your current wallet was left untouched.',
         invalidQrCode: 'Invalid QR code.',
         utxoFetchFailed: 'Failed to fetch Unspent Transaction Outputs (UTXOs). Please check network connection or try again later.',
         passkeyNotFoundInStorage:
@@ -72,6 +75,9 @@ export default {
         wifImportFailed: 'Failed to import WIF',
         importUiNotAvailable: 'Wallet import interface unavailable. Please refresh the page or try manual operation.',
         unlockCancelled: 'Operation cancelled.',
+        walletRecoveryNeeded:
+          'An encrypted wallet exists on this device, but its address cache is gone. Unlock once to restore it — no need to re-import.',
+        walletRecoveryCancelled: 'Not unlocked, so the wallet address is still not restored. Tap the button below to retry.',
       },
       backupSuccessQr: 'Private key QR code backed up and download as {{filename}}',
       initializingWallet: 'Initializing wallet...',
@@ -162,6 +168,7 @@ export default {
       decryptionFailedMessage:
         'Failed to decrypt wallet data. The PIN might be incorrect or data corrupted. Please try again.',
       pinHintForSet: 'At least 8 characters, must include both letters and numbers. Your PIN encrypts your private key and is never saved by this site — keep it safe.',
+      pinConfirmPrompt: 'Enter the same PIN again:',
       pinIsMandatoryTitle: 'PIN Required',
       pinIsMandatoryMessage:
         'To protect your funds, setting a PIN is mandatory. This step cannot be skipped.',
@@ -184,6 +191,7 @@ export default {
         minLength: '{{field}} must be at least {{min}} characters',
         pattern: 'PIN must contain both letters and numbers',
         pinStrength: 'PIN must be at least 8 characters and contain both letters and numbers',
+        pinMismatch: 'The two PINs do not match',
       },
     },
     walletNameLabel: 'Wallet Name', // New
@@ -193,6 +201,7 @@ export default {
       createButton: 'Create New Wallet',
       importButton: 'Import Wallet',
       watchButton: 'Add Watch Address (No Private Key)',
+      backToSetup: 'Back to setup',
     },
     watchAddress: {
       title: 'Add Watch Address',
@@ -200,6 +209,11 @@ export default {
       placeholder: 'Enter or paste BSV address',
       confirmButton: 'Confirm',
       badge: 'Watch-only',
+    },
+    retiredPaymentRequest: {
+      title: 'This payment link is no longer supported',
+      message:
+        'This page no longer handles payment requests started by third-party pages (payment parameters in the URL). You can still send and receive BSV, show your receive QR code, or use offline signing here. Please go back to the caller and complete the payment another way.',
     },
     airGap: {
       transferOffline: 'Transfer (Offline Sign)',
