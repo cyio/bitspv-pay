@@ -1,11 +1,12 @@
-
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { OFFLINE_RELEASE_URL } from '../utils/links';
 
 const FormItem = ({ children, className }) => <div className={className}>{children}</div>;
-const FormLabel = ({ children }) => <label className="block text-sm font-medium text-foreground mb-1">{children}</label>;
+const FormLabel = ({ children }) => (
+  <label className="block text-sm font-medium text-foreground mb-1">{children}</label>
+);
 const FormControl = ({ children }) => <div>{children}</div>;
 const FormMessage = ({ children }) => <p className="text-sm text-red-600 mt-1">{children}</p>;
 const FormField = ({ control, name, render, rules }) => (
@@ -24,13 +25,18 @@ const Input = React.forwardRef(({ className, ...props }, ref) => (
   />
 ));
 const Button = ({ children, variant, ...props }) => {
-  const baseClasses = "px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
-  const variantClasses = variant === 'outline'
-    ? "border border-border bg-card text-foreground hover:bg-muted"
-    : "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary";
-  return <button className={`${baseClasses} ${variantClasses}`} {...props}>{children}</button>;
-}
-
+  const baseClasses =
+    'px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const variantClasses =
+    variant === 'outline'
+      ? 'border border-border bg-card text-foreground hover:bg-muted'
+      : 'bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary';
+  return (
+    <button className={`${baseClasses} ${variantClasses}`} {...props}>
+      {children}
+    </button>
+  );
+};
 
 const PinDialog = ({ pinState, onResolve, onReject }) => {
   const { t } = useTranslation();
@@ -45,44 +51,69 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     hideModalHeaderCloseButton,
     mode,
   } = pinState;
-  
+
   const form = useForm({
-    defaultValues: inputs.reduce((acc, input) => ({ ...acc, [input.id]: input.defaultValue || '' }), {}),
+    defaultValues: inputs.reduce(
+      (acc, input) => ({ ...acc, [input.id]: input.defaultValue || '' }),
+      {}
+    ),
   });
 
-  const { reset, formState: { errors } } = form;
+  const {
+    reset,
+    formState: { errors },
+  } = form;
 
   const stringifiedInputs = JSON.stringify(inputs);
   useEffect(() => {
     if (isOpen) {
       const currentInputs = JSON.parse(stringifiedInputs);
-      reset(currentInputs.reduce((acc, input) => ({ ...acc, [input.id]: input.defaultValue || '' }), {}));
+      reset(
+        currentInputs.reduce((acc, input) => ({ ...acc, [input.id]: input.defaultValue || '' }), {})
+      );
     }
   }, [isOpen, stringifiedInputs, reset]);
+
+  // Esc 与 X / 点遮罩走同一条关闭路径。注意「设密码」那一步是锁住的
+  // （hideModalHeaderCloseButton 且无取消按钮），那时按键应当无效。
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = event => {
+      if (event.key !== 'Escape') return;
+      if (showCancelButton || !hideModalHeaderCloseButton) {
+        onReject(new Error('Dialog closed by user.'));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, showCancelButton, hideModalHeaderCloseButton, onReject]);
 
   if (!isOpen) {
     return null;
   }
-  
-  const handleOverlayClick = (e) => {
+
+  const handleOverlayClick = e => {
     if (e.target === e.currentTarget) {
-        handleClose();
+      handleClose();
     }
   };
 
+  // 只要这个弹窗允许被关掉（有取消按钮，或没被锁住头部关闭），
+  // 遮罩点击 / Esc / X 都走同一条路径。
+  const canClose = !hideModalHeaderCloseButton || showCancelButton;
   const handleClose = () => {
-    if (showCancelButton || !hideModalHeaderCloseButton) {
+    if (canClose) {
       onReject(new Error('Dialog closed by user.'));
     }
   };
 
-  const onSubmit = (values) => {
+  const onSubmit = values => {
     onResolve(values);
   };
 
   // 只读的地址栏不参与聚焦：光标直接落在第一个可编辑的输入框。
-  const firstEditableIndex = inputs.findIndex((input) => !input.readOnly);
-  
+  const firstEditableIndex = inputs.findIndex(input => !input.readOnly);
+
   const renderField = ({ field, fieldState, formState }, input) => (
     <FormItem className="mb-4">
       <FormLabel>{input.label}</FormLabel>
@@ -102,15 +133,15 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
           tabIndex={input.readOnly ? -1 : undefined}
           aria-readonly={input.readOnly ? 'true' : undefined}
           autoFocus={input.autoFocus}
-          className={
-            input.readOnly
-              ? 'cursor-default opacity-70'
-              : undefined
-          }
+          className={input.readOnly ? 'cursor-default opacity-70' : undefined}
         />
       </FormControl>
-      {input.hintMessage && <p className="text-xs text-muted-foreground mt-1">{input.hintMessage}</p>}
-      {formState.errors[input.id] && <FormMessage>{formState.errors[input.id].message}</FormMessage>}
+      {input.hintMessage && (
+        <p className="text-xs text-muted-foreground mt-1">{input.hintMessage}</p>
+      )}
+      {formState.errors[input.id] && (
+        <FormMessage>{formState.errors[input.id].message}</FormMessage>
+      )}
     </FormItem>
   );
 
@@ -130,12 +161,16 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <div className="p-6">
         <div className="flex justify-between items-start">
-            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            {!hideModalHeaderCloseButton && (
-            <button type="button" onClick={handleClose} className="text-muted-foreground hover:text-muted-foreground">
-                &times;
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {!hideModalHeaderCloseButton && (
+            <button
+              type="button"
+              onClick={handleClose}
+              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span aria-hidden="true">×</span>
             </button>
-            )}
+          )}
         </div>
         {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
 
@@ -151,13 +186,19 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
             if (input.minLength) {
               rules.minLength = {
                 value: input.minLength,
-                message: t('bsvPayment.pinModal.validation.minLength', { field: input.label, min: input.minLength }),
+                message: t('bsvPayment.pinModal.validation.minLength', {
+                  field: input.label,
+                  min: input.minLength,
+                }),
               };
             }
             if (input.maxLength) {
               rules.maxLength = {
                 value: input.maxLength,
-                message: t('bsvPayment.pinModal.validation.maxLength', { field: input.label, max: input.maxLength }),
+                message: t('bsvPayment.pinModal.validation.maxLength', {
+                  field: input.label,
+                  max: input.maxLength,
+                }),
               };
             }
             if (input.pattern) {
@@ -172,16 +213,22 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
                 control={form.control}
                 name={input.id}
                 rules={rules}
-                render={(props) => renderField(props, { ...input, autoFocus: index === firstEditableIndex })}
+                render={props =>
+                  renderField(props, { ...input, autoFocus: index === firstEditableIndex })
+                }
               />
             );
           })}
         </div>
       </div>
-      
+
       <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end gap-2">
         {showCancelButton && (
-          <Button type="button" variant="outline" onClick={() => onReject(new Error('User cancelled.'))}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onReject(new Error('User cancelled.'))}
+          >
             {cancelButtonText}
           </Button>
         )}
@@ -190,50 +237,13 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     </form>
   );
 
-  const SetupDialogContent = () => (
-    <div className="p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">{t('bsvPayment.walletSetup.title')}</h2>
-      <p className="text-sm text-muted-foreground mb-6">{t('bsvPayment.walletSetup.prompt')}</p>
-
-      <div className="flex flex-col gap-3">
-        <Button onClick={() => onResolve({ action: 'create' })}>
-          {t('bsvPayment.walletSetup.createButton')}
-        </Button>
-        <Button variant="outline" onClick={() => onResolve({ action: 'import' })}>
-          {t('bsvPayment.walletSetup.importButton')}
-        </Button>
-        <Button variant="outline" onClick={() => onResolve({ action: 'watch' })}>
-          {t('bsvPayment.walletSetup.watchButton')}
-        </Button>
-      </div>
-
-      {/* 冷存储是同一把钥匙的第二种用法，但它不属于这个网页：
-          只想离线保管的人应该拿到一个文件，而不是被要求先建个热钱包。 */}
-      <div className="mt-5 pt-4 border-t border-border">
-        <p className="text-sm font-medium text-foreground">
-          {t('bsvPayment.coldStorage.setupTitle')}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t('bsvPayment.coldStorage.setupHint')}
-        </p>
-        <a
-          href={OFFLINE_RELEASE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-block text-sm text-primary underline"
-        >
-          {t('bsvPayment.coldStorage.setupLink')} →
-        </a>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+      onClick={handleOverlayClick}
+    >
       <div className="bg-card rounded-lg border border-border w-full max-w-md mx-auto">
-        {mode === 'info' ? <InfoDialogContent /> : 
-         mode === 'setup' ? <SetupDialogContent /> : 
-         <FormDialogContent />}
+        {mode === 'info' ? <InfoDialogContent /> : <FormDialogContent />}
       </div>
     </div>
   );

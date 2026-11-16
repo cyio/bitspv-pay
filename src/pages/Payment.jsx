@@ -26,6 +26,7 @@ function WalletUI() {
   const importFileInput = useRef(null);
   const walletManagerRef = useRef(null);
   const appVersion = __APP_VERSION__;
+  const isOfflineBuild = import.meta.env.VITE_OFFLINE_BUILD === 'true';
 
   const wallet = useWallet();
   const {
@@ -36,6 +37,8 @@ function WalletUI() {
     isWalletUiVisible,
     isWatchOnly,
     createWallet,
+    createNewWallet,
+    createWatchOnly,
     getWifForBackup,
     changeWalletPassword,
     handleDeleteWallet,
@@ -58,9 +61,14 @@ function WalletUI() {
   const [isCopied, setIsCopied] = useState(false);
   const [maxTransferAmount, setMaxTransferAmount] = useState(null);
   const [initError, setInitError] = useState('');
-  const [needsRecovery, setNeedsRecovery] = useState(false);
-  // 用户在「设置钱包」里选了导入，文件选择框已经打开（或刚被取消）。
-  const [needsSetup, setNeedsSetup] = useState(false);
+  /**
+   * 'loading'  正在读取本地状态（只在 createWallet 真的在跑时）
+   * 'empty'    没有钱包 —— 空态，创建 / 导入 / 观察地址由用户发起
+   * 'recovery' 私钥还在但地址缓存丢了，需要解锁重建
+   * 'failed'   初始化失败
+   * 'ready'    有地址，渲染钱包
+   */
+  const [initState, setInitState] = useState('loading');
 
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
@@ -70,6 +78,9 @@ function WalletUI() {
     () => getRecommendedProvider()?.name || 'bananablocks'
   );
   const isInitializing = useRef(false);
+
+  // 地址被清空（删钱包）时不要落回 loading：ready 但没有地址就是空态。
+  const viewState = initState === 'ready' && !isWalletUiVisible ? 'empty' : initState;
 
   const copyAddress = async () => {
     const copied = await copyText(address);
@@ -113,12 +124,7 @@ function WalletUI() {
 
       checkGoogleConnectivity();
 
-      const result = await createWallet({
-        onImport: () => {
-          handleRequestImportWallet();
-        },
-      });
-
+      const result = await createWallet();
       applyInitResult(result);
     };
 
@@ -126,38 +132,50 @@ function WalletUI() {
   }, [createWallet, showInfo, t]);
 
   const applyInitResult = result => {
-    if (!result?.error) {
-      setNeedsRecovery(false);
-      setNeedsSetup(false);
+    const error = result?.error;
+    if (!error) {
+      setInitError('');
+      setInitState('ready');
       return;
     }
-    if (result.error === 'import-requested') {
-      // 这不是失败：createWallet 已经替我们把文件选择框打开了，接下来会走
-      // handleFileChange → handleImportData。以前这里被当成错误，于是用户一
-      // 点「导入钱包」、文件框刚弹出来就看到「导入已取消 / 导入界面不可用」。
-      // 只在「用户取消了文件选择」之后才需要给出路，所以这里留一张重试卡片。
-      setNeedsSetup(true);
-    } else if (
-      result.error === 'wallet-needs-recovery' ||
-      result.error === 'wallet-unrecoverable'
-    ) {
-      // 加密私钥还在，只是地址缓存丢了，或者用户刚才取消了 PIN 解锁。
-      // 不能把页面留给一个空地址的转圈，要给一个明确的重试入口。
-      setNeedsRecovery(true);
-      setInitError(result.message || t('bsvPayment.statusMessages.errors.walletRecoveryNeeded'));
-    } else {
-      setInitError(result.message);
+    if (error === 'no-wallet') {
+      // 没有钱包是正常状态，不是错误，也不需要弹窗。
+      setInitError('');
+      setInitState('empty');
+      return;
     }
+    if (error === 'setup-cancelled' || error === 'import-requested') {
+      // 用户取消 / 打开了文件选择框：回到空态，不留错误提示。
+      setInitError('');
+      setInitState('empty');
+      return;
+    }
+    if (error === 'wallet-needs-recovery' || error === 'wallet-unrecoverable') {
+      // 加密私钥还在，只是地址缓存丢了，或者用户刚才取消了 PIN 解锁。
+      setInitState('recovery');
+      setInitError(result.message || t('bsvPayment.statusMessages.errors.walletRecoveryNeeded'));
+      return;
+    }
+    setInitState('failed');
+    setInitError(result.message || t('bsvPayment.statusMessages.walletCreateFailed'));
   };
 
-  const handleRetryRecovery = async () => {
+  const handleRetryInit = async () => {
     setInitError('');
-    setNeedsSetup(false);
-    const result = await createWallet({
-      onImport: () => {
-        handleRequestImportWallet();
-      },
-    });
+    setInitState('loading');
+    const result = await createWallet();
+    applyInitResult(result);
+  };
+
+  const handleCreateWallet = async () => {
+    setInitError('');
+    const result = await createNewWallet();
+    applyInitResult(result);
+  };
+
+  const handleWatchOnly = async () => {
+    setInitError('');
+    const result = await createWatchOnly();
     applyInitResult(result);
   };
 
@@ -254,8 +272,24 @@ function WalletUI() {
         <div className="mx-auto flex min-h-screen w-full max-w-[640px] flex-col border-border bg-card sm:border-x">
           <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
             <div>
-              <h1 className="text-[15px] font-semibold leading-5 text-foreground">
-                {t('bsvPayment.title')}
+              <h1 className="text-[15px] leading-5 text-foreground">
+                {/* 品牌字标：BitSPV 600 + 产品名 400，同字号、不加分隔符、不用主题色。
+                    点击回主站是品牌 header 的规则；离线单文件没有站点可回，故不挂链接。 */}
+                {isOfflineBuild ? (
+                  <>
+                    <span className="font-semibold">BitSPV</span>{' '}
+                    <span className="font-normal">Pay</span>
+                  </>
+                ) : (
+                  <a
+                    href="https://www.bitspv.com/"
+                    className="transition-colors hover:text-primary"
+                    title="BitSPV"
+                  >
+                    <span className="font-semibold">BitSPV</span>{' '}
+                    <span className="font-normal">Pay</span>
+                  </a>
+                )}
               </h1>
               <p className="mt-0.5 text-[12px] leading-[17px] text-muted-foreground">
                 {t('bsvPayment.tagline')}
@@ -307,12 +341,6 @@ function WalletUI() {
               </div>
             )}
 
-            {initError && (
-              <div className="mb-4 border-l-2 border-[var(--danger)] pl-3">
-                <p className="text-[12px] leading-[17px] text-muted-foreground">{initError}</p>
-              </div>
-            )}
-
             {isWalletUiVisible ? (
               <>
                 <WalletInfo
@@ -348,35 +376,87 @@ function WalletUI() {
                   onClearTransferStatus={clearTransferStatus}
                 />
               </>
-            ) : needsRecovery ? (
-              <div className="flex flex-col gap-2 py-4">
+            ) : viewState === 'recovery' ? (
+              <div className="py-2">
+                <div className="border-l-2 border-[var(--danger)] pl-3">
+                  <p className="text-[12px] leading-[17px] text-muted-foreground">
+                    {initError || t('bsvPayment.statusMessages.errors.walletRecoveryNeeded')}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    onClick={handleRetryInit}
+                    className="w-full px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  >
+                    {t('bsvPayment.pinModal.unlockButton')}
+                  </button>
+                  <button
+                    onClick={handleRequestImportWallet}
+                    className="w-full px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                  >
+                    {t('bsvPayment.walletSetup.importButton')}
+                  </button>
+                </div>
+              </div>
+            ) : viewState === 'failed' ? (
+              <div className="py-2">
+                <div className="border-l-2 border-[var(--danger)] pl-3">
+                  <p className="text-[12px] leading-[17px] text-muted-foreground">{initError}</p>
+                </div>
                 <button
-                  onClick={handleRetryRecovery}
-                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  onClick={handleRetryInit}
+                  className="mt-4 w-full px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
                 >
-                  {t('bsvPayment.pinModal.unlockButton')}
-                </button>
-                <button
-                  onClick={handleRequestImportWallet}
-                  className="px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
-                >
-                  {t('bsvPayment.walletSetup.importButton')}
+                  {t('bsvPayment.walletSetup.retry')}
                 </button>
               </div>
-            ) : needsSetup ? (
-              <div className="flex flex-col gap-2 py-4">
-                <button
-                  onClick={handleRequestImportWallet}
-                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                >
-                  {t('bsvPayment.walletSetup.importButton')}
-                </button>
-                <button
-                  onClick={handleRetryRecovery}
-                  className="px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
-                >
-                  {t('bsvPayment.walletSetup.backToSetup')}
-                </button>
+            ) : viewState === 'empty' ? (
+              <div className="py-2">
+                <h2 className="text-[15px] font-semibold text-foreground">
+                  {t('bsvPayment.walletSetup.title')}
+                </h2>
+                <p className="mt-1 text-[12px] leading-[17px] text-muted-foreground">
+                  {t('bsvPayment.walletSetup.prompt')}
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    onClick={handleCreateWallet}
+                    className="w-full px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  >
+                    {t('bsvPayment.walletSetup.createButton')}
+                  </button>
+                  <button
+                    onClick={handleRequestImportWallet}
+                    className="w-full px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                  >
+                    {t('bsvPayment.walletSetup.importButton')}
+                  </button>
+                  <button
+                    onClick={handleWatchOnly}
+                    className="w-full px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
+                  >
+                    {t('bsvPayment.walletSetup.watchButton')}
+                  </button>
+                </div>
+
+                {/* 冷存储是同一把钥匙的第二种用法，但它不属于这个网页：
+                    只想离线保管的人应该拿到一个文件，而不是先被要求建个热钱包。 */}
+                <div className="mt-5 border-t border-border pt-4">
+                  <p className="text-[12px] font-medium text-foreground">
+                    {t('bsvPayment.coldStorage.setupTitle')}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    {t('bsvPayment.coldStorage.setupHint')}
+                  </p>
+                  <a
+                    href={OFFLINE_RELEASE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-[12px] text-primary underline"
+                  >
+                    {t('bsvPayment.coldStorage.setupLink')} →
+                  </a>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8">
@@ -589,8 +669,10 @@ export default function Payment() {
               },
             ],
             confirmButtonText: t('bsvPayment.pinModal.setButton'),
-            showCancelButton: false,
-            hideModalHeaderCloseButton: true,
+            cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
+            // 密钥还没落盘，取消是安全的：生成的密钥直接丢弃，回到空态。
+            showCancelButton: true,
+            hideModalHeaderCloseButton: false,
           };
         } else if (mode === 'confirm') {
           config = {
@@ -648,14 +730,6 @@ export default function Payment() {
             cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
             showCancelButton: true,
             hideModalHeaderCloseButton: false,
-          };
-        } else if (mode === 'setup') {
-          // New setup mode
-          config = {
-            mode: 'setup',
-            confirmButtonText: '',
-            showCancelButton: false,
-            hideModalHeaderCloseButton: true,
           };
         } else {
           // unlock

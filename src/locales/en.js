@@ -184,6 +184,7 @@ export default {
       importButton: 'Import Wallet',
       watchButton: 'Add Watch Address (No Private Key)',
       backToSetup: 'Back to setup',
+      retry: 'Try again',
     },
     coldStorage: {
       footer: 'Offline build',

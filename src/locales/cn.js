@@ -167,6 +167,7 @@ export default {
       importButton: '导入钱包',
       watchButton: '添加观察地址（无私钥）',
       backToSetup: '返回钱包设置',
+      retry: '重新加载',
     },
     coldStorage: {
       footer: '离线版',
