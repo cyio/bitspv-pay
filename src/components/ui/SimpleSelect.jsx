@@ -30,7 +30,7 @@ const SimpleSelect = ({ value, onValueChange, children, className }) => {
     <div className={`relative ${className}`} ref={selectRef}>
       <button
         type="button"
-        className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+        className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="truncate">
@@ -47,7 +47,7 @@ const SimpleSelect = ({ value, onValueChange, children, className }) => {
       </button>
       
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md max-h-60">
+        <div className="absolute z-50 mt-1 w-full overflow-y-auto rounded-md border bg-popover text-popover-foreground max-h-60">
           <div className="p-1">
             {React.Children.map(children, (child) => 
               React.cloneElement(child, {

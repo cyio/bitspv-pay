@@ -49,7 +49,7 @@ const PaymentAbout = ({ show, onClose }) => {
                   href="https://cyio.github.io/bitspv-open/wallet-decrypt/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
+                  className="text-primary underline"
                 >
                   {t('paymentAbout.walletDecryptTool')}
                 </a>
@@ -59,7 +59,7 @@ const PaymentAbout = ({ show, onClose }) => {
                   href="https://github.com/cyio/bitspv-pay/releases/latest"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
+                  className="text-primary underline"
                 >
                   {t('paymentAbout.offlineRelease')}
                 </a>

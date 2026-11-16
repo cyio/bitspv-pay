@@ -359,7 +359,7 @@ const WalletManager = ({
   const getTransferStatusClass = (status) => {
     switch (status) {
       case 'processing':
-        return 'text-blue-600 dark:text-blue-300';
+        return 'text-primary';
       case 'completed':
         return 'text-green-600 dark:text-green-300';
       case 'error':
@@ -388,10 +388,10 @@ const WalletManager = ({
       )}
 
       {showTransferSection && (
-        <div className="mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded">
+        <div className="mt-4 px-2 py-4 bg-muted rounded">
           <h2 className="text-lg font-semibold mb-3">{t('bsvPayment.transfer.transferTitle')}</h2>
           <div className="mb-3">
-            <label htmlFor="targetAddress" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="targetAddress" className="block text-sm font-medium text-foreground mb-1">
               {t('bsvPayment.transfer.targetAddressLabel')}
             </label>
             <div className="flex items-center gap-2">
@@ -416,7 +416,7 @@ const WalletManager = ({
             </div>
           </div>
           <div className="mb-3">
-            <label htmlFor="transferAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="transferAmount" className="block text-sm font-medium text-foreground mb-1">
               {t('bsvPayment.transfer.transferAmountLabel')}
             </label>
             <div className="flex items-center gap-2">
@@ -439,11 +439,11 @@ const WalletManager = ({
               {rate && <SimpleSelectItem value="USD">USD</SimpleSelectItem>}
             </SimpleSelect>
             </div>
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            <div className="mt-2 text-sm text-muted-foreground">
               <button
                 onClick={handleSetAmountToMax}
                 disabled={isCalculatingMax}
-                className="px-2 py-0.5 text-xs rounded border border-gray-400 dark:border-gray-500 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                className="px-2 py-0.5 text-xs rounded border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
               >
                 {isCalculatingMax ? `${t('bsvPayment.transfer.calculating')}...` : t('bsvPayment.transfer.maxLabel')}
               </button>
@@ -583,28 +583,28 @@ const WalletManager = ({
             <DialogTitle>{t('bsvPayment.publicKeyModalTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded bg-gray-50 p-3 dark:bg-gray-950">
+            <div className="rounded bg-muted p-3">
               <div className="flex items-start gap-2">
                 <div className="flex-1 select-all break-all font-mono text-sm">{pubKeyHex}</div>
                 <button
                   onClick={copyPublicKey}
                   title={isPubKeyCopied ? t('bsvPayment.publicKeyCopied') : t('bsvPayment.copyButton')}
-                  className="shrink-0 rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                  className="shrink-0 rounded p-1.5 transition-colors hover:bg-muted"
                 >
                   {isPubKeyCopied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
                 </button>
               </div>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-xs text-muted-foreground">
                 {t('bsvPayment.publicKeyFormat')}
               </p>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {t('bsvPayment.publicKeyAddressLabel')}
               </p>
               <p className="break-all font-mono text-sm">{address}</p>
             </div>
-            <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               {t('bsvPayment.publicKeyDescription')}
             </DialogDescription>
             {pubKeyCopyError && (
@@ -623,11 +623,11 @@ const WalletManager = ({
             {privateKeyQrCodeUrl ? (
               <img src={privateKeyQrCodeUrl} alt="Private Key QR Code" className="w-48 h-48 mx-auto my-4" />
             ) : (
-              <div className="w-48 h-48 bg-gray-200 dark:bg-gray-600 mx-auto my-4 flex items-center justify-center text-xs text-gray-500 dark:text-gray-300">
+              <div className="w-48 h-48 bg-muted mx-auto my-4 flex items-center justify-center text-xs text-muted-foreground">
                 {t('bsvPayment.qrLoading')}
               </div>
             )}
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('bsvPayment.qrCodeDownloadTip')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('bsvPayment.qrCodeDownloadTip')}</p>
             <p className="mt-2 text-xs text-red-500 dark:text-red-400">{t('bsvPayment.privateKeyWarning')}</p>
           </div>
           <DialogFooter>
@@ -637,7 +637,7 @@ const WalletManager = ({
               </Button>
             )}
             {isWeChat && (
-              <p className="w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 py-2">
+              <p className="w-full text-center text-sm font-medium text-primary py-2">
                  {t('bsvPayment.qrCodeDownloadTip')}
               </p>
             )}

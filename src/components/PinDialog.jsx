@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { OFFLINE_RELEASE_URL } from '../utils/links';
 
 const FormItem = ({ children, className }) => <div className={className}>{children}</div>;
-const FormLabel = ({ children }) => <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</label>;
+const FormLabel = ({ children }) => <label className="block text-sm font-medium text-foreground mb-1">{children}</label>;
 const FormControl = ({ children }) => <div>{children}</div>;
 const FormMessage = ({ children }) => <p className="text-sm text-red-600 mt-1">{children}</p>;
 const FormField = ({ control, name, render, rules }) => (
@@ -19,15 +19,15 @@ const FormField = ({ control, name, render, rules }) => (
 const Input = React.forwardRef(({ className, ...props }, ref) => (
   <input
     ref={ref}
-    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white ${className}`}
+    className={`w-full px-3 py-2 border border-input rounded-md bg-card placeholder:text-muted-foreground focus:outline-none focus:ring-primary focus:border-primary ${className}`}
     {...props}
   />
 ));
 const Button = ({ children, variant, ...props }) => {
   const baseClasses = "px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
   const variantClasses = variant === 'outline'
-    ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-    : "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500";
+    ? "border border-border bg-card text-foreground hover:bg-muted"
+    : "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary";
   return <button className={`${baseClasses} ${variantClasses}`} {...props}>{children}</button>;
 }
 
@@ -109,7 +109,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
           }
         />
       </FormControl>
-      {input.hintMessage && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{input.hintMessage}</p>}
+      {input.hintMessage && <p className="text-xs text-muted-foreground mt-1">{input.hintMessage}</p>}
       {formState.errors[input.id] && <FormMessage>{formState.errors[input.id].message}</FormMessage>}
     </FormItem>
   );
@@ -117,10 +117,10 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
   const InfoDialogContent = () => (
     <>
       <div className="p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-        {message && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>}
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
       </div>
-      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 flex justify-end">
+      <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end">
         <Button onClick={() => onResolve()}>{confirmButtonText}</Button>
       </div>
     </>
@@ -130,14 +130,14 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <div className="p-6">
         <div className="flex justify-between items-start">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
             {!hideModalHeaderCloseButton && (
-            <button type="button" onClick={handleClose} className="text-gray-400 hover:text-gray-500">
+            <button type="button" onClick={handleClose} className="text-muted-foreground hover:text-muted-foreground">
                 &times;
             </button>
             )}
         </div>
-        {message && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>}
+        {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
 
         <div className="py-4">
           {inputs.map((input, index) => {
@@ -179,7 +179,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
         </div>
       </div>
       
-      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 flex justify-end gap-2">
+      <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end gap-2">
         {showCancelButton && (
           <Button type="button" variant="outline" onClick={() => onReject(new Error('User cancelled.'))}>
             {cancelButtonText}
@@ -192,8 +192,8 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
 
   const SetupDialogContent = () => (
     <div className="p-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('bsvPayment.walletSetup.title')}</h2>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{t('bsvPayment.walletSetup.prompt')}</p>
+      <h2 className="text-lg font-semibold text-foreground mb-4">{t('bsvPayment.walletSetup.title')}</h2>
+      <p className="text-sm text-muted-foreground mb-6">{t('bsvPayment.walletSetup.prompt')}</p>
 
       <div className="flex flex-col gap-3">
         <Button onClick={() => onResolve({ action: 'create' })}>
@@ -209,18 +209,18 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
 
       {/* 冷存储是同一把钥匙的第二种用法，但它不属于这个网页：
           只想离线保管的人应该拿到一个文件，而不是被要求先建个热钱包。 */}
-      <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="mt-5 pt-4 border-t border-border">
+        <p className="text-sm font-medium text-foreground">
           {t('bsvPayment.coldStorage.setupTitle')}
         </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-muted-foreground">
           {t('bsvPayment.coldStorage.setupHint')}
         </p>
         <a
           href={OFFLINE_RELEASE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="mt-2 inline-block text-sm text-primary underline"
         >
           {t('bsvPayment.coldStorage.setupLink')} →
         </a>
@@ -230,7 +230,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md mx-auto">
+      <div className="bg-card rounded-lg border border-border w-full max-w-md mx-auto">
         {mode === 'info' ? <InfoDialogContent /> : 
          mode === 'setup' ? <SetupDialogContent /> : 
          <FormDialogContent />}

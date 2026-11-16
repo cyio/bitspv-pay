@@ -248,23 +248,23 @@ function WalletUI() {
   return (
     <>
       <div className="min-h-screen py-8">
-        <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+        <div className="max-w-md mx-auto bg-card rounded-lg border border-border p-6">
             <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('bsvPayment.title')}</h1>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{t('bsvPayment.tagline')}</p>
+              <h1 className="text-sm font-semibold text-muted-foreground">{t('bsvPayment.title')}</h1>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t('bsvPayment.tagline')}</p>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={() => setShowAboutModal(true)} title="About" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={() => setShowAboutModal(true)} title="About" className="text-muted-foreground hover:text-foreground">
                 <Info className="h-5 w-5" />
               </button>
-              <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={() => setIsDonationModalVisible(true)} title="Buy me a coffee" className="text-muted-foreground hover:text-foreground">
                 <Coffee className="h-5 w-5" />
               </button>
-              <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={() => setShowHistoryModal(true)} title="交易历史" className="text-muted-foreground hover:text-foreground">
                 <History className="h-5 w-5" />
               </button>
-              <button onClick={() => setShowSettingsModal(true)} title="设置" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={() => setShowSettingsModal(true)} title="设置" className="text-muted-foreground hover:text-foreground">
                 <Settings className="h-5 w-5" />
               </button>
             </div>
@@ -272,7 +272,7 @@ function WalletUI() {
 
           {(walletName || isWatchOnly) && (
             <div className="flex items-center justify-center gap-2 mb-3">
-              {walletName && <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">{walletName}</span>}
+              {walletName && <span className="text-lg font-semibold text-foreground">{walletName}</span>}
               {isWatchOnly && (
                 <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                   {t('bsvPayment.watchAddress.badge')}
@@ -326,13 +326,13 @@ function WalletUI() {
             <div className="flex flex-col gap-2 py-4">
               <button
                 onClick={handleRetryRecovery}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 {t('bsvPayment.pinModal.unlockButton')}
               </button>
               <button
                 onClick={handleRequestImportWallet}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                className="px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
               >
                 {t('bsvPayment.walletSetup.importButton')}
               </button>
@@ -341,26 +341,26 @@ function WalletUI() {
             <div className="flex flex-col gap-2 py-4">
               <button
                 onClick={handleRequestImportWallet}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 {t('bsvPayment.walletSetup.importButton')}
               </button>
               <button
                 onClick={handleRetryRecovery}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                className="px-4 py-2 rounded-md border border-border bg-card text-foreground hover:bg-muted"
               >
                 {t('bsvPayment.walletSetup.backToSetup')}
               </button>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">{t('bsvPayment.statusMessages.walletLoading')}</p>
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-muted-foreground">{t('bsvPayment.statusMessages.walletLoading')}</p>
             </div>
           )}
 
         </div>
-        <footer className="flex items-center justify-center gap-3 p-4 text-sm text-gray-500 dark:text-gray-400">
+        <footer className="flex items-center justify-center gap-3 p-4 text-sm text-muted-foreground">
           <a href="https://github.com/cyio/bitspv-pay" target="_blank" rel="noopener noreferrer" className="text-black dark:text-white hover:opacity-70" title="Source Code on GitHub">
             <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="inline-block h-6 w-6 fill-current">
               <title>GitHub</title>
@@ -371,7 +371,7 @@ function WalletUI() {
             href={OFFLINE_RELEASE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline"
+            className="text-muted-foreground hover:text-foreground hover:underline"
             title="Offline single-file build"
           >
             {t('bsvPayment.coldStorage.footer')}

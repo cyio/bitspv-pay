@@ -12,7 +12,10 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss,less,json,md}\"",
     "ship": "URL=$(vercel 2>&1 | grep -o 'https://[^ ]*\\.vercel\\.app' | tail -1) && ./scripts/notify.sh \"🚀 Preview: $URL\"",
     "ship:prod": "vercel --prod",
-    "build:offline": "vite build --config vite.config.offline.ts && node scripts/release-offline.mjs"
+    "build:offline": "vite build --config vite.config.offline.ts && node scripts/release-offline.mjs",
+    "gen:brand-vars": "node scripts/gen-brand-vars.mjs",
+    "predev": "npm run gen:brand-vars",
+    "prebuild": "npm run gen:brand-vars"
   },
   "dependencies": {
     "@bsv/paymail": "^2.1.1",
@@ -41,6 +44,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@bitspv/tokens": "https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",

@@ -11,7 +11,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import ReactGA from "react-ga4";
+import '@bitspv/tokens/tokens.css';
 import './style.css';
+import './styles/brand-vars.css';
 import i18n from './i18n'; // Your existing i18n setup
 import { I18nextProvider } from 'react-i18next';
 import Payment from './pages/Payment';

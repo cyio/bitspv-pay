@@ -44,17 +44,17 @@ const StepIndicator = ({ current, total, labels }) => (
       <React.Fragment key={i}>
         <div className={`flex flex-col items-center ${i < total ? '' : 'hidden'}`}>
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-            ${i + 1 === current ? 'bg-blue-600 text-white' :
-              i + 1 < current ? 'bg-green-500 text-white' :
-              'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'}`}>
+            ${i + 1 === current ? 'bg-primary text-primary-foreground' :
+              i + 1 < current ? 'bg-[var(--seal)] text-white' :
+              'bg-muted text-muted-foreground'}`}>
             {i + 1 < current ? '✓' : i + 1}
           </div>
-          <span className="text-[10px] mt-0.5 text-gray-500 dark:text-gray-400 max-w-[52px] text-center leading-tight">
+          <span className="text-[10px] mt-0.5 text-muted-foreground max-w-[52px] text-center leading-tight">
             {label}
           </span>
         </div>
         {i < total - 1 && (
-          <div className={`h-px w-6 mb-4 ${i + 1 < current ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`} />
+          <div className={`h-px w-6 mb-4 ${i + 1 < current ? 'bg-[var(--seal)]' : 'bg-muted'}`} />
         )}
       </React.Fragment>
     ))}
@@ -64,7 +64,7 @@ const StepIndicator = ({ current, total, labels }) => (
 const QrDisplay = ({ dataUrl, size = 220, loadingText = '…' }) => (
   dataUrl
     ? <img src={dataUrl} alt="QR Code" className="mx-auto my-3 rounded" style={{ width: size, height: size }} />
-    : <div className="mx-auto my-3 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-500"
+    : <div className="mx-auto my-3 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground"
         style={{ width: size, height: size }}>{loadingText}</div>
 );
 
@@ -72,14 +72,14 @@ const StatusLine = ({ status, message }) => {
   if (!status && !message) return null;
   const cls = status === 'error' ? 'text-red-500' :
               status === 'success' ? 'text-green-600 dark:text-green-400' :
-              'text-blue-600 dark:text-blue-300';
+              'text-primary';
   return <p className={`text-sm mt-2 break-words ${cls}`}>{message}</p>;
 };
 
 // ─── 热端：Sender ─────────────────────────────────────────────────────────────
 // step: 'form' → 'building' → 'show-signing-request' → 'scan-signed' → 'broadcasting' → 'done'
 
-export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
+export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, onCancel, className = "mt-4 px-2 py-4 bg-muted rounded" }) {
   React.useEffect(() => {
     console.log('[DEBUG] AirGapSender mounted');
     return () => console.log('[DEBUG] AirGapSender unmounting...');
@@ -222,7 +222,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
         <>
           <h2 className="text-base font-semibold mb-3">{t('bsvPayment.airGap.sender.title')}</h2>
           <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('bsvPayment.airGap.sender.recipientLabel')}</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t('bsvPayment.airGap.sender.recipientLabel')}</label>
             <div className="flex items-center gap-2">
               <Input
                 value={target}
@@ -240,7 +240,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
             </div>
           </div>
           <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('bsvPayment.airGap.sender.amountLabel')}</label>
+            <label className="block text-sm font-medium text-foreground mb-1">{t('bsvPayment.airGap.sender.amountLabel')}</label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -272,19 +272,19 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       {step === 'show-signing-request' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             {t('bsvPayment.airGap.sender.showPsbtDesc')}
           </p>
           <QrDisplay dataUrl={signingRequestQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />
 
-          <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2 mb-4 mx-4 border border-gray-200 dark:border-gray-600">
+          <div className="bg-card rounded p-3 text-sm space-y-2 mb-4 mx-4 border border-border">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 dark:text-gray-400">核对码</span>
+              <span className="text-muted-foreground">核对码</span>
               <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400 font-mono tracking-widest">
                 {signingRequest.checksum}
               </span>
             </div>
-            <div className="flex justify-between text-gray-600 dark:text-gray-300 font-medium">
+            <div className="flex justify-between text-muted-foreground font-medium">
               <span className="truncate max-w-[150px]">{target}</span>
               <span className="font-mono">
                 {convertSatoshisToBSV(transferAmountSatoshis || 0)} BSV
@@ -303,12 +303,12 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
       {(step === 'scan-signed' || step === 'broadcasting') && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.scanSignedTitle')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          <p className="text-xs text-muted-foreground mb-3">
             {t('bsvPayment.airGap.sender.scanSignedDesc')}
           </p>
           <StatusLine status={status} message={statusMsg} />
           {step === 'broadcasting' && (
-            <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">{t('bsvPayment.airGap.sender.broadcasting')}</p>
+            <p className="text-sm text-primary mt-2">{t('bsvPayment.airGap.sender.broadcasting')}</p>
           )}
           {step === 'scan-signed' && (
             <QRScanner onScanResult={handleSignedScan}>
@@ -336,13 +336,13 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
               {t('bsvPayment.airGap.sender.broadcastSuccess')}
             </p>
             {txid && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <div className="text-xs text-muted-foreground mt-2">
                 TXID:
                 <a
                   href={`https://whatsonchain.com/tx/${txid}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 underline break-all ml-1"
+                  className="text-primary underline break-all ml-1"
                 >
                   {txid}
                 </a>
@@ -364,7 +364,7 @@ export function AirGapSender({ address, rate, utxos: cachedUtxos = [], onDone, o
 // ─── 冷端：Signer ─────────────────────────────────────────────────────────────
 // step: 'scan-signing-request' → 'confirm' → 'signing' → 'show-signed'
 
-export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel, className = "mt-4 px-2 py-4 bg-gray-100 dark:bg-gray-700 rounded" }) {
+export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel, className = "mt-4 px-2 py-4 bg-muted rounded" }) {
   const { t } = useTranslation();
   const { addLog } = useLog();
 
@@ -476,7 +476,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       {step === 'scan-signing-request' && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.signer.scanPsbtTitle')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          <p className="text-xs text-muted-foreground mb-3">
             {t('bsvPayment.airGap.signer.scanPsbtDesc')}
           </p>
           <StatusLine status={status} message={statusMsg} />
@@ -497,7 +497,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       {step === 'show-signing-request' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.sender.showPsbtTitle')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             {t('bsvPayment.airGap.sender.showPsbtDesc')}
           </p>
           <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
@@ -515,20 +515,20 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       {step === 'confirm' && signingRequest && (
         <>
           <h2 className="text-base font-semibold mb-2">{t('bsvPayment.airGap.signer.confirmTitle')}</h2>
-          <div className="bg-white dark:bg-gray-800 rounded p-3 text-sm space-y-2">
+          <div className="bg-card rounded p-3 text-sm space-y-2">
             <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-2 rounded text-center font-bold text-lg mb-2">
               核对码: {signingRequest.checksum}
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">{t('bsvPayment.airGap.signer.totalLabel')}</span>
+              <span className="text-muted-foreground">{t('bsvPayment.airGap.signer.totalLabel')}</span>
               <span className="font-mono">{convertSatoshisToBSV(displayTotal)} BSV</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">{t('bsvPayment.airGap.signer.feeLabel')}</span>
+              <span className="text-muted-foreground">{t('bsvPayment.airGap.signer.feeLabel')}</span>
               <span className="font-mono">{displayFee} sats</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">输出个数</span>
+              <span className="text-muted-foreground">输出个数</span>
               <span className="font-mono">{displayOutputs.length}</span>
             </div>
           </div>
@@ -543,8 +543,8 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       {/* 步骤 3：签名中 */}
       {step === 'signing' && (
         <div className="text-center py-6">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">{t('bsvPayment.airGap.signer.signingHint')}</p>
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">{t('bsvPayment.airGap.signer.signingHint')}</p>
         </div>
       )}
 
@@ -552,7 +552,7 @@ export function AirGapSigner({ address, ensurePrivateKeyLoaded, pubKey, onCancel
       {step === 'show-signed' && (
         <>
           <h2 className="text-base font-semibold mb-1">{t('bsvPayment.airGap.signer.showSignedTitle')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             {t('bsvPayment.airGap.signer.showSignedDesc')}
           </p>
           <QrDisplay dataUrl={signedQrUrl} size={240} loadingText={t('bsvPayment.qrLoading')} />

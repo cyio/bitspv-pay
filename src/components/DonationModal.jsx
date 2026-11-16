@@ -58,29 +58,29 @@ const DonationModal = ({ show, onClose }) => {
           <DialogTitle>{t('donation.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-center">
-          <p className="text-sm text-gray-700 dark:text-gray-300">{t('donation.description')}</p>
+          <p className="text-sm text-foreground">{t('donation.description')}</p>
 
           <div>
             <div className="mb-2">
-              <span className="font-semibold text-gray-600">{currentPaymentMethod === 'handcash' ? 'HandCash' : 'RockWallet'}:</span>
-              <span className="ml-1 text-gray-600 dark:text-gray-400 break-all">{activeAddress}</span>
+              <span className="font-semibold text-muted-foreground">{currentPaymentMethod === 'handcash' ? 'HandCash' : 'RockWallet'}:</span>
+              <span className="ml-1 text-muted-foreground break-all">{activeAddress}</span>
             </div>
             {qrCodeUrl ? (
               <div className="flex justify-center my-3">
-                <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48 border border-gray-300 dark:border-gray-600 rounded" />
+                <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48 border border-border rounded" />
               </div>
             ) : (
-              <div className="flex justify-center items-center w-48 h-48 border border-gray-300 dark:border-gray-600 rounded mx-auto">
-                <p className="text-gray-500">{t('donation.qrLoading')}</p>
+              <div className="flex justify-center items-center w-48 h-48 border border-border rounded mx-auto">
+                <p className="text-muted-foreground">{t('donation.qrLoading')}</p>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-950 rounded mb-4">
+          <div className="flex items-center gap-2 p-3 bg-muted rounded mb-4">
             <div className="flex-1 font-mono text-sm truncate">{activeAddress}</div>
             <button
               onClick={handleCopyAddress}
               title={isCopied ? t('bsvPayment.statusMessages.addressCopied') : t('bsvPayment.copyButton')}
-              className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded hover:bg-muted transition-colors"
             >
               {isCopied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
             </button>
@@ -92,7 +92,7 @@ const DonationModal = ({ show, onClose }) => {
             </Button>
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             {t('donation.thankYou')}
           </p>
         </div>

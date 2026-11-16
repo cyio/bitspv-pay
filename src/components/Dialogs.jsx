@@ -7,8 +7,8 @@ import PinDialog from './PinDialog';
 const Button = ({ children, variant, ...props }) => {
   const baseClasses = "px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
   const variantClasses = variant === 'outline'
-    ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-    : "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500";
+    ? "border border-border bg-card text-foreground hover:bg-muted"
+    : "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary";
   return <button className={`${baseClasses} ${variantClasses}`} {...props}>{children}</button>;
 }
 
@@ -23,15 +23,15 @@ function CustomAlertDialog({ open, onOpenChange, title, message, children }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md mx-auto">
+      <div className="bg-card rounded-lg border border-border w-full max-w-md mx-auto">
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-h-[70vh] overflow-y-auto">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <div className="mt-2 text-sm text-muted-foreground max-h-[70vh] overflow-y-auto">
             {message}
           </div>
 
         </div>
-        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 flex justify-end gap-2">
+        <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end gap-2">
           {children}
         </div>
       </div>
@@ -130,7 +130,7 @@ export function DialogProvider({ children }) {
                     href={rawMessage.linkUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline mt-2 block"
+                    className="text-primary underline mt-2 block"
                   >
                     {rawMessage.linkText || 'View on Explorer'}
                   </a>

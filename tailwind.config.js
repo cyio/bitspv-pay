@@ -1,14 +1,15 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-    darkMode: ['class'],
+  darkMode: 'media',
     // darkMode: false, // 禁用暗色模式
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   theme: {
   	extend: {
   		borderRadius: {
+  			// 品牌只有 2–3px。不用 calc()：2px 减 2px 会得到负数。
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'var(--radius)',
+  			sm: 'var(--radius)'
   		},
   		colors: {
   			background: 'hsl(var(--background))',

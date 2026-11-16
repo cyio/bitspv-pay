@@ -1,0 +1,51 @@
+/* Generated from @bitspv/tokens by scripts/gen-brand-vars.mjs. Do not edit.
+ * 品牌规则：Personal/bitspv/design/brand-system/README.md
+ * 动作色走 --primary（品牌 accent）；shadcn 的 --accent 只是 hover 弱底。
+ */
+
+:root {
+  --background: 0 0% 100%;
+  --card: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --foreground: 0 0% 23%;
+  --card-foreground: 0 0% 23%;
+  --popover-foreground: 0 0% 23%;
+  --primary: 159 91% 25%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 95%;
+  --secondary-foreground: 0 0% 23%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 42%;
+  --accent: 0 0% 95%;
+  --accent-foreground: 0 0% 23%;
+  --destructive: 10 86% 42%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 159 91% 25%;
+  --destructive-foreground: 0 0% 100%;
+  --radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 0 0% 12%;
+    --card: 0 0% 12%;
+    --popover: 0 0% 12%;
+    --foreground: 0 0% 80%;
+    --card-foreground: 0 0% 80%;
+    --popover-foreground: 0 0% 80%;
+    --primary: 155 71% 57%;
+    --primary-foreground: 163 79% 8%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 80%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 80%;
+    --destructive: 3 93% 63%;
+    --border: 0 0% 17%;
+    --input: 0 0% 17%;
+    --ring: 155 71% 57%;
+    --destructive-foreground: 0 0% 12%;
+  }
+}

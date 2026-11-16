@@ -3,13 +3,15 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* 全品牌只有一套字族：不加载 webfont，数字不换字体，列对齐靠等宽数字。 */
+  font-variant-numeric: tabular-nums;
+
+  color: var(--ink);
+  background-color: var(--paper);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -18,110 +20,29 @@
   -webkit-text-size-adjust: 100%;
 }
 
+body {
+  margin: 0;
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--accent);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
-}
-
-body {
-  /* margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh; */
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-/* button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-} */
-
-.card {
-  padding: 2em;
-}
-
-#app {
-  /* max-width: 1280px;
-  margin: 0 auto; */
-  /* padding: 2rem; */
-  /* text-align: center; */
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  color: var(--accent-hover);
 }
 
 @layer components {
   .r-link {
-    @apply text-gray-900 dark:text-white p-2;
+    @apply text-foreground p-2;
   }
+  /* 品牌动作色在 shadcn 里是 --primary；shadcn 的 --accent 只是 hover 弱底。 */
   .active-link {
-    @apply text-blue-700 border-b-2 border-blue-600;
+    @apply text-primary border-b-2 border-primary;
   }
 }
 
-.dark {
-  --main-surface-background: rgba(33, 33, 33, 0.9);
-  --message-surface: rgba(50, 50, 50, 0.85);
-  --dot-color: var(--white);
-  --text-primary: var(--gray-100);
-  --text-secondary: var(--gray-400);
-  --text-tertiary: var(--gray-500);
-  --text-quaternary: var(--gray-600);
-  --text-placeholder: hsla(0, 0%, 100%, 0.8);
-  --text-error: #f93a37;
-  --border-xlight: hsla(0, 0%, 100%, 0.05);
-  --border-light: hsla(0, 0%, 100%, 0.1);
-  --border-medium: hsla(0, 0%, 100%, 0.15);
-  --border-heavy: hsla(0, 0%, 100%, 0.2);
-  --border-xheavy: hsla(0, 0%, 100%, 0.25);
-  --border-sharp: hsla(0, 0%, 100%, 0.05);
-  --main-surface-primary: var(--gray-800);
-  --main-surface-primary-inverse: var(--white);
-  --main-surface-secondary: var(--gray-750);
-  --main-surface-tertiary: var(--gray-700);
-  --sidebar-surface-primary: var(--gray-900);
-  --sidebar-surface-secondary: var(--gray-800);
-  --sidebar-surface-tertiary: var(--gray-750);
-  --sidebar-title-primary: hsla(0, 0%, 94%, 0.5);
-  --sidebar-body-primary: #ededed;
-  --sidebar-icon: #a4a4a4;
-  --link: #7ab7ff;
-  --link-hover: #5e83b3;
-  --surface-error: 249 58 55;
-}
 
 
 

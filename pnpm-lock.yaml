@@ -81,6 +81,9 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.19)
     devDependencies:
+      '@bitspv/tokens':
+        specifier: https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz
+        version: https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -740,6 +743,11 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@bitspv/tokens@https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz':
+    resolution: {tarball: https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz}
+    version: 0.1.3
+    hasBin: true
 
   '@bsv/paymail@2.1.2':
     resolution: {integrity: sha512-6dBIL25ryKABxpn4rYr4KNJhm+qnnA8MzqOtBypB2FtYE34w71QJvPe5sSpT7hkuM6Km8QVCbIlnO67mZBdNiA==}
@@ -2431,6 +2439,7 @@ packages:
   eslint@9.39.2:
     resolution: {integrity: sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -5263,6 +5272,8 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@bitspv/tokens@https://raw.githubusercontent.com/cyio/bitspv-platform/v0.1.3/packages/tokens/dist/bitspv-tokens-0.1.3.tgz': {}
 
   '@bsv/paymail@2.1.2(@babel/core@7.28.6)(@jest/transform@30.2.0)(@jest/types@30.2.0)(@types/node@25.0.10)(babel-jest@30.2.0(@babel/core@7.28.6))(jest-util@30.2.0)':
     dependencies:
