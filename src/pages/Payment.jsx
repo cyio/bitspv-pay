@@ -75,6 +75,10 @@ function WalletUI() {
   const [isDonationModalVisible, setIsDonationModalVisible] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const [currentProvider, setCurrentProvider] = useState(
     () => getRecommendedProvider()?.name || 'bananablocks'
   );
@@ -235,7 +239,35 @@ function WalletUI() {
   };
 
   const handleRequestImportWallet = () => {
-    importFileInput.current.click();
+    setImportText('');
+    setImportError('');
+    setShowImportModal(true);
+  };
+
+  const handleChooseImportFile = () => {
+    setShowImportModal(false);
+    importFileInput.current?.click();
+  };
+
+  const handleSubmitImportText = async () => {
+    const text = importText.trim();
+    if (!text) {
+      setImportError(t('bsvPayment.importDialog.emptyError'));
+      return;
+    }
+    setImportError('');
+    setIsImporting(true);
+    try {
+      const result = await handleImportData(text);
+      if (result?.error) {
+        setImportError(result.message || t('bsvPayment.statusMessages.errors.invalidImportData'));
+      }
+      // 成功导入时 handleImportData 会 reload 页面，无需在此关闭弹窗
+    } catch (error) {
+      setImportError(error?.message || t('bsvPayment.statusMessages.errors.invalidImportData'));
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleRequestCalculateMax = useCallback(
@@ -521,6 +553,58 @@ function WalletUI() {
           </Dialog>
 
           <PaymentAbout show={showAboutModal} onClose={() => setShowAboutModal(false)} />
+
+          <Dialog open={showImportModal} onOpenChange={(open) => !isImporting && setShowImportModal(open)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{t('bsvPayment.importDialog.title')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{t('bsvPayment.importDialog.description')}</p>
+                <textarea
+                  value={importText}
+                  onChange={(e) => {
+                    setImportText(e.target.value);
+                    if (importError) setImportError('');
+                  }}
+                  placeholder={t('bsvPayment.importDialog.placeholder')}
+                  className="min-h-[140px] w-full rounded-[var(--radius)] border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+                {importError && <p className="text-sm text-destructive">{importError}</p>}
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={handleChooseImportFile}
+                    disabled={isImporting}
+                    className="inline-flex items-center justify-center rounded-[var(--radius)] border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {t('bsvPayment.importDialog.chooseFile')}
+                  </button>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setShowImportModal(false)}
+                      disabled={isImporting}
+                      className="inline-flex items-center justify-center rounded-[var(--radius)] border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {t('bsvPayment.cancelButton')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmitImportText}
+                      disabled={isImporting}
+                      className="inline-flex items-center justify-center rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {isImporting ? t('bsvPayment.processingButton') : t('bsvPayment.importDialog.importButton')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <SettingsModal
             show={showSettingsModal}
