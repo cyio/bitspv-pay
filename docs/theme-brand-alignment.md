@@ -1,6 +1,6 @@
 # 主题对齐品牌：实施方案
 
-> 状态：**A 批已执行（2026-11-16），B 批待确认**。
+> 状态：**A / B 两批均已执行（2026-11-16）**。
 > 目标：把 `pay.bitspv.com` 的视觉收进品牌系统，但**不重做外壳结构**（完整外壳重做是品牌 README 里的 P4，5 人日，不在本文范围）。
 > 品牌依据：`@bitspv/tokens@0.1.3`、`design/brand-system/README.md`。
 
@@ -116,12 +116,17 @@ B 批修正：外部动作/次要动作在主流程里**本来就已经分好主
 
 ---
 
-## 3. 批次 B：首屏（1 人日）
+## 3. 批次 B：壳（已执行，2026-11-16）
 
-- 浮动卡片 → 贴顶，宽度按 Utility 密度 `640px`，去 `shadow-md`
-- 标题 `BitSPV Pay` 从 `text-sm text-gray-500` 提到 ink + 15px；副标题 11px → 13px
-- `Payment.jsx` 两个并排实心按钮拆主次：发送实心 / 接收描边
-- 页脚补信任条：非托管 · 私钥不离开设备 · 交易可查
+- **贴顶 + Utility 密度**：整页 `bg-background`，中间 `max-w-[640px]` 的壳纵向撑满（`sm:border-x`），不再是浮在灰底上的 448px 卡片
+- **app shell 三段**：`header` 56px 级（标题 + 副标题 + 4 个图标按钮，底部 1px rule）→ `main`（`flex-1`）→ `footer`（顶部 1px rule）
+- **标题层级**：产品名 14px 灰 → **15px / 500 / ink**；副标题 11px → **12px / muted**
+- **页脚信任条**：`非托管 · 私钥不离开设备 · 交易可查`（en: `Non-custodial · Keys never leave your device · Every transaction verifiable`），在链接行之上，11px muted
+- **行内状态**：初始化错误从「红底红框」改成品牌规定的「2px 左线 + 小字」
+- **状态 chip**：watch-only 徽标从 Tailwind amber 改用 `warn` / `warn-border` / `warn-soft` token
+- 图标按钮加了 `p-1.5` 点击区与 hover 过渡
+
+原方案里的「两个并排实心按钮」不成立：主流程每个分支本来就是实心 + 描边各一个，无需改动。
 
 ---
 

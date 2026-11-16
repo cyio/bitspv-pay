@@ -3,6 +3,7 @@ export default {
     title: 'BitSPV Pay',
     manageWalletButton: '管理钱包',
     tagline: '单地址极简钱包 · 浏览器即用 · 支持离线签名',
+    trustLine: '非托管 · 私钥不离开设备 · 交易可查',
     totalAmountLabel: '支付总金额',
     supplementAmountLabel: '需至少再支付 {{amount}} BSV',
     statusMessages: {
@@ -129,7 +130,8 @@ export default {
       changePrompt: '设置新密码：',
       changeButton: '修改密码',
       changeSuccessTitle: '密码已修改',
-      changeSuccessMessage: '现在只用新密码解锁。旧的备份二维码仍然需要旧密码，请销毁并重新导出一份。',
+      changeSuccessMessage:
+        '现在只用新密码解锁。旧的备份二维码仍然需要旧密码，请销毁并重新导出一份。',
       migrationTitle: '钱包安全升级',
       migrationMessage: '为了增强安全性，请为您的现有钱包设置密码。访问资金时需要它。',
       migrationCancelled: '钱包升级已取消。您需要设置密码才能使用钱包。',
@@ -141,7 +143,8 @@ export default {
       unlockCancelledMessage: '解锁已取消。钱包仍处于锁定状态。',
       decryptionFailedTitle: '解密失败',
       decryptionFailedMessage: '解密钱包数据失败。密码可能不正确或数据已损坏。请重试。',
-      pinHintForSet: '至少 8 位，需同时包含字母和数字。这是本地钱包密码：没有账号，也无法找回。它只用来加密私钥，本网站不会保存。',
+      pinHintForSet:
+        '至少 8 位，需同时包含字母和数字。这是本地钱包密码：没有账号，也无法找回。它只用来加密私钥，本网站不会保存。',
       pinConfirmPrompt: '再次输入密码：',
       defaultWalletName: '钱包1', // 新增
       walletNamePrompt: '请输入钱包名称（可选，不超过 20 字符）：', // 新增
@@ -168,7 +171,8 @@ export default {
     coldStorage: {
       footer: '离线版',
       setupTitle: '只想离线保管？',
-      setupHint: '下载单文件离线版，在断网设备上创建钱包并签名。每个 release 都附带 SHA256 校验值。',
+      setupHint:
+        '下载单文件离线版，在断网设备上创建钱包并签名。每个 release 都附带 SHA256 校验值。',
       setupLink: '下载离线单文件',
     },
     watchAddress: {
@@ -233,7 +237,8 @@ export default {
         keyLoadFailed: '私钥加载失败',
         unrecognizedQr: '未识别的二维码，请扫描发起方设备生成的待签名码',
         parsePsbtFailed: '待签名码解析失败',
-        expiredWarning: '注意：此交易创建于 {{minutes}} 分钟前，UTXO 可能已过期，建议回到发起方重新生成。',
+        expiredWarning:
+          '注意：此交易创建于 {{minutes}} 分钟前，UTXO 可能已过期，建议回到发起方重新生成。',
         steps: ['扫待签码', '确认', '签名', '出示签名码'],
       },
     },
@@ -325,7 +330,8 @@ export default {
   modal: {
     closeButton: '关闭',
   },
-  transactionHistory: { // 新增：交易历史记录模块
+  transactionHistory: {
+    // 新增：交易历史记录模块
     title: '交易记录',
     smallTitle: '最近',
     loading: '正在加载交易记录...',
@@ -346,7 +352,6 @@ export default {
   },
 
   donationModal: {
-
     title: '打赏一杯咖啡',
     message: '如果此工具对你有用，请考虑打赏一杯咖啡以支持开发者。',
     qrLoading: '二维码加载中...',
@@ -373,10 +378,8 @@ export default {
       title: '使用建议',
       disposableAmount:
         '热钱包仅存放可承受损失的金额。浏览器数据清除、设备丢失或备份失败均可导致资金永久丢失。',
-      mobileRecommendation:
-        '热钱包推荐使用手机：部分 App 内置沙盒浏览器，隔离性与安全性更好。',
-      coldWallet:
-        '冷钱包：从 GitHub Releases 下载离线单文件，校验 SHA256 后在离线设备上打开使用。',
+      mobileRecommendation: '热钱包推荐使用手机：部分 App 内置沙盒浏览器，隔离性与安全性更好。',
+      coldWallet: '冷钱包：从 GitHub Releases 下载离线单文件，校验 SHA256 后在离线设备上打开使用。',
       desktopComparison: '桌面端操作便捷，但隔离性低于手机沙盒环境。',
     },
     walletDecryptTool: 'BitSPV 钱包备份解密工具（开源）',
@@ -402,6 +405,6 @@ export default {
     description: '如果您觉得这个项目对您有帮助，可以考虑给我们一些支持。',
     thankYou: '感谢您的支持！',
     qrLoading: '二维码加载中...',
-    toggleButtonPrefix: '切换到'
-  }
+    toggleButtonPrefix: '切换到',
+  },
 };

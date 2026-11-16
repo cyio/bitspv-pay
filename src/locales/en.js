@@ -3,6 +3,7 @@ export default {
     title: 'BitSPV Pay',
     manageWalletButton: 'Manage Wallet',
     tagline: 'Minimal single-address wallet · Runs in your browser · Offline signing',
+    trustLine: 'Non-custodial · Keys never leave your device · Every transaction verifiable',
     processingButton: 'Processing...',
     totalAmountLabel: 'Total Payment',
     supplementAmountLabel: 'An additional {{amount}} BSV is required."',
@@ -25,10 +26,11 @@ export default {
       },
       notSafeForStorage: '',
       copied: 'copied',
-    copyFailed: 'Failed to copy',
-    pkNotFound: 'Private key not found',
-    feeCalculationFailed: 'Fee calculation failed',
-    oldWalletWarning: 'Old wallet users: please back up and import to the new domain to continue using.',
+      copyFailed: 'Failed to copy',
+      pkNotFound: 'Private key not found',
+      feeCalculationFailed: 'Fee calculation failed',
+      oldWalletWarning:
+        'Old wallet users: please back up and import to the new domain to continue using.',
       dryRunFailed: 'Dry run failed',
       invalidRequest: 'Invalid payment request',
       missingParams: 'Missing payment parameters',
@@ -49,12 +51,14 @@ export default {
         canvasContextError: 'Unable to get canvas context.',
         imageLoadError: 'Image load failed.',
         fileReadError: 'File read failed.',
-        invalidImportData: 'Invalid import data. Please ensure it is a valid WIF private key or JSON format.',
+        invalidImportData:
+          'Invalid import data. Please ensure it is a valid WIF private key or JSON format.',
         addressMismatchTitle: 'Backup does not match',
         addressMismatch:
           'The address recorded in this backup does not match the address derived from the decrypted key. The file may be corrupted or edited — import was aborted and your current wallet was left untouched.',
         invalidQrCode: 'Invalid QR code.',
-        utxoFetchFailed: 'Failed to fetch Unspent Transaction Outputs (UTXOs). Please check network connection or try again later.',
+        utxoFetchFailed:
+          'Failed to fetch Unspent Transaction Outputs (UTXOs). Please check network connection or try again later.',
         passkeyNotFoundInStorage:
           'Passkey information not found locally. Please set up a new wallet or recover.',
         passkeyAuthFailed: 'Passkey authentication failed. Please try again.',
@@ -70,11 +74,13 @@ export default {
           'Decryption failed. The password may be incorrect or the data is corrupted.',
         decryptionFailedGeneric: 'Decryption failed. Check the password or the wallet data.',
         wifImportFailed: 'Failed to import WIF',
-        importUiNotAvailable: 'Wallet import interface unavailable. Please refresh the page or try manual operation.',
+        importUiNotAvailable:
+          'Wallet import interface unavailable. Please refresh the page or try manual operation.',
         unlockCancelled: 'Operation cancelled.',
         walletRecoveryNeeded:
           'An encrypted wallet exists on this device, but its address cache is gone. Unlock once to restore it — no need to re-import.',
-        walletRecoveryCancelled: 'Not unlocked, so the wallet address is still not restored. Tap the button below to retry.',
+        walletRecoveryCancelled:
+          'Not unlocked, so the wallet address is still not restored. Tap the button below to retry.',
       },
       backupSuccessQr: 'Private key QR code backed up and download as {{filename}}',
       initializingWallet: 'Initializing wallet...',
@@ -114,7 +120,8 @@ export default {
         error: 'Transfer failed',
       },
     },
-    backupDataNote: 'QR code loss or leakage will result in permanent loss of funds. Please view and back it up in a secure environment.',
+    backupDataNote:
+      'QR code loss or leakage will result in permanent loss of funds. Please view and back it up in a secure environment.',
     pinModal: {
       setTitle: 'Set new wallet', // Modified title
       setPrompt: 'Set a password for your wallet:',
@@ -128,17 +135,21 @@ export default {
       walletAddressHint: 'Your browser saves the password per address',
       unlockButton: 'Unlock',
       cancelButton: 'Cancel',
-      setupCancelledMessage: 'Password setup was cancelled. Your wallet is not protected by a password yet.',
+      setupCancelledMessage:
+        'Password setup was cancelled. Your wallet is not protected by a password yet.',
       changeTitle: 'Change password',
-      changeMessage: 'The old password is already verified. The new one only re-encrypts the local key; the address stays the same.',
+      changeMessage:
+        'The old password is already verified. The new one only re-encrypts the local key; the address stays the same.',
       changePrompt: 'Set a new password:',
       changeButton: 'Change password',
       changeSuccessTitle: 'Password changed',
-      changeSuccessMessage: 'This browser now unlocks with the new password only. Old backup QR codes still need the old one — destroy them and export a fresh one.',
+      changeSuccessMessage:
+        'This browser now unlocks with the new password only. Old backup QR codes still need the old one — destroy them and export a fresh one.',
       migrationTitle: 'Wallet Security Upgrade',
       migrationMessage:
         'For enhanced security, set a password for your existing wallet. It will be required to access your funds.',
-      migrationCancelled: 'Wallet upgrade cancelled. You need to set a password to use your wallet.',
+      migrationCancelled:
+        'Wallet upgrade cancelled. You need to set a password to use your wallet.',
       importCancelledTitle: 'Import Cancelled',
       importCancelledMessage: 'Wallet import was cancelled. No changes were made.',
       unlockRequiredTitle: 'Unlock Required',
@@ -148,7 +159,8 @@ export default {
       decryptionFailedTitle: 'Decryption Failed',
       decryptionFailedMessage:
         'Failed to decrypt wallet data. The password might be incorrect or the data corrupted. Please try again.',
-      pinHintForSet: 'At least 8 characters, with both letters and numbers. This is a local wallet password: no account, no recovery. It only encrypts your private key, and this site never stores it.',
+      pinHintForSet:
+        'At least 8 characters, with both letters and numbers. This is a local wallet password: no account, no recovery. It only encrypts your private key, and this site never stores it.',
       pinConfirmPrompt: 'Enter the same password again:',
       defaultWalletName: 'Wallet 1', // New
       walletNamePrompt: 'Enter wallet name (optional, max 20 characters):', // New
@@ -159,7 +171,8 @@ export default {
         maxLength: '{{field}} cannot exceed {{max}} characters',
         minLength: '{{field}} must be at least {{min}} characters',
         pattern: 'The password must contain both letters and numbers',
-        pinStrength: 'The password must be at least 8 characters and contain both letters and numbers',
+        pinStrength:
+          'The password must be at least 8 characters and contain both letters and numbers',
         pinMismatch: 'The two passwords do not match',
       },
     },
@@ -194,7 +207,8 @@ export default {
     airGap: {
       transferOffline: 'Transfer (Offline Sign)',
       signerButton: 'Scan to Sign',
-      watchOnlyNoKey: 'Watch-only mode has no private key. Use the device that holds the private key to scan and sign.',
+      watchOnlyNoKey:
+        'Watch-only mode has no private key. Use the device that holds the private key to scan and sign.',
       sender: {
         title: 'Offline Signing Transfer',
         recipientLabel: 'Recipient',
@@ -203,9 +217,11 @@ export default {
         buildButton: 'Generate Unsigned Transaction',
         buildingButton: 'Generating…',
         showPsbtTitle: 'Let the Signing Device Scan This',
-        showPsbtDesc: 'On the device that holds your private key, open "Scan to Sign" and scan this code.',
+        showPsbtDesc:
+          'On the device that holds your private key, open "Scan to Sign" and scan this code.',
         scanSignedTitle: 'Scan Signed Code',
-        scanSignedDesc: 'After the signing device signs, it will show a QR code. Scan it here to broadcast the transaction.',
+        scanSignedDesc:
+          'After the signing device signs, it will show a QR code. Scan it here to broadcast the transaction.',
         broadcasting: 'Broadcasting…',
         broadcastSuccess: 'Broadcast Successful',
         rewrite: 'Edit Again',
@@ -217,7 +233,8 @@ export default {
         feeShortLabel: 'Fee',
         invalidRecipient: 'Please enter a valid address or Paymail',
         invalidAmount: 'Please enter a valid amount',
-        unrecognizedQr: 'Unrecognized QR code. Please scan the signed code from the signing device.',
+        unrecognizedQr:
+          'Unrecognized QR code. Please scan the signed code from the signing device.',
         parseSignedFailed: 'Failed to parse signed QR code',
         paymailResolveFailed: 'Paymail resolution failed: {{target}}',
         steps: ['Fill', 'Unsigned QR', 'Scan Signed', 'Done'],
@@ -230,7 +247,8 @@ export default {
         totalLabel: 'Total',
         signingHint: 'Signing — enter your password…',
         showSignedTitle: 'Let the Initiating Device Scan This',
-        showSignedDesc: 'Show this code to the initiating device to scan. It will broadcast the transaction automatically.',
+        showSignedDesc:
+          'Show this code to the initiating device to scan. It will broadcast the transaction automatically.',
         scanButton: 'Scan Unsigned Transaction',
         confirmButton: 'Confirm & Sign',
         rescan: 'Rescan',
@@ -239,9 +257,11 @@ export default {
         done: 'Done',
         cancelled: 'Cancelled',
         keyLoadFailed: 'Failed to load private key',
-        unrecognizedQr: 'Unrecognized QR code. Please scan the unsigned transaction from the initiating device.',
+        unrecognizedQr:
+          'Unrecognized QR code. Please scan the unsigned transaction from the initiating device.',
         parsePsbtFailed: 'Failed to parse unsigned transaction QR code',
-        expiredWarning: 'Note: This transaction was created {{minutes}} min ago. UTXOs may be stale — consider going back to regenerate.',
+        expiredWarning:
+          'Note: This transaction was created {{minutes}} min ago. UTXOs may be stale — consider going back to regenerate.',
         steps: ['Scan Unsigned', 'Confirm', 'Sign', 'Show Signed'],
       },
     },
@@ -268,7 +288,8 @@ export default {
       'A public key can be shared publicly to verify signatures or identify the wallet. It cannot be used to spend funds.',
     publicKeyCopied: 'Copied',
     publicKeyCopyFailed: 'Copy failed. Select the text and copy it manually.',
-    publicKeyUnavailable: 'Watch-only wallets have no private key, so the public key is unavailable.',
+    publicKeyUnavailable:
+      'Watch-only wallets have no private key, so the public key is unavailable.',
     backupWalletButton: 'Backup Wallet',
     changePasswordButton: 'Change Password',
     importWalletButton: 'Import Wallet',
@@ -354,7 +375,6 @@ export default {
   },
 
   donationModal: {
-
     title: 'Buy me a coffee',
     message: 'Like this tool? Consider buying the developer a coffee to show your support!',
     qrLoading: 'QR Code loading...',
@@ -386,7 +406,8 @@ export default {
         'For hot wallet use, mobile Apps with built-in sandboxed browsers offer higher isolation and security.',
       coldWallet:
         'For cold wallet use, download the offline single-file build, verify its SHA256 checksum, and open it on an air-gapped device.',
-      desktopComparison: 'Desktop is more convenient but less isolated than mobile sandbox environments.',
+      desktopComparison:
+        'Desktop is more convenient but less isolated than mobile sandbox environments.',
     },
     walletDecryptTool: 'BitSPV Wallet Backup Decryption Tool (Open Source)',
     offlineRelease: 'Offline Single-File Build (GitHub Releases)',
@@ -411,6 +432,6 @@ export default {
     description: 'If you find this project helpful, consider supporting us.',
     thankYou: 'Thank you for your support!',
     qrLoading: 'QR Code loading...',
-    toggleButtonPrefix: 'Switch to'
-  }
+    toggleButtonPrefix: 'Switch to',
+  },
 };
