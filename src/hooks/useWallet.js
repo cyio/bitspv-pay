@@ -592,6 +592,64 @@ export function useWallet() {
     setTransferMessage('');
   }, []);
 
+  const estimateTransfer = useCallback(
+    async (target, amount) => {
+      if (!address) return { error: 'no-address', message: 'Address not available' };
+      if (!target || !amount || amount <= 0) {
+        return { error: 'invalid-input', message: t('bsvPayment.transfer.errors.invalidAmount') };
+      }
+
+      try {
+        let currentUtxos = utxos;
+        if (currentUtxos.length === 0) {
+          currentUtxos = await getUTXOs(address);
+          setUtxos(currentUtxos);
+        }
+
+        let paymentTargetObject = {};
+        if (isValidPaymail(target)) {
+          paymentTargetObject.paymail = target;
+        } else if (isValidAddress(target)) {
+          paymentTargetObject.address = target;
+        } else {
+          return { error: 'invalid-target', message: t('bsvPayment.statusMessages.errors.invalidTargetAddress') };
+        }
+
+        const request = [{ ...paymentTargetObject, satoshis: amount }];
+        const result = await processRefund(currentUtxos, request, {
+          dryRun: true,
+          t,
+          pubKey,
+          address,
+          setStatus: () => {},
+          setStatusMessage: () => {},
+          addLog,
+        });
+
+        if (result && result.error === 0) {
+          return {
+            error: 0,
+            fee: result.fee ?? result.requiredFee ?? 0,
+            total: result.total ?? amount + (result.fee ?? result.requiredFee ?? 0),
+            satsOut: result.satsOut ?? amount,
+          };
+        }
+
+        return {
+          error: result?.error || 'estimate-failed',
+          message: result?.message || t('bsvPayment.statusMessages.feeCalculationFailed'),
+        };
+      } catch (error) {
+        console.error('estimateTransfer failed:', error);
+        return {
+          error: 'estimate-failed',
+          message: `${t('bsvPayment.statusMessages.feeCalculationFailed')}: ${error.message}`,
+        };
+      }
+    },
+    [address, utxos, t, pubKey, addLog]
+  );
+
   const sendTransaction = useCallback(
     async (target, amount) => {
       let paymentTargetObject = {};
@@ -886,6 +944,7 @@ export function useWallet() {
     ensurePrivateKeyLoaded,
     refreshBalance,
     calculateMaxSpendable,
+    estimateTransfer,
     sendTransaction,
     transferStatus,
     transferMessage,

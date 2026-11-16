@@ -5,10 +5,10 @@ import { PinPromptContext } from '../contexts/PinPromptContext';
 import PinDialog from './PinDialog';
 
 const Button = ({ children, variant, ...props }) => {
-  const baseClasses = "px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const baseClasses = "inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
   const variantClasses = variant === 'outline'
-    ? "border border-border bg-card text-foreground hover:bg-muted"
-    : "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary";
+    ? "border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground"
+    : "bg-primary text-primary-foreground hover:bg-primary/90";
   return <button className={`${baseClasses} ${variantClasses}`} {...props}>{children}</button>;
 }
 
@@ -23,7 +23,7 @@ function CustomAlertDialog({ open, onOpenChange, title, message, children }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
-      <div className="bg-card rounded-lg border border-border w-full max-w-md mx-auto">
+      <div className="bg-card rounded-[var(--radius)] border border-border w-full max-w-md mx-auto">
         <div className="p-6">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <div className="mt-2 text-sm text-muted-foreground max-h-[70vh] overflow-y-auto">

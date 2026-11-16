@@ -291,6 +291,10 @@ export default {
     publicKeyCopyFailed: 'Copy failed. Select the text and copy it manually.',
     publicKeyUnavailable:
       'Watch-only wallets have no private key, so the public key is unavailable.',
+    settings: {
+      title: 'Settings',
+      apiProvider: 'API provider',
+    },
     backupWalletButton: 'Backup Wallet',
     changePasswordButton: 'Change Password',
     importWalletButton: 'Import Wallet',
@@ -339,6 +343,12 @@ export default {
       targetAddressPlaceholder: 'Enter the Paymail/Address to receive BSV',
       calculating: 'Calculating',
       amountInUSD: 'Amount in USD',
+      confirmTitle: 'Confirm transfer',
+      confirmRecipient: 'Recipient',
+      confirmAmount: 'Amount',
+      confirmFee: 'Estimated fee',
+      confirmTotal: 'Total deducted',
+      confirmAction: 'Confirm & send',
       errors: {
         invalidAmount: 'Please enter a valid transfer amount',
         amountExceedsMax: 'Transfer amount exceeds the maximum transferable amount',

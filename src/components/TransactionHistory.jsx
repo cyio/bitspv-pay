@@ -123,7 +123,7 @@ const TransactionHistory = ({ address, pubKey }) => {
                         title={copyStatus[tx.txid] ? t('transactionHistory.copied') : t('transactionHistory.copy')}
                         className="ml-2 p-1 rounded hover:bg-muted transition-colors"
                       >
-                        {copyStatus[tx.txid] ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                        {copyStatus[tx.txid] ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
                       </button>
                     </div>
                   </div>

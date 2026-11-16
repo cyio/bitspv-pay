@@ -56,6 +56,7 @@ const WalletManager = ({
   rate,
   onDeleteWallet,
   onRequestCalculateMaxTransfer,
+  onRequestEstimateTransfer,
   onTransferFunds,
   onRequestImportWallet,
   transferStatus,
@@ -77,9 +78,14 @@ const WalletManager = ({
   const [showPubKeyModal, setShowPubKeyModal] = useState(false);
   const [isPubKeyCopied, setIsPubKeyCopied] = useState(false);
   const [pubKeyCopyError, setPubKeyCopyError] = useState('');
+  const [isEstimating, setIsEstimating] = useState(false);
 
   // air-gap 模式：'sender' | 'signer' | null
   const [airGapMode, setAirGapMode] = useState(null);
+
+  const isTargetAddressValid = !targetAddress
+    ? null
+    : isValidAddress(targetAddress) || isValidPaymail(targetAddress);
   
   const transferAmountSatoshis = useMemo(() => {
     if (inputAmount === '') return null;
@@ -290,6 +296,58 @@ const WalletManager = ({
       return;
     }
 
+    let estimate = null;
+    if (onRequestEstimateTransfer) {
+      setIsEstimating(true);
+      try {
+        estimate = await onRequestEstimateTransfer(targetAddress, amount);
+      } finally {
+        setIsEstimating(false);
+      }
+      if (!estimate || estimate.error) {
+        setFormError(estimate?.message || t('bsvPayment.statusMessages.feeCalculationFailed'));
+        return;
+      }
+
+      const total = estimate.total ?? amount + (estimate.fee || 0);
+      const amountBsv = convertSatoshisToBSV(amount);
+      const feeSats = estimate.fee ?? 0;
+      const totalBsv = convertSatoshisToBSV(total);
+      const amountFiat = rate ? convertSatoshisToFiat(amount, rate) : null;
+      const totalFiat = rate ? convertSatoshisToFiat(total, rate) : null;
+
+      const confirmed = await showDialog({
+        title: t('bsvPayment.transfer.confirmTitle'),
+        message: (
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmRecipient')}</span>
+              <span className="font-mono text-right break-all">{targetAddress}</span>
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmAmount')}</span>
+              <span className="text-right">
+                {amountBsv} BSV ({amount} sats){amountFiat ? ` · $${amountFiat}` : ''}
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmFee')}</span>
+              <span className="text-right">{feeSats} sats</span>
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t border-border pt-2 font-medium">
+              <span>{t('bsvPayment.transfer.confirmTotal')}</span>
+              <span className="text-right">
+                {totalBsv} BSV ({total} sats){totalFiat ? ` · $${totalFiat}` : ''}
+              </span>
+            </div>
+          </div>
+        ),
+        confirmText: t('bsvPayment.transfer.confirmAction'),
+        cancelText: t('bsvPayment.cancelButton'),
+      });
+      if (!confirmed) return;
+    }
+
     try {
       await onTransferFunds(targetAddress, amount);
       // On success, the status will be updated by useWallet, and we can clear the form.
@@ -361,11 +419,11 @@ const WalletManager = ({
       case 'processing':
         return 'text-primary';
       case 'completed':
-        return 'text-green-600 dark:text-green-300';
+        return 'text-primary';
       case 'error':
-        return 'text-red-600 dark:text-red-300';
+        return 'text-destructive';
       default:
-        return '';
+        return 'text-muted-foreground';
     }
   };
 
@@ -400,11 +458,12 @@ const WalletManager = ({
                 id="targetAddress"
                 value={targetAddress}
                 onChange={(e) => {
-                  setTargetAddress(e.target.value);
+                  setTargetAddress(e.target.value.trim());
                   setFormError('');
                   if (transferStatus) onClearTransferStatus();
                 }}
                 placeholder={t('bsvPayment.transfer.targetAddressPlaceholder')}
+                aria-invalid={isTargetAddressValid === false}
               />
               <QRScanner onScanResult={handleScanResult}>
                 {({ scan }) => (
@@ -414,6 +473,9 @@ const WalletManager = ({
                 )}
               </QRScanner>
             </div>
+            {targetAddress && isTargetAddressValid === false && (
+              <p className="mt-1 text-xs text-destructive">{t('bsvPayment.statusMessages.errors.invalidTargetAddress')}</p>
+            )}
           </div>
           <div className="mb-3">
             <label htmlFor="transferAmount" className="block text-sm font-medium text-foreground mb-1">
@@ -476,9 +538,13 @@ const WalletManager = ({
             </Button>
             <Button
               onClick={executeTransfer}
-              disabled={transferStatus === 'processing'}
+              disabled={transferStatus === 'processing' || isEstimating}
             >
-              {transferStatus === 'processing' ? t('bsvPayment.processingButton') : t('bsvPayment.confirmTransferButton')}
+              {transferStatus === 'processing'
+                ? t('bsvPayment.processingButton')
+                : isEstimating
+                  ? `${t('bsvPayment.transfer.calculating')}...`
+                  : t('bsvPayment.confirmTransferButton')}
             </Button>
           </div>
         </div>
@@ -591,7 +657,7 @@ const WalletManager = ({
                   title={isPubKeyCopied ? t('bsvPayment.publicKeyCopied') : t('bsvPayment.copyButton')}
                   className="shrink-0 rounded p-1.5 transition-colors hover:bg-muted"
                 >
-                  {isPubKeyCopied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                  {isPubKeyCopied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
                 </button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">

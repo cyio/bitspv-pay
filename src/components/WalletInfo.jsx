@@ -29,7 +29,7 @@ const WalletInfo = ({
               title={isCopied ? t('bsvPayment.statusMessages.addressCopied') : t('bsvPayment.copyButton')}
               className="p-1.5 rounded hover:bg-muted transition-colors"
             >
-              {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {isCopied ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
             </button>
             {qrcode && (
               <button

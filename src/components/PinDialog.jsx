@@ -8,7 +8,7 @@ const FormLabel = ({ children }) => (
   <label className="block text-sm font-medium text-foreground mb-1">{children}</label>
 );
 const FormControl = ({ children }) => <div>{children}</div>;
-const FormMessage = ({ children }) => <p className="text-sm text-red-600 mt-1">{children}</p>;
+const FormMessage = ({ children }) => <p className="text-sm text-destructive mt-1">{children}</p>;
 const FormField = ({ control, name, render, rules }) => (
   <Controller
     control={control}
@@ -17,20 +17,20 @@ const FormField = ({ control, name, render, rules }) => (
     render={({ field, fieldState, formState }) => render({ field, fieldState, formState })}
   />
 );
-const Input = React.forwardRef(({ className, ...props }, ref) => (
+const Input = React.forwardRef(({ className = '', ...props }, ref) => (
   <input
     ref={ref}
-    className={`w-full px-3 py-2 border border-input rounded-md bg-card placeholder:text-muted-foreground focus:outline-none focus:ring-primary focus:border-primary ${className}`}
+    className={`flex h-9 w-full rounded-[var(--radius)] border border-input bg-transparent px-3 py-1 text-base transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${className}`}
     {...props}
   />
 ));
 const Button = ({ children, variant, ...props }) => {
   const baseClasses =
-    'px-4 py-2 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2';
+    'inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
   const variantClasses =
     variant === 'outline'
-      ? 'border border-border bg-card text-foreground hover:bg-muted'
-      : 'bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary';
+      ? 'border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
+      : 'bg-primary text-primary-foreground hover:bg-primary/90';
   return (
     <button className={`${baseClasses} ${variantClasses}`} {...props}>
       {children}
@@ -242,7 +242,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
       onClick={handleOverlayClick}
     >
-      <div className="bg-card rounded-lg border border-border w-full max-w-md mx-auto">
+      <div className="bg-card rounded-[var(--radius)] border border-border w-full max-w-md mx-auto">
         {mode === 'info' ? <InfoDialogContent /> : <FormDialogContent />}
       </div>
     </div>

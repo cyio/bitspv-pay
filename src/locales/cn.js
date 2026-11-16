@@ -265,6 +265,10 @@ export default {
     publicKeyCopied: '已复制',
     publicKeyCopyFailed: '复制失败，请长按选择文本手动复制。',
     publicKeyUnavailable: '观察模式没有私钥，无法导出公钥。',
+    settings: {
+      title: '设置',
+      apiProvider: 'API 提供商',
+    },
     backupWalletButton: '备份钱包',
     changePasswordButton: '修改密码',
     importWalletButton: '导入钱包',
@@ -312,6 +316,12 @@ export default {
       targetAddressPlaceholder: '请输入接收 BSV 的 Paymail 或地址',
       calculating: '计算中',
       amountInUSD: '金额 (USD)',
+      confirmTitle: '确认转账',
+      confirmRecipient: '收款方',
+      confirmAmount: '金额',
+      confirmFee: '预估手续费',
+      confirmTotal: '合计扣除',
+      confirmAction: '确认并发送',
       errors: {
         invalidAmount: '请输入有效的转账金额',
         amountExceedsMax: '转账金额超过最大可转金额',

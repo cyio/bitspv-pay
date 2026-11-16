@@ -47,6 +47,7 @@ function WalletUI() {
     walletBalance,
     refreshBalance,
     calculateMaxSpendable,
+    estimateTransfer,
     sendTransaction,
     transferStatus,
     transferMessage,
@@ -295,32 +296,36 @@ function WalletUI() {
                 {t('bsvPayment.tagline')}
               </p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <button
                 onClick={() => setShowAboutModal(true)}
-                title="About"
-                className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title={t('paymentAbout.title')}
+                aria-label={t('paymentAbout.title')}
+                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Info className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setIsDonationModalVisible(true)}
-                title="Buy me a coffee"
-                className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title={t('donationModal.title')}
+                aria-label={t('donationModal.title')}
+                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Coffee className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setShowHistoryModal(true)}
-                title="交易历史"
-                className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title={t('transactionHistory.title')}
+                aria-label={t('transactionHistory.title')}
+                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <History className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setShowSettingsModal(true)}
-                title="设置"
-                className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title={t('bsvPayment.settings.title')}
+                aria-label={t('bsvPayment.settings.title')}
+                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Settings className="h-5 w-5" />
               </button>
@@ -369,6 +374,7 @@ function WalletUI() {
                   rate={rate}
                   onDeleteWallet={handleDeleteWallet}
                   onRequestCalculateMaxTransfer={handleRequestCalculateMax}
+                  onRequestEstimateTransfer={estimateTransfer}
                   onTransferFunds={handleTransferFunds}
                   onRequestImportWallet={handleRequestImportWallet}
                   transferStatus={transferStatus}
