@@ -2,7 +2,7 @@
 
 > ⚠️ **已弃用（Deprecated）**：本文档描述的「URL hash 传入 paymentParams + `postMessage` / `callbackUrl` 回传结果」的第三方接入方式**已从应用中移除**（`usePaymentFlow` 与 `PaymentStatus` 已删除）。`pay.bitspv.com` 现在只是一个自包含的钱包页面：不再读取 URL 里的付款参数，不再向 `window.opener` 发消息，也不会跳转到 `callbackUrl`。旧链接会提示「该付款链接已停用」。本文档仅作历史参考保留，请勿按此文档接入新业务。
 >
-> **为什么是删除而不是降级保留**：这套协议承诺的「可信支付结果」纯前端做不到。`postMessage` 的 `event.source` 只校验消息来自哪个窗口，不校验 txid 真实、金额相符、只用于本单——那个窗口里的任何 JS 都能伪造 `payment_success`；`callbackUrl` 回跳更弱，`?status=success&data=<txid>` 是用户能直接编辑的 URL；而钱包真正知道的只是「已广播」，不是「已确认、金额足额、地址正确」。要做可信结果必须有服务端做订单幂等 + 回传验签 + 上链核验，那是支付网关产品，不是这个纯前端钱包。决策记录见工作区 `docs/decisions.md` 的 W-007。
+> **为什么是删除而不是降级保留**：这套协议承诺的「可信支付结果」纯前端做不到。`postMessage` 的 `event.source` 只校验消息来自哪个窗口，不校验 txid 真实、金额相符、只用于本单——那个窗口里的任何 JS 都能伪造 `payment_success`；`callbackUrl` 回跳更弱，`?status=success&data=<txid>` 是用户能直接编辑的 URL；而钱包真正知道的只是「已广播」，不是「已确认、金额足额、地址正确」。要做可信结果必须有服务端做订单幂等 + 回传验签 + 上链核验，那是支付网关产品，不是这个纯前端钱包。
 
 The BitSPV payment page is designed as a universal payment handler for Bitcoin SV (BSV). It can be opened in a separate window or integrated into your application via redirection to simplify the payment process and result handling.
 

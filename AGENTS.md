@@ -1,6 +1,5 @@
 # AGENTS.md — BitSPV Pay
 
-> 跨仓规则、产品清单、域名与部署登记：`~/Projects/bitspv-workspace/AGENTS.md`（清单 `workspace.json`）。
 > 这份只写**本仓**的事。
 
 非托管 BSV 钱包，**单地址极简**：浏览器即用的轻量热钱包 + 同一把钥匙的单文件离线签名。找零回原地址，不做地址轮换。React + Vite + Tailwind 3 + Radix，纯前端，无后端。
@@ -30,4 +29,4 @@ pnpm build:offline  # 单文件离线版
 
 - 钱包逻辑只走 `src/hooks`（`useWallet` / `usePinManager` / `useStorage`）与 `src/utils`，不要在页面里绕过它们直接读写 localStorage。
 - 这是 React，和主站（Vue）不共享组件——视觉一致靠 token，不靠组件。
-- **第三方付款请求入口已永久下线，不要加回来**（`postMessage` / `callbackUrl` 那套）。原因不是"暂时关掉"：纯前端无法证明「谁付了多少、付给谁、只付这一次」，回传的 `payment_success` 只能证明「那个窗口说了这句话」。要做可信结果必须有服务端订单 + 上链核验。决策：工作区 `docs/decisions.md` W-007。
+- **第三方付款请求入口已永久下线，不要加回来**（`postMessage` / `callbackUrl` 那套）。原因不是"暂时关掉"：纯前端无法证明「谁付了多少、付给谁、只付这一次」，回传的 `payment_success` 只能证明「那个窗口说了这句话」。要做可信结果必须有服务端订单 + 上链核验。
