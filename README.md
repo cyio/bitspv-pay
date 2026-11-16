@@ -44,7 +44,7 @@ Suitable for small, everyday payments where some risk is acceptable. Access the 
 
 Security is layered — no single mechanism is trusted on its own. See [docs/security.md](./docs/security.md) for the full picture.
 
-- **Non-custodial, locally encrypted keys**: The private key is encrypted with a user PIN (PBKDF2 + AES-GCM) and stored only in the browser; it is decrypted locally at signing time and never leaves the device. Details and threat model: [docs/pin-security.md](./docs/pin-security.md).
+- **Non-custodial, locally encrypted keys**: The private key is encrypted with a user password (PBKDF2 + AES-GCM) and stored only in the browser; it is decrypted locally at signing time and never leaves the device. Details and threat model: [docs/pin-security.md](./docs/pin-security.md).
 - **Strict CSP network isolation**: A Content Security Policy (`connect-src` / `img-src` / `script-src`) restricts all outbound traffic to a small allowlist, so even an injected script cannot exfiltrate data to an arbitrary domain.
 - **Runtime security self-check**: The built-in console exposes the *current* CSP outbound allowlist plus a SHA-256 **fingerprint** that changes whenever a domain is added or removed, and diffs it against an expected baseline shipped in the repo. Ordinary users get a one-glance “no risks / N items to review” summary; power users can copy the full report and pin the fingerprint across releases.
 - **Air-gapped signing & offline build**: Keep the key on an offline device and sign via QR code; the offline single-file build needs no network after download.
@@ -61,7 +61,7 @@ Security is layered — no single mechanism is trusted on its own. See [docs/sec
 
 ## Architecture Overview
 
-This diagram illustrates the wallet flow: the page is opened directly by the user, the key is unlocked locally with a PIN, and the transaction is built, signed and broadcast in the browser.
+This diagram illustrates the wallet flow: the page is opened directly by the user, the key is unlocked locally with a password, and the transaction is built, signed and broadcast in the browser.
 
 ```mermaid
 graph TD
@@ -69,7 +69,7 @@ graph TD
         subgraph "UI Components (React)"
             B[Wallet Page]
             D[Wallet Manager]
-            P[PIN Prompt Dialog]
+            P[Password Prompt Dialog]
         end
 
         subgraph "Core Logic (Hooks)"
@@ -92,7 +92,7 @@ graph TD
     B -- "1. Creates / imports / unlocks the wallet" --> E
     E -- "2. Needs the private key to sign" --> F
     F -- "3. Prompts the user" --> P
-    P -- "4. User enters PIN" --> F
+    P -- "4. User enters password" --> F
     F -- "5. Unlocks the key from" --> G
     G -- "6. Provides the key to" --> E
     E -- "7. Builds & signs the transaction via" --> H
@@ -110,7 +110,7 @@ graph TD
     - Manually send BSV to legacy addresses or Paymail.
     - View transaction history.
 - **Security**:
-    - Private keys are encrypted with a user-defined PIN and stored in the browser's local storage.
+    - Private keys are encrypted with a user-defined password and stored in the browser's local storage.
 
 ## Removed: third-party payment-request entry
 

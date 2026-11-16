@@ -59,14 +59,12 @@ export default {
         passkeyAuthFailed: 'Passkey 身份验证失败。请重试。',
         passkeyRegisterFailed: 'Passkey 注册失败。请重试。',
         encryptedDataMissing: '加密的钱包数据丢失。钱包可能已损坏或未完全设置。',
-        invalidDecryptedKey: '无法从解密数据加载钱包。PIN码可能不正确或数据已损坏。',
-        pinIncorrect: 'PIN码不正确。请重试。',
         privateKeyMismatch: '私钥与缓存公钥不匹配，请重新创建或导入钱包。',
         privateKeyLoadFailed: '加载私钥失败。',
         privateKeyNotFound: '未找到私钥，无法执行操作。',
         encryptionFailed: '加密数据失败，请重试。',
-        decryptionFailedPinIncorrect: '解密失败。PIN码可能不正确或数据已损坏。',
-        decryptionFailedGeneric: '解密失败。请检查PIN码或钱包数据。',
+        decryptionFailedPinIncorrect: '解密失败。密码可能不正确或数据已损坏。',
+        decryptionFailedGeneric: '解密失败。请检查密码或钱包数据。',
         wifImportFailed: '导入WIF失败',
         importUiNotAvailable: '导入钱包界面不可用，请刷新页面或尝试手动操作。',
         unlockCancelled: '操作已取消。',
@@ -76,9 +74,6 @@ export default {
       backupSuccessQr: '私钥二维码已备份下载为 {{filename}}',
       initializingWallet: '正在初始化钱包...',
       passkeyAuthPrompt: '请使用您的 Passkey进行身份验证以解锁钱包。',
-      passkeyAuthSuccess: 'Passkey 验证成功。请输入您的 PIN码。',
-      pinRequired: '需要 PIN码。',
-      pinSetupCancelled: 'PIN码设置已取消。',
       encryptingKey: '正在安全加密您的钱包...',
       decryptingKey: '正在解密您的钱包...',
       passkeyRegisterPrompt: '请按照提示为此钱包注册一个新的 Passkey。',
@@ -86,10 +81,6 @@ export default {
       walletUnlocked: '钱包已成功解锁。',
       walletDeleted: '钱包已成功删除。您可以创建一个新的钱包。',
       creatingNewWallet: '正在创建新的安全钱包...',
-      setPinTitle: '设置 PIN码',
-      setPinMessage:
-        '输入一个 PIN码来加密您的钱包。请记住此 PIN码，解锁钱包时需要它与 Passkey 一同使用。',
-      setPinButton: '设置 PIN码',
       confirmDeleteWalletTitle: '确认删除钱包',
       confirmDeleteWalletMessage:
         '您确定要删除此钱包及所有关联的 Passkey 数据吗？此操作无法撤销。如果您希望在其他地方恢复资金，请确保已备份您的私钥。',
@@ -105,7 +96,7 @@ export default {
       autoBackupSuccessNewWallet:
         '已为您当前的钱包生成并下载了私钥备份文件，请妥善保管。私钥一旦丢失或泄露，将无法找回，可能导致资产损失。',
       autoBackupSuccessEncrypted:
-        '已为您当前的钱包生成并下载了加密的私钥备份文件，请妥善保管。此文件与您的 PIN 码共同作用，两者缺一不可，丢失任何一个都将导致无法找回钱包。',
+        '已为您当前的钱包生成并下载了加密的私钥备份文件，请妥善保管。解密它需要这个密码，两者缺一不可，丢失任何一个都将导致无法找回钱包。',
       backupEncryptionFailed: '加密备份私钥时出错，请重试。',
       balanceRefreshed: '余额已刷新',
       refreshingBalance: '正在刷新余额...',
@@ -121,19 +112,18 @@ export default {
     backupDataNote: '二维码丢失或泄露将导致资金永久性损失。请在安全环境下查看并备份。',
     pinModal: {
       setTitle: '设置新钱包', // 修改标题
-      setPrompt: '为您的钱包设置 PIN 码：',
-      setButton: '设置PIN码',
-      confirmTitle: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
-      confirmPrompt: '重新输入您的PIN码以确认：', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
-      confirmButton: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
+      setPrompt: '为您的钱包设置密码：',
+      setButton: '设置密码',
+      confirmTitle: '确认密码', // 确认步骤已移除，此项暂时保留
+      confirmPrompt: '重新输入您的密码以确认：', // 确认步骤已移除，此项暂时保留
+      confirmButton: '确认密码', // 确认步骤已移除，此项暂时保留
       unlockTitle: '解锁钱包',
-      unlockPrompt: '输入您的PIN码以解锁钱包：',
+      unlockPrompt: '输入密码以解锁钱包：',
       walletAddressLabel: '钱包地址',
       walletAddressHint: '浏览器按这个地址记住密码，换钱包就换一条',
       unlockButton: '解锁',
       cancelButton: '取消',
-      setupCancelledTitle: 'PIN码设置已取消',
-      setupCancelledMessage: 'PIN码设置已取消。您的钱包尚未通过PIN码保护。',
+      setupCancelledMessage: '密码设置已取消。您的钱包尚未受密码保护。',
       changeTitle: '修改密码',
       changeMessage: '旧密码已经验证过。新密码只重新加密本地私钥，钱包地址不会变。',
       changePrompt: '设置新密码：',
@@ -141,49 +131,29 @@ export default {
       changeSuccessTitle: '密码已修改',
       changeSuccessMessage: '现在只用新密码解锁。旧的备份二维码仍然需要旧密码，请销毁并重新导出一份。',
       migrationTitle: '钱包安全升级',
-      migrationMessage: '为了增强安全性，请为您的现有钱包设置一个PIN码。访问资金时将需要此PIN码。',
-      migrationCancelled: '钱包升级已取消。您需要设置PIN码才能使用钱包。',
-      migrationSuccessTitle: '升级成功',
-      migrationSuccessMessage: '您的钱包现已通过PIN码保护。',
-      setupSuccessTitle: 'PIN码设置成功',
-      setupSuccessMessage: '您的新钱包已通过PIN码保护。',
+      migrationMessage: '为了增强安全性，请为您的现有钱包设置密码。访问资金时需要它。',
+      migrationCancelled: '钱包升级已取消。您需要设置密码才能使用钱包。',
       importCancelledTitle: '导入已取消',
       importCancelledMessage: '钱包导入已取消。未作任何更改。',
-      importSuccessTitle: '导入成功',
-      importSuccessMessage: '钱包已导入并通过PIN码保护。',
-      pinTooShortTitle: 'PIN码过短',
-      pinTooShortMessage: 'PIN码必须至少为6位',
-      pinsDoNotMatchTitle: 'PIN码不匹配', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
-      pinsDoNotMatchMessage: '您输入的PIN码不匹配。请重试。', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
       unlockRequiredTitle: '需要解锁',
       unlockRequiredForCopyMessage: '请解锁您的钱包以复制私钥。',
       unlockCancelledTitle: '解锁已取消',
       unlockCancelledMessage: '解锁已取消。钱包仍处于锁定状态。',
       decryptionFailedTitle: '解密失败',
-      decryptionFailedMessage: '解密钱包数据失败。PIN码可能不正确或数据已损坏。请重试。',
-      pinHintForSet: '至少 8 位，需同时包含字母和数字。PIN 码用于加密私钥，本网站不会保存，请务必牢记。',
-      pinConfirmPrompt: '再次输入 PIN 码：',
-      pinIsMandatoryTitle: '需要设置 PIN',
-      pinIsMandatoryMessage: '为了保护您的资金安全，必须设置 PIN 码。此步骤无法跳过。',
-      confirmPinCancelledTitle: '确认 PIN 已取消', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
-      confirmPinCancelledMessage: 'PIN 码的确认已取消。请重新开始设置您的 PIN 码。', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
-      setHintTitle: '设置 PIN 码提示语', // 保持不变，作为 Note 输入框的标题
-      setHintPrompt: '请输入您的 PIN 码提示语（可选，不超过 50 字符）：', // 保持不变，作为 Note 输入框的提示
-      setHintPlaceholder: '此 PIN 码提示语将在导入钱包时显示',
-      hintTooLong: 'PIN 码提示语不能超过 50 字符',
-      unlockHintPrompt: 'PIN 码提示语：',
+      decryptionFailedMessage: '解密钱包数据失败。密码可能不正确或数据已损坏。请重试。',
+      pinHintForSet: '至少 8 位，需同时包含字母和数字。这是本地钱包密码：没有账号，也无法找回。它只用来加密私钥，本网站不会保存。',
+      pinConfirmPrompt: '再次输入密码：',
       defaultWalletName: '钱包1', // 新增
       walletNamePrompt: '请输入钱包名称（可选，不超过 20 字符）：', // 新增
       walletNamePlaceholder: '例如：我的主钱包', // 新增
-      pinInputPlaceholder: '请输入 PIN 码', // 新增
-      hintHintForSet: '此提示语将在导入钱包时显示，帮助您回忆 PIN 码。', // 新增
+      pinInputPlaceholder: '请输入密码', // 新增
       validation: {
         required: '请输入{{field}}',
         maxLength: '{{field}}不能超过 {{max}} 个字符',
         minLength: '{{field}}不能少于 {{min}} 个字符',
-        pattern: 'PIN 码必须同时包含字母和数字',
-        pinStrength: 'PIN 码至少 8 位，且必须同时包含字母和数字',
-        pinMismatch: '两次输入的 PIN 码不一致',
+        pattern: '密码必须同时包含字母和数字',
+        pinStrength: '密码至少 8 位，且必须同时包含字母和数字',
+        pinMismatch: '两次输入的密码不一致',
       },
     },
     walletNameLabel: '钱包名称', // 新增
@@ -250,7 +220,7 @@ export default {
         confirmTitle: '确认交易',
         feeLabel: '手续费',
         totalLabel: '合计',
-        signingHint: '签名中，请输入 PIN…',
+        signingHint: '签名中，请输入密码…',
         showSignedTitle: '用发起方设备扫此码',
         showSignedDesc: '将此码展示给发起方设备扫描，即可自动广播交易。',
         scanButton: '扫描待签名码',
@@ -293,7 +263,7 @@ export default {
     changePasswordButton: '修改密码',
     importWalletButton: '导入钱包',
     privateKeyWarning:
-      '警告：备份二维码包含用 PIN 加密的私钥。丢失二维码或 PIN 都将导致资金无法找回，请妥善保管。',
+      '警告：备份二维码包含用密码加密的私钥。丢失二维码或密码都将导致资金无法找回，请妥善保管。',
     copyPkButton: '复制私钥',
     pkCopiedTitle: '私钥已复制',
     pkCopiedMessage: '私钥 (WIF) 已复制到您的剪贴板。',
@@ -301,7 +271,7 @@ export default {
     copyFailedMessage: '无法复制到剪贴板。请重试或手动复制。',
     backupPlaceholderWarningTitle: '重要提示：备份您的钱包',
     backupPlaceholderWarningText:
-      '二维码是使用 PIN 加密后的数据，二维码或PIN 丢失，都会导致无法找回，请妥善保管',
+      '二维码是使用密码加密后的数据，二维码或密码丢失，都会导致无法找回，请妥善保管',
     showQrCodeButton: '我已知晓风险，显示二维码',
     privateKeyQrModalTitle: '私钥二维码',
     qrLoading: '二维码生成中...',
@@ -319,17 +289,12 @@ export default {
     deleteWalletWarning:
       '警告：此操作将移除当前私钥和本地相关数据，并自动创建一个新的钱包。如有需要请先备份重要信息。',
     confirmDeleteButton: '确认删除',
-    enterPinLabel: '输入 PIN码',
-    pinPlaceholder: '您的 PIN码',
     unlockWalletButton: '解锁钱包',
     noWalletFound: '此设备上未找到安全钱包。',
     createNewWalletButton: '创建新的安全钱包',
     createNewWalletTitle: '创建新钱包',
-    createNewWalletConfirmMessage: '这将引导您创建一个由 Passkey 和 PIN码保护的新钱包。是否继续？',
     createButton: '创建',
     cancelButton: '取消',
-    pinHintButton: '显示 PIN 码提示语', // 新增
-    pinHintText: 'PIN 码提示语：', // 新增
     transfer: {
       transferButton: '转账',
       transferTitle: '转账',

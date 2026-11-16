@@ -61,17 +61,14 @@ export default {
         passkeyRegisterFailed: 'Passkey registration failed. Please try again.',
         encryptedDataMissing:
           'Encrypted wallet data is missing. The wallet may be corrupted or not fully set up.',
-        invalidDecryptedKey:
-          'Failed to load wallet from decrypted data. The PIN might be incorrect or data corrupted.',
-        pinIncorrect: 'Incorrect PIN. Please try again.',
         privateKeyMismatch:
           'Private key does not match cached public key! Please recreate or import the wallet.',
         privateKeyLoadFailed: 'Failed to load private key.',
         privateKeyNotFound: 'Private key not found. Operation cannot proceed.',
         encryptionFailed: 'Failed to encrypt data. Please try again.',
         decryptionFailedPinIncorrect:
-          'Decryption failed. PIN may be incorrect or data is corrupted.',
-        decryptionFailedGeneric: 'Decryption failed. Please check PIN or wallet data.',
+          'Decryption failed. The password may be incorrect or the data is corrupted.',
+        decryptionFailedGeneric: 'Decryption failed. Check the password or the wallet data.',
         wifImportFailed: 'Failed to import WIF',
         importUiNotAvailable: 'Wallet import interface unavailable. Please refresh the page or try manual operation.',
         unlockCancelled: 'Operation cancelled.',
@@ -82,9 +79,6 @@ export default {
       backupSuccessQr: 'Private key QR code backed up and download as {{filename}}',
       initializingWallet: 'Initializing wallet...',
       passkeyAuthPrompt: 'Please authenticate with your Passkey to unlock the wallet.',
-      passkeyAuthSuccess: 'Passkey authentication successful. Please enter your PIN.',
-      pinRequired: 'PIN is required.',
-      pinSetupCancelled: 'PIN setup cancelled.',
       encryptingKey: 'Encrypting your wallet securely...',
       decryptingKey: 'Decrypting your wallet...',
       passkeyRegisterPrompt: 'Please follow the prompts to register a new Passkey for this wallet.',
@@ -92,10 +86,6 @@ export default {
       walletUnlocked: 'Wallet unlocked successfully.',
       walletDeleted: 'Wallet deleted successfully. You can create a new one.',
       creatingNewWallet: 'Creating a new secure wallet...',
-      setPinTitle: 'Set a PIN',
-      setPinMessage:
-        'Enter a PIN to encrypt your wallet. Remember this PIN, as it will be required to unlock your wallet along with your Passkey.',
-      setPinButton: 'Set PIN',
       confirmDeleteWalletTitle: 'Confirm Delete Wallet',
       confirmDeleteWalletMessage:
         'Are you sure you want to delete this wallet and all associated Passkey data? This action cannot be undone. Ensure you have backed up your private key if you wish to recover funds elsewhere.',
@@ -110,8 +100,8 @@ export default {
       autoBackupSuccessNewWallet:
         'Private key backup for current wallet has been downloaded. Keep it safe — loss or leak may result in asset loss.',
       autoBackupSuccessEncrypted:
-        'PIN-encrypted private key backup has been downloaded. Keep it safe and remember your PIN to decrypt it.',
-      backupEncryptionFailed: 'Failed to encrypt backup with PIN. Please try again.',
+        'Password-encrypted private key backup has been downloaded. Keep it safe and remember the password to decrypt it.',
+      backupEncryptionFailed: 'Failed to encrypt the backup with your password. Please try again.',
       errorTitle: 'Error',
       balanceRefreshed: 'Balance refreshed',
       refreshingBalance: 'Refreshing balance...',
@@ -127,19 +117,18 @@ export default {
     backupDataNote: 'QR code loss or leakage will result in permanent loss of funds. Please view and back it up in a secure environment.',
     pinModal: {
       setTitle: 'Set new wallet', // Modified title
-      setPrompt: 'Set a PIN for your wallet:',
-      setButton: 'Set PIN',
-      confirmTitle: 'Confirm PIN', // Retained for consistency, though no longer used in combined flow
-      confirmPrompt: 'Re-enter your PIN to confirm:', // Retained for consistency
-      confirmButton: 'Confirm PIN', // Retained for consistency
+      setPrompt: 'Set a password for your wallet:',
+      setButton: 'Set password',
+      confirmTitle: 'Confirm password', // Retained for consistency, though no longer used in combined flow
+      confirmPrompt: 'Re-enter your password to confirm:', // Retained for consistency
+      confirmButton: 'Confirm password', // Retained for consistency
       unlockTitle: 'Unlock Wallet',
-      unlockPrompt: 'Enter your PIN to unlock the wallet:',
+      unlockPrompt: 'Enter your password to unlock the wallet:',
       walletAddressLabel: 'Wallet address',
       walletAddressHint: 'Your browser saves the password per address',
       unlockButton: 'Unlock',
       cancelButton: 'Cancel',
-      setupCancelledTitle: 'PIN Setup Cancelled',
-      setupCancelledMessage: 'PIN setup was cancelled. Your wallet is not yet secured with a PIN.',
+      setupCancelledMessage: 'Password setup was cancelled. Your wallet is not protected by a password yet.',
       changeTitle: 'Change password',
       changeMessage: 'The old password is already verified. The new one only re-encrypts the local key; the address stays the same.',
       changePrompt: 'Set a new password:',
@@ -148,52 +137,30 @@ export default {
       changeSuccessMessage: 'This browser now unlocks with the new password only. Old backup QR codes still need the old one — destroy them and export a fresh one.',
       migrationTitle: 'Wallet Security Upgrade',
       migrationMessage:
-        'For enhanced security, please set a PIN for your existing wallet. This PIN will be required to access your funds.',
-      migrationCancelled: 'Wallet upgrade cancelled. You need to set a PIN to use your wallet.',
-      migrationSuccessTitle: 'Upgrade Successful',
-      migrationSuccessMessage: 'Your wallet is now secured with a PIN.',
-      setupSuccessTitle: 'PIN Setup Successful',
-      setupSuccessMessage: 'Your new wallet is secured with a PIN.',
+        'For enhanced security, set a password for your existing wallet. It will be required to access your funds.',
+      migrationCancelled: 'Wallet upgrade cancelled. You need to set a password to use your wallet.',
       importCancelledTitle: 'Import Cancelled',
       importCancelledMessage: 'Wallet import was cancelled. No changes were made.',
-      importSuccessTitle: 'Import Successful',
-      importSuccessMessage: 'Wallet imported and secured with a PIN.',
-      pinTooShortTitle: 'PIN Too Short',
-      pinTooShortMessage: 'PIN must be at least 6 digits long.',
-      pinsDoNotMatchTitle: 'PINs Do Not Match', // Retained for consistency
-      pinsDoNotMatchMessage: 'The PINs you entered do not match. Please try again.', // Retained for consistency
       unlockRequiredTitle: 'Unlock Required',
       unlockRequiredForCopyMessage: 'Please unlock your wallet to copy the private key.',
       unlockCancelledTitle: 'Unlock Cancelled',
       unlockCancelledMessage: 'Unlock cancelled. Wallet remains locked.',
       decryptionFailedTitle: 'Decryption Failed',
       decryptionFailedMessage:
-        'Failed to decrypt wallet data. The PIN might be incorrect or data corrupted. Please try again.',
-      pinHintForSet: 'At least 8 characters, must include both letters and numbers. Your PIN encrypts your private key and is never saved by this site — keep it safe.',
-      pinConfirmPrompt: 'Enter the same PIN again:',
-      pinIsMandatoryTitle: 'PIN Required',
-      pinIsMandatoryMessage:
-        'To protect your funds, setting a PIN is mandatory. This step cannot be skipped.',
-      confirmPinCancelledTitle: 'PIN Confirmation Cancelled', // Retained for consistency
-      confirmPinCancelledMessage:
-        'Confirmation of the PIN was cancelled. Please restart the PIN setup process.', // Retained for consistency
-      setHintTitle: 'Set Hint', // New title for the hint section
-      setHintPrompt: 'Please enter your hint (optional, max 50 characters):', // Hint prompt
-      setHintPlaceholder: 'This hint will be displayed when importing the wallet', // Hint placeholder
-      hintTooLong: 'Hint cannot exceed 50 characters', // Hint too long message
-      unlockHintPrompt: 'Hint: ', // For displaying stored hint during unlock
+        'Failed to decrypt wallet data. The password might be incorrect or the data corrupted. Please try again.',
+      pinHintForSet: 'At least 8 characters, with both letters and numbers. This is a local wallet password: no account, no recovery. It only encrypts your private key, and this site never stores it.',
+      pinConfirmPrompt: 'Enter the same password again:',
       defaultWalletName: 'Wallet 1', // New
       walletNamePrompt: 'Enter wallet name (optional, max 20 characters):', // New
       walletNamePlaceholder: 'e.g., My Main Wallet', // New
-      pinInputPlaceholder: 'Enter PIN', // New
-      hintHintForSet: 'This hint will be displayed when importing the wallet to help you recall the PIN.', // New
+      pinInputPlaceholder: 'Enter password', // New
       validation: {
         required: '{{field}} is required',
         maxLength: '{{field}} cannot exceed {{max}} characters',
         minLength: '{{field}} must be at least {{min}} characters',
-        pattern: 'PIN must contain both letters and numbers',
-        pinStrength: 'PIN must be at least 8 characters and contain both letters and numbers',
-        pinMismatch: 'The two PINs do not match',
+        pattern: 'The password must contain both letters and numbers',
+        pinStrength: 'The password must be at least 8 characters and contain both letters and numbers',
+        pinMismatch: 'The two passwords do not match',
       },
     },
     walletNameLabel: 'Wallet Name', // New
@@ -261,7 +228,7 @@ export default {
         confirmTitle: 'Confirm Transaction',
         feeLabel: 'Fee',
         totalLabel: 'Total',
-        signingHint: 'Signing, please enter PIN…',
+        signingHint: 'Signing — enter your password…',
         showSignedTitle: 'Let the Initiating Device Scan This',
         showSignedDesc: 'Show this code to the initiating device to scan. It will broadcast the transaction automatically.',
         scanButton: 'Scan Unsigned Transaction',
@@ -306,7 +273,7 @@ export default {
     changePasswordButton: 'Change Password',
     importWalletButton: 'Import Wallet',
     privateKeyWarning:
-      'Warning: The backup QR code contains a PIN-encrypted private key. Losing either the QR code or the PIN will make your funds unrecoverable. Keep it safe.',
+      'Warning: The backup QR code contains a password-encrypted private key. Losing either the QR code or the password will make your funds unrecoverable. Keep it safe.',
     copyPkButton: 'Copy Private Key',
     pkCopiedTitle: 'Private Key Copied',
     pkCopiedMessage: 'Private Key (WIF) has been copied to your clipboard.',
@@ -333,14 +300,10 @@ export default {
     deleteWalletWarning:
       'Warning: This action will remove the current private key and local data, and automatically create a new wallet. Please backup important information if needed.',
     confirmDeleteButton: 'Confirm Delete',
-    enterPinLabel: 'Enter PIN',
-    pinPlaceholder: 'Your PIN',
     unlockWalletButton: 'Unlock Wallet',
     noWalletFound: 'No secure wallet found on this device.',
     createNewWalletButton: 'Create New Secure Wallet',
     createNewWalletTitle: 'Create New Wallet',
-    createNewWalletConfirmMessage:
-      'This will guide you through creating a new wallet secured by a Passkey and a PIN. Proceed?',
     createButton: 'Create',
     cancelButton: 'Cancel',
     transfer: {
