@@ -140,6 +140,12 @@ export default {
       cancelButton: 'Cancel',
       setupCancelledTitle: 'PIN Setup Cancelled',
       setupCancelledMessage: 'PIN setup was cancelled. Your wallet is not yet secured with a PIN.',
+      changeTitle: 'Change password',
+      changeMessage: 'The old password is already verified. The new one only re-encrypts the local key; the address stays the same.',
+      changePrompt: 'Set a new password:',
+      changeButton: 'Change password',
+      changeSuccessTitle: 'Password changed',
+      changeSuccessMessage: 'This browser now unlocks with the new password only. Old backup QR codes still need the old one — destroy them and export a fresh one.',
       migrationTitle: 'Wallet Security Upgrade',
       migrationMessage:
         'For enhanced security, please set a PIN for your existing wallet. This PIN will be required to access your funds.',
@@ -297,6 +303,7 @@ export default {
     publicKeyCopyFailed: 'Copy failed. Select the text and copy it manually.',
     publicKeyUnavailable: 'Watch-only wallets have no private key, so the public key is unavailable.',
     backupWalletButton: 'Backup Wallet',
+    changePasswordButton: 'Change Password',
     importWalletButton: 'Import Wallet',
     privateKeyWarning:
       'Warning: The backup QR code contains a PIN-encrypted private key. Losing either the QR code or the PIN will make your funds unrecoverable. Keep it safe.',

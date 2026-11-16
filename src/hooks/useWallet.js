@@ -319,6 +319,56 @@ export function useWallet() {
     return null;
   }, [ensurePrivateKeyLoaded, pubKey, address, walletName, generateEncryptedBackupData, t]);
 
+  /**
+   * 换密码只换信封：私钥和地址都不变。
+   * 旧密码必填——没有服务端，也没有恢复码，忘了就解不开。
+   * 它挡不住「私钥已经泄漏」：那种情况只能把资金扫到新地址。
+   */
+  const changeWalletPassword = useCallback(async () => {
+    if (!address) {
+      return { error: 'no-address' };
+    }
+
+    let loaded;
+    try {
+      loaded = await ensurePrivateKeyLoaded(pubKey);
+    } catch (error) {
+      return { error: 'unlock-failed', message: error.message };
+    }
+    if (!loaded || loaded.error) {
+      return loaded || { error: 'unlock-cancelled' };
+    }
+
+    let newPin = null;
+    try {
+      const result = await promptForPin('change-password', { walletAddress: address });
+      newPin = result.pin;
+    } catch (error) {
+      return { error: 'change-cancelled' };
+    }
+    if (!newPin) {
+      return { error: 'change-cancelled' };
+    }
+
+    try {
+      // encryptData 每次都生成新的 salt / IV，重加密顺手换盐。
+      const encrypted = await encryptData(loaded.loadedPrivKey.toWif(), newPin);
+      storage.setEncryptedWifData(encrypted.ciphertext, encrypted.iv, encrypted.salt);
+      // 旧 QR 是用旧密码加密的，标记为未备份，逼用户重新导出一次。
+      storage.setBackupStatus(address, false);
+      addLog('Wallet password changed. Re-export the backup QR: the old one still needs the old password.', LOG_TYPES.SUCCESS);
+      await showInfo(
+        t('bsvPayment.pinModal.changeSuccessTitle'),
+        t('bsvPayment.pinModal.changeSuccessMessage')
+      );
+      return { error: 0 };
+    } catch (error) {
+      console.error('changeWalletPassword failed:', error);
+      await showInfo(t('bsvPayment.statusMessages.errorTitle'), t('bsvPayment.statusMessages.errors.encryptionFailed'));
+      return { error: 'encryption-failed' };
+    }
+  }, [address, pubKey, ensurePrivateKeyLoaded, promptForPin, storage, showInfo, t, addLog]);
+
   const calculateMaxSpendable = useCallback(async (target = null) => {
     if (!address) return { maxAmount: 0, message: 'Address not available' };
     try {
@@ -658,6 +708,7 @@ export function useWallet() {
     isBalanceLoading,
     createWallet,
     getWifForBackup,
+    changeWalletPassword,
     handleDeleteWallet,
     handleImportData,
     ensurePrivateKeyLoaded,

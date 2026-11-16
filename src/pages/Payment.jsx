@@ -42,6 +42,7 @@ function WalletUI() {
     isWatchOnly,
     createWallet,
     getWifForBackup,
+    changeWalletPassword,
     handleDeleteWallet,
     handleImportData,
     ensurePrivateKeyLoaded,
@@ -310,6 +311,7 @@ function WalletUI() {
                 maxTransferAmountValue={maxTransferAmount}
                 isWalletMode={isWalletUiVisible}
                 getWifForBackup={getWifForBackup}
+                onChangePassword={changeWalletPassword}
                 rate={rate}
                 onDeleteWallet={handleDeleteWallet}
                 onRequestCalculateMaxTransfer={handleRequestCalculateMax}
@@ -507,6 +509,24 @@ export default function Payment() {
           confirmButtonText: t('bsvPayment.pinModal.confirmButton'),
           showCancelButton: false,
           hideModalHeaderCloseButton: true,
+        };
+      } else if (mode === 'change-password') {
+        // 只换信封，不动私钥和地址。旧密码在上一屏已经验过了。
+        config = {
+          mode: 'change-password',
+          title: t('bsvPayment.pinModal.changeTitle'),
+          message: t('bsvPayment.pinModal.changeMessage'),
+          inputs: [
+            ...addressInput,
+            { id: 'pin', htmlName: 'password', autoComplete: 'current-password', label: t('bsvPayment.pinModal.changePrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20, hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
+              validate: (v) => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) || t('bsvPayment.pinModal.validation.pinStrength') },
+            { id: 'pinConfirm', htmlName: 'pinConfirm', autoComplete: 'off', label: t('bsvPayment.pinModal.pinConfirmPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20,
+              validate: (v, allValues) => v === allValues?.pin || t('bsvPayment.pinModal.validation.pinMismatch') },
+          ],
+          confirmButtonText: t('bsvPayment.pinModal.changeButton'),
+          cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
+          showCancelButton: true,
+          hideModalHeaderCloseButton: false,
         };
       } else if (mode === 'setup') { // New setup mode
           config = {

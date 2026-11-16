@@ -52,6 +52,7 @@ const WalletManager = ({
   maxTransferAmountValue,
   isWalletMode = true,
   getWifForBackup,
+  onChangePassword,
   rate,
   onDeleteWallet,
   onRequestCalculateMaxTransfer,
@@ -512,6 +513,14 @@ const WalletManager = ({
               title={isWatchOnly ? t('bsvPayment.airGap.watchOnlyNoKey') : ''}
             >
               {t('bsvPayment.backupWalletButton')}
+            </Button>
+            <Button
+              onClick={closeSheetAndRun(onChangePassword)}
+              variant="outline"
+              disabled={isWatchOnly || !onChangePassword}
+              title={isWatchOnly ? t('bsvPayment.airGap.watchOnlyNoKey') : ''}
+            >
+              {t('bsvPayment.changePasswordButton')}
             </Button>
             <Button onClick={closeSheetAndRun(triggerImportWallet)} variant="outline">{t('bsvPayment.importWalletButton')}</Button>
             <Button
