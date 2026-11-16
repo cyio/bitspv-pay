@@ -358,7 +358,6 @@ export default {
     qrLoading: '二维码加载中...',
     copyButton: '复制地址',
     copiedButton: '已复制!',
-    toggleButtonPrefix: '切换到',
     supportLinkText: '支持与联系',
     copyError: '复制失败，请手动复制。',
   },
@@ -406,6 +405,5 @@ export default {
     description: '如果您觉得这个项目对您有帮助，可以考虑给我们一些支持。',
     thankYou: '感谢您的支持！',
     qrLoading: '二维码加载中...',
-    toggleButtonPrefix: '切换到',
   },
 };

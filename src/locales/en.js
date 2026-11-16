@@ -381,7 +381,6 @@ export default {
     qrLoading: 'QR Code loading...',
     copyButton: 'Copy Address',
     copiedButton: 'Copied!',
-    toggleButtonPrefix: 'Switch to',
     supportLinkText: 'Support & Contact',
     copyError: 'Failed to copy. Please copy manually.',
   },
@@ -433,6 +432,5 @@ export default {
     description: 'If you find this project helpful, consider supporting us.',
     thankYou: 'Thank you for your support!',
     qrLoading: 'QR Code loading...',
-    toggleButtonPrefix: 'Switch to',
   },
 };

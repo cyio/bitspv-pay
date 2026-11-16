@@ -32,7 +32,6 @@ export const EXPECTED_CSP_ORIGINS = {
     'https://arc.taal.com', // BSV ARC broadcast
     'https://api.taal.com', // BSV API
     'https://*.handcash.io', // paymail / handle resolution
-    'https://*.rockwallet.net', // paymail / handle resolution
     'https://bananablocks.com', // BSV block explorer / API
   ],
   'script-src': [
