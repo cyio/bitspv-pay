@@ -29,9 +29,15 @@ i18n
     }
   });
 
-// Set html lang attribute
-i18n.on('languageChanged', (lng) => {
-  document.documentElement.lang = lng;
-});
+// Set html lang attribute. 必须在 init 之后马上跑一次：检测器和监听器的注册
+// 顺序会让「首屏就是中文」的情况漏掉 languageChanged，html lang 停在 en。
+const applyHtmlLang = lng => {
+  const value = String(lng || 'en');
+  document.documentElement.lang = value.startsWith('zh') ? 'zh-Hans' : value;
+};
+
+i18n.on('languageChanged', applyHtmlLang);
+i18n.on('initialized', () => applyHtmlLang(i18n.language));
+if (i18n.isInitialized) applyHtmlLang(i18n.language);
 
 export default i18n;

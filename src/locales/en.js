@@ -4,10 +4,17 @@ export default {
     manageWalletButton: 'Manage Wallet',
     tagline: 'Minimal single-address wallet · Runs in your browser · Offline signing',
     trustLine: 'Non-custodial · Keys never leave your device · Every transaction verifiable',
+    footer: {
+      sourceCode: 'Source code on GitHub',
+      offlineBuild: 'Offline single-file build',
+    },
     processingButton: 'Processing...',
     totalAmountLabel: 'Total Payment',
-    supplementAmountLabel: 'An additional {{amount}} BSV is required."',
+    supplementAmountLabel: 'An additional {{amount}} BSV is required.',
     statusMessages: {
+      transactionSent: 'Transaction sent',
+      confirmButton: 'Confirm',
+      cancelButton: 'Cancel',
       waitingPay: 'waiting pay...',
       addressCopied: 'Copied',
       copyFailed: 'Copy failed',
@@ -57,6 +64,11 @@ export default {
         addressMismatch:
           'The address recorded in this backup does not match the address derived from the decrypted key. The file may be corrupted or edited — import was aborted and your current wallet was left untouched.',
         invalidQrCode: 'Invalid QR code.',
+        invalidQRCode: 'Invalid QR code.',
+        invalidReceivedTarget: 'Invalid recipient for this transaction.',
+        privateKeyNotAvailableForDownload:
+          'Encrypted backup data is unavailable. Please unlock the wallet and try again.',
+        networkCongestion: 'The network is busy. Please try again in a moment.',
         utxoFetchFailed:
           'Failed to fetch Unspent Transaction Outputs (UTXOs). Please check network connection or try again later.',
         passkeyNotFoundInStorage:
@@ -123,6 +135,11 @@ export default {
     backupDataNote:
       'QR code loss or leakage will result in permanent loss of funds. Please view and back it up in a secure environment.',
     pinModal: {
+      enterPinTitle: 'Unlock Wallet',
+      enterPinMessage: 'Enter your wallet password to continue.',
+      createPinTitle: 'Set a wallet password',
+      createPinMessage: 'Choose a password. It only encrypts the private key on this device.',
+      createButton: 'Create',
       setTitle: 'Set new wallet', // Modified title
       setPrompt: 'Set a password for your wallet:',
       setButton: 'Set password',
@@ -208,6 +225,9 @@ export default {
     airGap: {
       transferOffline: 'Transfer (Offline Sign)',
       signerButton: 'Scan to Sign',
+      checksumLabel: 'Checksum',
+      qrAlt: 'Unsigned transaction QR code',
+      signedQrAlt: 'Signed transaction QR code',
       watchOnlyNoKey:
         'Watch-only mode has no private key. Use the device that holds the private key to scan and sign.',
       sender: {
@@ -238,6 +258,8 @@ export default {
           'Unrecognized QR code. Please scan the signed code from the signing device.',
         parseSignedFailed: 'Failed to parse signed QR code',
         paymailResolveFailed: 'Paymail resolution failed: {{target}}',
+        paymailNotifyFailed:
+          'Could not notify {{paymail}} that the funds arrived. The transaction is already broadcast and the funds are safe; the recipient wallet may need a manual refresh.',
         steps: ['Fill', 'Unsigned QR', 'Scan Signed', 'Done'],
       },
       signer: {
@@ -246,6 +268,11 @@ export default {
         confirmTitle: 'Confirm Transaction',
         feeLabel: 'Fee',
         totalLabel: 'Total',
+        outputCountLabel: 'Outputs',
+        recipientsLabel: 'Paying to',
+        checksumHint: 'Compare this checksum with the one shown on the initiating device before you sign.',
+        customScript: 'Non-standard script',
+        opReturnOutput: 'OP_RETURN (data)',
         signingHint: 'Signing — enter your password…',
         showSignedTitle: 'Let the Initiating Device Scan This',
         showSignedDesc:
@@ -273,7 +300,7 @@ export default {
     importConfirmation: {
       title: 'Confirm Wallet Import',
       message:
-        'Importing a new wallet will overwrite the current wallet if one exists. Are you sure you want to continue? Please select Private Key Qrcode Image',
+        'Importing a new wallet overwrites the current wallet on this device. Make sure the current wallet has a working backup before you continue.',
       confirmButton: 'Confirm Import',
       cancelButton: 'Cancel',
     },
@@ -287,6 +314,18 @@ export default {
     },
     qrCode: 'Payment QR Code',
     balanceLabel: 'Balance',
+    balanceUnavailable: 'Balance unavailable. Check your connection and refresh.',
+    balanceUnconfirmed: '({{amount}} BSV pending)',
+    receive: {
+      button: 'Receive',
+      title: 'Receive BSV',
+      description: 'Scan this code or share the address below. This wallet uses one address for every payment.',
+      addressLabel: 'Your address',
+      showQr: 'Show receive QR code',
+      hideQr: 'Hide receive QR code',
+      copyAddress: 'Copy address',
+      copied: 'Copied',
+    },
     refreshBalanceButton: 'Refresh Balance',
     copyButton: 'Copy',
     viewPublicKeyButton: 'View Public Key',
@@ -302,6 +341,19 @@ export default {
     settings: {
       title: 'Settings',
       apiProvider: 'API provider',
+    },
+    debugConsole: {
+      open: 'Open system log',
+      close: 'Collapse system log',
+      title: 'System Logs',
+      entries: '{{count}} entries',
+      empty: 'No logs yet.',
+      clear: 'Clear logs',
+      copyReport: 'Copy diagnostics report',
+      securityCheck: 'Run security check',
+      securityCheckFailed: 'Security check failed',
+      reportCopied: 'Diagnostics report copied',
+      reportCopyFailed: 'Failed to copy diagnostics report',
     },
     backupWalletButton: 'Backup Wallet',
     changePasswordButton: 'Change Password',
@@ -320,7 +372,9 @@ export default {
     privateKeyQrModalTitle: 'Private Key QR Code',
     qrLoading: 'Generating QR Code...',
     qrCodeDownloadTip:
-      'Some environments may not support direct download. Please right-click on the image to copy or save.',
+      'If your browser cannot download the image, long-press it (mobile) or right-click it (desktop) to save.',
+    qrCodeSaveTipWeChat:
+      'Long-press the QR code and choose “Save image”. Store it somewhere offline and safe.',
     downloadQrCodeButton: 'Download QR Code',
     scanButton: 'Scan QR Code',
     clearWalletButton: 'Empty Wallet',
@@ -332,7 +386,7 @@ export default {
     deleteWalletButton: 'Delete Wallet',
     deleteWalletTitle: 'Delete Wallet',
     deleteWalletWarning:
-      'Warning: This action will remove the current private key and local data, and automatically create a new wallet. Please backup important information if needed.',
+      'This removes the encrypted private key and local wallet data from this device. No new wallet is created: you will return to the setup screen. Make sure you have a working backup first.',
     confirmDeleteButton: 'Confirm Delete',
     unlockWalletButton: 'Unlock Wallet',
     noWalletFound: 'No secure wallet found on this device.',
@@ -346,6 +400,7 @@ export default {
       transferAmountLabel: 'Transfer Amount',
       transferAmountPlaceholder: 'Enter transfer amount',
       maxLabel: 'Max',
+      unitLabel: 'Amount unit',
       unit: 'sats',
       targetAddressLabel: 'Target Paymail/Address',
       targetAddressPlaceholder: 'Enter the Paymail/Address to receive BSV',
@@ -360,6 +415,10 @@ export default {
       errors: {
         invalidAmount: 'Please enter a valid transfer amount',
         amountExceedsMax: 'Transfer amount exceeds the maximum transferable amount',
+        maxUnavailable: 'Could not calculate the maximum amount. Check your balance and connection.',
+        zeroBalance: 'No spendable funds in this wallet yet.',
+        insufficientFunds: 'Not enough funds: {{needed}} sats needed, {{found}} sats available.',
+        noSpendableUtxos: 'No spendable funds found. You need at least {{needed}} sats.',
         transferFailed: 'Transfer failed',
       },
       preparing: 'Preparing transaction...',
@@ -388,6 +447,10 @@ export default {
     copyFailedMessage: 'Failed to copy transaction ID.',
     loadMore: 'Load More',
     unconfirmed: 'Unconfirmed',
+    confirmed: 'Confirmed',
+    received: 'Received',
+    sent: 'Sent',
+    retry: 'Try again',
     loadedCount: 'Loaded {{count}} items',
     allLoaded: 'All items loaded',
     internalTransfer: 'Internal Transfer',

@@ -14,57 +14,101 @@ const WalletInfo = ({
   isRefreshing,
   showQR = false,
   isBalanceLoading = false,
+  balanceError = '',
 }) => {
   const { t } = useTranslation();
   const [qrExpanded, setQrExpanded] = useState(showQR);
 
+  const unconfirmed = walletBalance?.unconfirmed || 0;
+  const copyLabel = isCopied
+    ? t('bsvPayment.statusMessages.addressCopied')
+    : t('bsvPayment.copyButton');
+  const qrLabel = qrExpanded
+    ? t('bsvPayment.receive.hideQr')
+    : t('bsvPayment.receive.showQr');
+
   return (
     <>
       <div className="mb-4">
-        <div className="flex flex-col gap-1 p-3 bg-muted rounded">
-          <div className="font-mono text-sm break-all">{address}</div>
-          <div className="flex gap-1 justify-end">
+        <div className="flex items-start gap-2 rounded-[var(--radius)] bg-muted p-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              {t('bsvPayment.receive.addressLabel')}
+            </p>
+            <div className="select-all break-all font-mono text-sm">{address}</div>
+          </div>
+          <div className="flex shrink-0 gap-1">
             <button
               onClick={copyAddress}
-              title={isCopied ? t('bsvPayment.statusMessages.addressCopied') : t('bsvPayment.copyButton')}
-              className="p-1.5 rounded hover:bg-muted transition-colors"
+              title={copyLabel}
+              aria-label={copyLabel}
+              className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {isCopied ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
+              {isCopied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
             </button>
             {qrcode && (
               <button
                 onClick={() => setQrExpanded(v => !v)}
-                title={qrExpanded ? '收起收款码' : '显示收款码'}
-                className="p-1.5 rounded hover:bg-muted transition-colors"
+                title={qrLabel}
+                aria-label={qrLabel}
+                aria-expanded={qrExpanded}
+                className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                {qrExpanded ? <ChevronUp size={14} /> : <QrCode size={14} />}
+                {qrExpanded ? <ChevronUp size={16} /> : <QrCode size={16} />}
               </button>
             )}
           </div>
         </div>
         {qrcode && qrExpanded && (
           <div className="mt-2 flex justify-center">
-            <img src={qrcode} alt={t('bsvPayment.qrCode')} className="w-48 h-48" />
+            <img
+              src={qrcode}
+              alt={t('bsvPayment.qrCode')}
+              // 二维码自带静区，深色底上必须给白底，否则部分扫码器读不出来。
+              className="h-48 w-48 rounded-[var(--radius)] border border-border bg-white p-2"
+            />
           </div>
         )}
       </div>
-      <div className="text-center text-muted-foreground mb-4 flex items-center justify-center space-x-2">
+      <div className="mb-4 flex items-center justify-center gap-2 text-muted-foreground">
         {isBalanceLoading ? (
-          <span className="inline-flex items-center gap-2">
-            <span className="h-4 w-32 rounded bg-muted animate-pulse inline-block" />
-            <span className="h-4 w-12 rounded bg-muted animate-pulse inline-block" />
+          <span className="inline-flex items-center gap-2" role="status">
+            <span className="inline-block h-4 w-32 animate-pulse rounded bg-muted" />
+            <span className="inline-block h-4 w-12 animate-pulse rounded bg-muted" />
+          </span>
+        ) : balanceError ? (
+          <span className="text-[12px] leading-[17px]" role="status">
+            {t('bsvPayment.balanceUnavailable')}
           </span>
         ) : (
-          <span>
+          <span className="text-center" role="status">
             {t('bsvPayment.balanceLabel')}:
             <span className="font-semibold">
               {convertSatoshisToBSV(walletBalance.total)} BSV
-              {rate && <span className="font-normal"> (${convertSatoshisToFiat(walletBalance.total, rate)})</span>}
+              {rate && (
+                <span className="font-normal">
+                  {' '}
+                  (${convertSatoshisToFiat(walletBalance.total, rate)})
+                </span>
+              )}
             </span>
+            {unconfirmed > 0 && (
+              <span className="ml-2 text-[11px] text-[var(--warn)]">
+                {t('bsvPayment.balanceUnconfirmed', {
+                  amount: convertSatoshisToBSV(unconfirmed),
+                })}
+              </span>
+            )}
           </span>
         )}
-        <button onClick={refreshAll} disabled={isRefreshing} title={t('bsvPayment.refreshBalanceButton')}>
-          <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+        <button
+          onClick={refreshAll}
+          disabled={isRefreshing}
+          title={t('bsvPayment.refreshBalanceButton')}
+          aria-label={t('bsvPayment.refreshBalanceButton')}
+          className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
     </>

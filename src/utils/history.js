@@ -67,7 +67,7 @@ export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddre
     return null;
   }
 
-  const { vin, vout, txid, time, blockheight } = tx;
+  const { vin, vout, txid, time, blockheight, delta } = tx;
 
   let totalValueIn = 0;
   let totalValueOut = 0;
@@ -129,10 +129,18 @@ export function formatSingleTransaction(tx, currentPubKeyHex, currentWalletAddre
   }
 
 
+  // 观察钱包没有公钥，没法从 scriptSig 判断本地址是否在花钱：
+  // 改用地址历史给出的净变化（sats）。正数收入、负数支出。
+  if (!currentPubKeyHex && typeof delta === 'number' && delta !== 0) {
+    type = delta > 0 ? 'income' : 'expense';
+    amountSatoshis = Math.abs(delta);
+  }
+
   return {
     txid: txid,
     type: type,
     amount: amountSatoshis / 100000000,
+    amountSatoshis: amountSatoshis,
     time: time,
     status: blockheight > 0 ? 'confirmed' : 'unconfirmed',
     relatedAddress: 'N/A', // Simplified for now

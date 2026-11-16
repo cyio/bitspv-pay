@@ -616,11 +616,15 @@ async function fetchAddressTransactions(address) {
           addressData.confirmed.result?.map(tx => ({
             tx_hash: tx.tx_hash,
             height: tx.height,
+            // 该地址在这笔交易里的净变化（sats，正=收入）。观察钱包没有公钥，
+            // 只能靠它判断方向，见 utils/history.js。
+            delta: typeof tx.value === 'number' ? tx.value : null,
           })) || [];
         const unconfirmed =
           addressData.unconfirmed.result?.map(tx => ({
             tx_hash: tx.tx_hash,
             height: 0, // Unconfirmed transactions have a height of 0
+            delta: typeof tx.value === 'number' ? tx.value : null,
           })) || [];
 
         // Sort confirmed transactions by block height in descending order

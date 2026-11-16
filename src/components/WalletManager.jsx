@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, QrCode } from 'lucide-react';
 import { isWeChat } from '../utils';
 import { copyText } from '../utils/clipboard';
 import {
@@ -59,6 +59,7 @@ const WalletManager = ({
   onRequestEstimateTransfer,
   onTransferFunds,
   onRequestImportWallet,
+  onOpenReceive,
   transferStatus,
   transferMessage,
   onClearTransferStatus,
@@ -79,6 +80,9 @@ const WalletManager = ({
   const [isPubKeyCopied, setIsPubKeyCopied] = useState(false);
   const [pubKeyCopyError, setPubKeyCopyError] = useState('');
   const [isEstimating, setIsEstimating] = useState(false);
+  // 只有用户在本表单里点过 Max，才把「可花上限」当作硬校验；
+  // 否则上一次会话算出的旧上限会拦住后续更大的转账。
+  const [maxApplied, setMaxApplied] = useState(false);
 
   // air-gap 模式：'sender' | 'signer' | null
   const [airGapMode, setAirGapMode] = useState(null);
@@ -252,10 +256,12 @@ const WalletManager = ({
   const toggleTransferSection = () => {
     if (showTransferSection) {
       setShowTransferSection(false);
+      setMaxApplied(false);
       return;
     }
     resetPanels();
     setShowTransferSection(true);
+    setMaxApplied(false);
     setInputAmount('');
   };
 
@@ -263,16 +269,18 @@ const WalletManager = ({
 
   const handleSetAmountToMax = async () => {
     setIsCalculatingMax(true);
+    setFormError('');
     try {
       const result = await onRequestCalculateMaxTransfer(targetAddress);
-      const maxSats = result?.maxAmount ?? maxTransferAmountValue;      if (maxSats !== null && maxSats > 0) {
-        if (selectedUnit === 'USD') {
-          setSelectedUnit('BSV');
-          setInputAmount(convertSatoshisToBSV(maxSats).toString());
-        } else {
-          setSatoshiValue(maxSats);
-        }
+      const maxSats = result?.maxAmount ?? maxTransferAmountValue;
+      if (maxSats === null || maxSats === undefined || maxSats <= 0) {
+        // 以前这里什么都不显示，用户点了 Max 像是没反应。把原因说出来。
+        setFormError(result?.message || t('bsvPayment.transfer.errors.maxUnavailable'));
+        return;
       }
+      setMaxApplied(true);
+      // 保留用户选的单位：选 USD 就填 USD，不要静默改成 BSV。
+      setSatoshiValue(maxSats);
     } finally {
       setIsCalculatingMax(false);
     }
@@ -291,7 +299,7 @@ const WalletManager = ({
       setFormError(t('bsvPayment.transfer.errors.invalidAmount'));
       return;
     }
-    if (maxTransferAmountValue !== null && amount > maxTransferAmountValue) {
+    if (maxApplied && maxTransferAmountValue !== null && amount > maxTransferAmountValue) {
       setFormError(t('bsvPayment.transfer.errors.amountExceedsMax'));
       return;
     }
@@ -353,6 +361,7 @@ const WalletManager = ({
       // On success, the status will be updated by useWallet, and we can clear the form.
       setTargetAddress('');
       setInputAmount('');
+      setMaxApplied(false);
     } catch (error) {
       // Errors, including cancellation, are caught here.
       // useWallet is already handling the state change for real errors.
@@ -419,7 +428,7 @@ const WalletManager = ({
       case 'processing':
         return 'text-primary';
       case 'completed':
-        return 'text-primary';
+        return 'text-[var(--seal)]';
       case 'error':
         return 'text-destructive';
       default:
@@ -431,22 +440,25 @@ const WalletManager = ({
 
   return (
     <div className="relative mt-4">
-      {/* ── 观察模式：替换转账按钮 ── */}
-      {isWatchOnly ? (
-        <Button
-          onClick={() => openAirGap('sender')}
-          className="w-full"
-        >
-          {t('bsvPayment.airGap.transferOffline')}
+      {/* ── 收款与转账并列为两个主操作；观察模式下转账换成离线签名 ── */}
+      <div className="flex gap-2">
+        <Button variant="outline" className="flex-1" onClick={onOpenReceive} disabled={!onOpenReceive}>
+          <QrCode className="h-4 w-4" />
+          {t('bsvPayment.receive.button')}
         </Button>
-      ) : (
-        <Button onClick={toggleTransferSection} className="w-full">
-          {t('bsvPayment.transfer.transferButton')}
-        </Button>
-      )}
+        {isWatchOnly ? (
+          <Button className="flex-1" onClick={() => openAirGap('sender')}>
+            {t('bsvPayment.airGap.transferOffline')}
+          </Button>
+        ) : (
+          <Button className="flex-1" onClick={toggleTransferSection}>
+            {t('bsvPayment.transfer.transferButton')}
+          </Button>
+        )}
+      </div>
 
       {showTransferSection && (
-        <div className="mt-4 px-2 py-4 bg-muted rounded">
+        <div className="mt-4 rounded-[var(--radius)] bg-muted px-2 py-4">
           <h2 className="text-lg font-semibold mb-3">{t('bsvPayment.transfer.transferTitle')}</h2>
           <div className="mb-3">
             <label htmlFor="targetAddress" className="block text-sm font-medium text-foreground mb-1">
@@ -456,6 +468,10 @@ const WalletManager = ({
               <Input
                 type="text"
                 id="targetAddress"
+                inputMode="text"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={targetAddress}
                 onChange={(e) => {
                   setTargetAddress(e.target.value.trim());
@@ -464,17 +480,26 @@ const WalletManager = ({
                 }}
                 placeholder={t('bsvPayment.transfer.targetAddressPlaceholder')}
                 aria-invalid={isTargetAddressValid === false}
+                aria-describedby={isTargetAddressValid === false ? 'targetAddress-error' : undefined}
               />
               <QRScanner onScanResult={handleScanResult}>
                 {({ scan }) => (
-                  <Button onClick={scan} size="icon" variant="outline" title={t('bsvPayment.scanButton')}>
+                  <Button
+                    onClick={scan}
+                    size="icon"
+                    variant="outline"
+                    title={t('bsvPayment.scanButton')}
+                    aria-label={t('bsvPayment.scanButton')}
+                  >
                     <ScanIcon />
                   </Button>
                 )}
               </QRScanner>
             </div>
             {targetAddress && isTargetAddressValid === false && (
-              <p className="mt-1 text-xs text-destructive">{t('bsvPayment.statusMessages.errors.invalidTargetAddress')}</p>
+              <p id="targetAddress-error" role="alert" className="mt-1 text-xs text-destructive">
+                {t('bsvPayment.statusMessages.errors.invalidTargetAddress')}
+              </p>
             )}
           </div>
           <div className="mb-3">
@@ -485,6 +510,7 @@ const WalletManager = ({
             <Input
               type="number"
               id="transferAmount"
+              inputMode="decimal"
               value={inputAmount}
               onChange={(e) => {
                 setInputAmount(e.target.value);
@@ -495,7 +521,12 @@ const WalletManager = ({
               autoComplete="off"
               step="any"
             />
-            <SimpleSelect value={selectedUnit} onValueChange={setSelectedUnit} className="w-[100px]">
+            <SimpleSelect
+              value={selectedUnit}
+              onValueChange={setSelectedUnit}
+              className="w-[92px]"
+              ariaLabel={t('bsvPayment.transfer.unitLabel')}
+            >
               <SimpleSelectItem value="BSV">BSV</SimpleSelectItem>
               <SimpleSelectItem value="sats">sats</SimpleSelectItem>
               {rate && <SimpleSelectItem value="USD">USD</SimpleSelectItem>}
@@ -505,14 +536,19 @@ const WalletManager = ({
               <button
                 onClick={handleSetAmountToMax}
                 disabled={isCalculatingMax}
-                className="px-2 py-0.5 text-xs rounded border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+                aria-label={t('bsvPayment.transfer.maxLabel')}
+                className="min-h-8 rounded-[var(--radius)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
               >
                 {isCalculatingMax ? `${t('bsvPayment.transfer.calculating')}...` : t('bsvPayment.transfer.maxLabel')}
               </button>
             </div>
           </div>
           {displayStatus && (
-            <div className={`mb-3 text-sm break-words ${getTransferStatusClass(displayStatus)}`}>
+            <div
+              role={displayStatus === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+              className={`mb-3 break-words text-sm ${getTransferStatusClass(displayStatus)}`}
+            >
               {typeof displayMessage === 'object' ? (
                 <>
                   {displayMessage.text}{' '}
@@ -559,7 +595,11 @@ const WalletManager = ({
       </Button>
 
       <Sheet open={showManageSheet} onOpenChange={setShowManageSheet}>
-        <SheetContent animated={false} side="bottom" className="rounded-t-xl max-h-[60vh] left-1/2 right-auto -translate-x-1/2 w-full max-w-md">
+        <SheetContent
+          animated={false}
+          side="bottom"
+          className="left-1/2 right-auto w-full max-w-md -translate-x-1/2 overflow-y-auto rounded-t-[var(--radius)] pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85dvh]"
+        >
           <SheetHeader className="mb-4">
             <SheetTitle>{t('bsvPayment.manageWalletButton')}</SheetTitle>
           </SheetHeader>
@@ -608,7 +648,11 @@ const WalletManager = ({
           if (!open) handleAirGapCancel();
         }}
       >
-        <SheetContent animated={false} side="bottom" className="rounded-t-xl max-h-[85dvh] left-1/2 right-auto -translate-x-1/2 w-full max-w-md overflow-y-auto">
+        <SheetContent
+          animated={false}
+          side="bottom"
+          className="left-1/2 right-auto w-full max-w-md -translate-x-1/2 overflow-y-auto rounded-t-[var(--radius)] pb-[max(1.5rem,env(safe-area-inset-bottom))] max-h-[85dvh]"
+        >
           <SheetHeader className="mb-4">
             <SheetTitle>{airGapSheetTitle}</SheetTitle>
           </SheetHeader>
@@ -655,7 +699,8 @@ const WalletManager = ({
                 <button
                   onClick={copyPublicKey}
                   title={isPubKeyCopied ? t('bsvPayment.publicKeyCopied') : t('bsvPayment.copyButton')}
-                  className="shrink-0 rounded p-1.5 transition-colors hover:bg-muted"
+                  aria-label={isPubKeyCopied ? t('bsvPayment.publicKeyCopied') : t('bsvPayment.copyButton')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius)] transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {isPubKeyCopied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
                 </button>
@@ -674,7 +719,7 @@ const WalletManager = ({
               {t('bsvPayment.publicKeyDescription')}
             </DialogDescription>
             {pubKeyCopyError && (
-              <p className="text-xs text-red-500 dark:text-red-400">{pubKeyCopyError}</p>
+              <p className="text-xs text-[var(--danger)]">{pubKeyCopyError}</p>
             )}
           </div>
         </DialogContent>
@@ -687,14 +732,20 @@ const WalletManager = ({
           </DialogHeader>
           <div className="p-4 text-center">
             {privateKeyQrCodeUrl ? (
-              <img src={privateKeyQrCodeUrl} alt="Private Key QR Code" className="w-48 h-48 mx-auto my-4" />
+              <img
+                src={privateKeyQrCodeUrl}
+                alt={t('bsvPayment.privateKeyQrModalTitle')}
+                className="mx-auto my-4 h-48 w-48 rounded-[var(--radius)] border border-border bg-white p-2"
+              />
             ) : (
-              <div className="w-48 h-48 bg-muted mx-auto my-4 flex items-center justify-center text-xs text-muted-foreground">
+              <div className="mx-auto my-4 flex h-48 w-48 items-center justify-center rounded-[var(--radius)] bg-muted text-xs text-muted-foreground">
                 {t('bsvPayment.qrLoading')}
               </div>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">{t('bsvPayment.qrCodeDownloadTip')}</p>
-            <p className="mt-2 text-xs text-red-500 dark:text-red-400">{t('bsvPayment.privateKeyWarning')}</p>
+            {!isWeChat && (
+              <p className="mt-1 text-xs text-muted-foreground">{t('bsvPayment.qrCodeDownloadTip')}</p>
+            )}
+            <p className="mt-2 text-xs text-[var(--danger)]">{t('bsvPayment.privateKeyWarning')}</p>
           </div>
           <DialogFooter>
             {!isWeChat && (
@@ -703,8 +754,8 @@ const WalletManager = ({
               </Button>
             )}
             {isWeChat && (
-              <p className="w-full text-center text-sm font-medium text-primary py-2">
-                 {t('bsvPayment.qrCodeDownloadTip')}
+              <p className="w-full py-2 text-center text-sm font-medium text-primary">
+                {t('bsvPayment.qrCodeSaveTipWeChat')}
               </p>
             )}
           </DialogFooter>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import jsQR from 'jsqr';
+import Portal, { useLockBodyScroll } from './Portal';
 
 // BarcodeDetector 可用性检测（Chrome Android 83+，Chrome Desktop 83+）
 const hasNativeDetector = () =>
@@ -18,6 +19,10 @@ const QRScanner = ({ onScanResult, children }) => {
   const cameraInputRef = useRef(null);
   // 控制扫描循环生命周期，避免组件卸载后回调
   const activeRef = useRef(false);
+
+  // 相机预览和降级面板都是全屏浮层：必须挂到 body，否则在带 transform 的
+  // Sheet 里会以 Sheet 为包含块，被裁在抽屉内。
+  useLockBodyScroll(showPreview || showFallback);
 
   const stopScanning = () => {
     activeRef.current = false;
@@ -257,67 +262,79 @@ const QRScanner = ({ onScanResult, children }) => {
         className="hidden"
       />
       {showFallback && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center px-6">
-          <button
-            onClick={stopScanning}
-            className="absolute top-4 right-4 text-white text-xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70"
-          >
-            ×
-          </button>
-          <p className="text-white text-center text-sm opacity-80 mb-6">
-            {t('bsvPayment.qrCameraFallbackHint')}
-          </p>
-          <div className="flex flex-col gap-3 w-full max-w-xs">
+        <Portal>
+          <div className="fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center px-6">
             <button
-              onClick={() => cameraInputRef.current?.click()}
-              className="bg-white text-black font-semibold px-6 py-3 rounded-lg text-base"
+              onClick={stopScanning}
+              aria-label={t('modal.closeButton')}
+              className="absolute top-4 right-4 text-white text-xl bg-black/50 rounded-full w-11 h-11 flex items-center justify-center hover:bg-black/70"
             >
-              {t('bsvPayment.qrCameraFallbackCamera')}
+              <span aria-hidden="true">×</span>
             </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-white bg-opacity-20 text-white font-semibold px-6 py-3 rounded-lg text-base"
-            >
-              {t('bsvPayment.qrCameraFallbackGallery')}
-            </button>
+            <p className="text-white text-center text-sm opacity-80 mb-6">
+              {t('bsvPayment.qrCameraFallbackHint')}
+            </p>
+            <div className="flex flex-col gap-3 w-full max-w-xs">
+              <button
+                onClick={() => cameraInputRef.current?.click()}
+                className="bg-white text-black font-semibold px-6 py-3 rounded-[var(--radius)] text-base"
+              >
+                {t('bsvPayment.qrCameraFallbackCamera')}
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-white/20 text-white font-semibold px-6 py-3 rounded-[var(--radius)] text-base"
+              >
+                {t('bsvPayment.qrCameraFallbackGallery')}
+              </button>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
       {showPreview && (
-        <div className="fixed inset-0 z-50 bg-black">
-          <button
-            onClick={stopScanning}
-            className="z-50 absolute top-4 right-4 text-white text-xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70"
-          >
-            ×
-          </button>
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline></video>
-
-          {/* 蒙层 + 引导框（两条路径均显示，给用户对准提示） */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div className="absolute inset-0 bg-black bg-opacity-50" />
-            <div
-              className="relative z-10 rounded-lg"
-              style={{
-                width: '70vmin',
-                height: '70vmin',
-                boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
-              }}
+        <Portal>
+          <div className="fixed inset-0 z-[60] bg-black">
+            <button
+              onClick={stopScanning}
+              aria-label={t('modal.closeButton')}
+              className="z-[60] absolute top-4 right-4 text-white text-xl bg-black/50 rounded-full w-11 h-11 flex items-center justify-center hover:bg-black/70"
             >
-              {[
-                'top-0 left-0 border-t-4 border-l-4 rounded-tl-lg',
-                'top-0 right-0 border-t-4 border-r-4 rounded-tr-lg',
-                'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-lg',
-                'bottom-0 right-0 border-b-4 border-r-4 rounded-br-lg',
-              ].map((cls, i) => (
-                <span key={i} className={`absolute w-6 h-6 border-white ${cls}`} />
-              ))}
+              <span aria-hidden="true">×</span>
+            </button>
+            <video
+              ref={videoRef}
+              aria-label={t('bsvPayment.scanButton')}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
+            ></video>
+
+            {/* 蒙层 + 引导框（两条路径均显示，给用户对准提示） */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 bg-black/50" />
+              <div
+                className="relative z-10 rounded-[var(--radius)]"
+                style={{
+                  width: '70vmin',
+                  height: '70vmin',
+                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
+                }}
+              >
+                {[
+                  'top-0 left-0 border-t-4 border-l-4 rounded-tl-[var(--radius)]',
+                  'top-0 right-0 border-t-4 border-r-4 rounded-tr-[var(--radius)]',
+                  'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-[var(--radius)]',
+                  'bottom-0 right-0 border-b-4 border-r-4 rounded-br-[var(--radius)]',
+                ].map((cls, i) => (
+                  <span key={i} className={`absolute w-6 h-6 border-white ${cls}`} />
+                ))}
+              </div>
+              <p className="relative z-10 mt-6 text-white text-sm opacity-80">
+                {hasNativeDetector() ? t('bsvPayment.qrScanner.hint') : t('bsvPayment.qrScanner.hintFallback')}
+              </p>
             </div>
-            <p className="relative z-10 mt-6 text-white text-sm opacity-80">
-              {hasNativeDetector() ? t('bsvPayment.qrScanner.hint') : t('bsvPayment.qrScanner.hintFallback')}
-            </p>
           </div>
-        </div>
+        </Portal>
       )}
     </>
   );

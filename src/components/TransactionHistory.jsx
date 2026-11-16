@@ -4,9 +4,10 @@ import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { truncate } from '../utils/bsv';
 import { Copy, Check } from 'lucide-react';
 import { getTxExplorerUrl } from '../utils/apiProviderHealth';
+import { copyText } from '../utils/clipboard';
 
 const TransactionHistory = ({ address, pubKey }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     transactions,
     isLoading,
@@ -22,13 +23,17 @@ const TransactionHistory = ({ address, pubKey }) => {
       fetchTransactions();
     }
   }, [address, pubKey, fetchTransactions]);
-  
+
   const [copyStatus, setCopyStatus] = useState({});
 
   const formatDate = (timestamp) => {
     if (!timestamp) return t('transactionHistory.unconfirmed');
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    // 跟随界面语言，别用浏览器 locale：中文界面里蹦出英文日期很出戏。
+    const locale = String(i18n.language || '').startsWith('zh') || String(i18n.language) === 'cn'
+      ? 'zh-CN'
+      : 'en-US';
+    return date.toLocaleString(locale);
   };
 
   const formatAmount = (amount) => {
@@ -37,111 +42,136 @@ const TransactionHistory = ({ address, pubKey }) => {
   };
 
   const copyTxid = async (txid) => {
-    try {
-      await navigator.clipboard.writeText(txid);
-      setCopyStatus(prev => ({ ...prev, [txid]: true }));
-      setTimeout(() => {
+    const copied = await copyText(txid);
+    if (!copied) return;
+    setCopyStatus(prev => ({ ...prev, [txid]: true }));
+    setTimeout(() => {
       setCopyStatus(prev => ({ ...prev, [txid]: false }));
     }, 2000);
-  } catch (err) {
-    console.error('Failed to copy txid:', err);
-  }
-};
+  };
 
   return (
-    <div className="p-4">
-      <div className="font-bold mb-2 text-foreground flex items-baseline">
+    <div>
+      <div className="mb-2 flex items-baseline font-bold text-foreground">
         <span>{t('transactionHistory.smallTitle')}</span>
         {!isLoading && transactions.length > 0 && (
-          <span className="ml-2 text-sm text-muted-foreground">
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
             {t('transactionHistory.loadedCount', { count: transactions.length })}
           </span>
         )}
       </div>
 
       {isLoading && (
-        <div className="flex justify-center items-center py-8">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex items-center justify-center py-8" role="status">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="ml-3 text-muted-foreground">{t('transactionHistory.loading')}</p>
         </div>
       )}
 
       {error && (
-        <div className="text-red-600 dark:text-red-400 text-center py-8">
-          <p>{t('transactionHistory.error')}: {error.message}</p>
+        <div className="py-8 text-center text-[var(--danger)]">
+          <p>
+            {t('transactionHistory.error')}: {error.message}
+          </p>
+          <button
+            onClick={fetchTransactions}
+            className="mt-3 rounded-[var(--radius)] border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+          >
+            {t('transactionHistory.retry')}
+          </button>
         </div>
       )}
 
       {!isLoading && !error && transactions.length === 0 && (
-        <div className="text-center text-muted-foreground py-8">
+        <div className="py-8 text-center text-muted-foreground">
           <p>{t('transactionHistory.noRecords')}</p>
         </div>
       )}
 
       {transactions.length > 0 && (
         <>
-          <ul className="space-y-3 max-h-[60vh] overflow-y-auto">
-
+          <ul className="max-h-[60vh] space-y-3 overflow-y-auto">
             {transactions.map(tx => (
               <li
                 key={tx.txid}
-                className="bg-muted p-3 rounded-lg border border-border flex flex-col sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col rounded-[var(--radius)] border border-border bg-muted p-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex-1 mb-2 sm:mb-0 flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
-                    {pubKey && (
-                      tx.type === 'data/internal' ? (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                          {t('transactionHistory.internalTransfer')}
+                <div className="mb-2 flex flex-1 flex-col sm:mb-0">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    {tx.type === 'data/internal' ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        {t('transactionHistory.internalTransfer')}
+                      </span>
+                    ) : (
+                      <span
+                        className={`text-lg font-bold ${
+                          tx.type === 'income'
+                            ? 'text-[var(--seal-text)]'
+                            : 'text-[var(--danger)]'
+                        }`}
+                      >
+                        {/* 只有颜色区分收支对色觉障碍不友好，补一个文字方向和单位。 */}
+                        <span className="mr-1 text-xs font-medium">
+                          {tx.type === 'income'
+                            ? t('transactionHistory.received')
+                            : t('transactionHistory.sent')}
                         </span>
-                      ) : (
-                        <span
-                          className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                        >
-                          {tx.type === 'income' ? '+' : '-'}
-                          {formatAmount(tx.amount)}
-                        </span>
-                      )
+                        {tx.type === 'income' ? '+' : '-'}
+                        {formatAmount(tx.amount)}
+                        <span className="ml-1 text-xs font-normal">BSV</span>
+                      </span>
                     )}
-                    <span className="text-sm text-muted-foreground">
+                    <span className="shrink-0 text-sm text-muted-foreground">
                       {formatDate(tx.time)}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground dark:text-muted-foreground flex justify-end">
-                    <div>
-                      <a
-                        href={getTxExplorerUrl(tx.txid)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-primary"
-                        title={tx.txid}
-                      >
-                        {truncate(tx.txid, 6, 6)}
-                      </a>
-                      <button
-                        onClick={() => copyTxid(tx.txid)}
-                        title={copyStatus[tx.txid] ? t('transactionHistory.copied') : t('transactionHistory.copy')}
-                        className="ml-2 p-1 rounded hover:bg-muted transition-colors"
-                      >
-                        {copyStatus[tx.txid] ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                    {tx.status === 'confirmed' ? (
+                      <span className="rounded border border-[var(--seal-border)] bg-[var(--seal-soft)] px-1 text-[10px] text-[var(--seal-text)]">
+                        {t('transactionHistory.confirmed')}
+                      </span>
+                    ) : (
+                      <span className="rounded border border-[var(--warn-border)] bg-[var(--warn-soft)] px-1 text-[10px] text-[var(--warn)]">
+                        {t('transactionHistory.unconfirmed')}
+                      </span>
+                    )}
+                    <a
+                      href={getTxExplorerUrl(tx.txid)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-primary"
+                      title={tx.txid}
+                    >
+                      {truncate(tx.txid, 6, 6)}
+                    </a>
+                    <button
+                      onClick={() => copyTxid(tx.txid)}
+                      title={copyStatus[tx.txid] ? t('transactionHistory.copied') : t('transactionHistory.copy')}
+                      aria-label={copyStatus[tx.txid] ? t('transactionHistory.copied') : t('transactionHistory.copy')}
+                      className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {copyStatus[tx.txid] ? (
+                        <Check size={16} className="text-primary" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </button>
                   </div>
                 </div>
               </li>
             ))}
           </ul>
 
-          <div className="flex justify-center mt-4">
+          <div className="mt-4 flex justify-center">
             {hasMore ? (
               <button
                 onClick={loadMoreTransactions}
                 disabled={isLoadingMore}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-[var(--radius)] bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isLoadingMore ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+                    <div className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                     {t('transactionHistory.loading')}
                   </>
                 ) : (

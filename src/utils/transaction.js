@@ -145,9 +145,14 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
 
         if (satsIn < totalRequired) {
             const spendableUtxoCount = (utxos || []).length;
-            const err = spendableUtxoCount === 0
-                ? `No spendable UTXOs found for ${address || 'the wallet'}. Needed ${totalRequired}.`
-                : `Insufficient funds. Needed ${totalRequired}, found ${satsIn}. (satsOut: ${satsOut}, fee: ${fee}, outputs: ${tx.outputs.length})`;
+            const noUtxos = spendableUtxoCount === 0;
+            const err = noUtxos
+                ? (t
+                    ? t('bsvPayment.transfer.errors.noSpendableUtxos', { needed: totalRequired })
+                    : `No spendable UTXOs found for ${address || 'the wallet'}. Needed ${totalRequired}.`)
+                : (t
+                    ? t('bsvPayment.transfer.errors.insufficientFunds', { needed: totalRequired, found: satsIn })
+                    : `Insufficient funds. Needed ${totalRequired}, found ${satsIn}. (satsOut: ${satsOut}, fee: ${fee}, outputs: ${tx.outputs.length})`);
             console.log(`[DEBUG] processRefund Insufficient Funds:`, {
                 address,
                 utxoCount: spendableUtxoCount,
@@ -162,7 +167,9 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
             if (addLog && (!dryRun || spendableUtxoCount === 0)) addLog(err, 'warn');
             return {
                 error: 'insufficient-funds',
-                message: `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`,
+                message: noUtxos
+                    ? (t ? t('bsvPayment.transfer.errors.noSpendableUtxos', { needed: totalRequired }) : err)
+                    : (t ? t('bsvPayment.transfer.errors.insufficientFunds', { needed: totalRequired, found: satsIn }) : `Insufficient funds. Needed ${totalRequired}, found ${satsIn}.`),
                 totalRequired: totalRequired,
                 continuePolling: false
             };

@@ -1,14 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { OFFLINE_RELEASE_URL } from '../utils/links';
+import Portal, { useLockBodyScroll } from './Portal';
 
 const FormItem = ({ children, className }) => <div className={className}>{children}</div>;
-const FormLabel = ({ children }) => (
-  <label className="block text-sm font-medium text-foreground mb-1">{children}</label>
+const FormLabel = ({ children, htmlFor }) => (
+  <label htmlFor={htmlFor} className="block text-sm font-medium text-foreground mb-1">
+    {children}
+  </label>
 );
 const FormControl = ({ children }) => <div>{children}</div>;
-const FormMessage = ({ children }) => <p className="text-sm text-destructive mt-1">{children}</p>;
+const FormMessage = ({ children, id }) => (
+  <p id={id} className="text-sm text-destructive mt-1">
+    {children}
+  </p>
+);
 const FormField = ({ control, name, render, rules }) => (
   <Controller
     control={control}
@@ -58,6 +64,35 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
       {}
     ),
   });
+
+  const cardRef = useRef(null);
+  const titleId = React.useId();
+  const descriptionId = React.useId();
+  useLockBodyScroll(isOpen);
+
+  // 这是手写的浮层，Radix 的焦点锁帮不上忙：Tab 必须留在弹窗内，
+  // 否则键盘用户会跑到被遮罩盖住的主界面上操作。
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = event => {
+      if (event.key !== 'Tab' || !cardRef.current) return;
+      const focusable = cardRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
 
   const {
     reset,
@@ -114,42 +149,54 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
   // 只读的地址栏不参与聚焦：光标直接落在第一个可编辑的输入框。
   const firstEditableIndex = inputs.findIndex(input => !input.readOnly);
 
-  const renderField = ({ field, fieldState, formState }, input) => (
-    <FormItem className="mb-4">
-      <FormLabel>{input.label}</FormLabel>
-      <FormControl>
-        <Input
-          {...field}
-          // RHF 的 field.name 只是内部注册名；浏览器密码库认的是 DOM 上的
-          // name/id/autocomplete，所以这里必须覆盖成标准名字（username / password），
-          // 否则一个 origin 下只能存住一条凭据。
-          name={input.htmlName || input.id}
-          id={input.id}
-          type={input.type}
-          placeholder={input.placeholder}
-          maxLength={input.maxLength}
-          autoComplete={input.autoComplete}
-          readOnly={input.readOnly}
-          tabIndex={input.readOnly ? -1 : undefined}
-          aria-readonly={input.readOnly ? 'true' : undefined}
-          autoFocus={input.autoFocus}
-          className={input.readOnly ? 'cursor-default opacity-70' : undefined}
-        />
-      </FormControl>
-      {input.hintMessage && (
-        <p className="text-xs text-muted-foreground mt-1">{input.hintMessage}</p>
-      )}
-      {formState.errors[input.id] && (
-        <FormMessage>{formState.errors[input.id].message}</FormMessage>
-      )}
-    </FormItem>
-  );
+  const renderField = ({ field, fieldState, formState }, input) => {
+    const error = formState.errors[input.id];
+    const describedBy = [input.hintMessage ? `${input.id}-hint` : null, error ? `${input.id}-error` : null]
+      .filter(Boolean)
+      .join(' ');
+    return (
+      <FormItem className="mb-4">
+        <FormLabel htmlFor={input.id}>{input.label}</FormLabel>
+        <FormControl>
+          <Input
+            {...field}
+            // RHF 的 field.name 只是内部注册名；浏览器密码库认的是 DOM 上的
+            // name/id/autocomplete，所以这里必须覆盖成标准名字（username / password），
+            // 否则一个 origin 下只能存住一条凭据。
+            name={input.htmlName || input.id}
+            id={input.id}
+            type={input.type}
+            placeholder={input.placeholder}
+            maxLength={input.maxLength}
+            autoComplete={input.autoComplete}
+            readOnly={input.readOnly}
+            tabIndex={input.readOnly ? -1 : undefined}
+            aria-readonly={input.readOnly ? 'true' : undefined}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={describedBy || undefined}
+            autoFocus={input.autoFocus}
+            className={input.readOnly ? 'cursor-default opacity-70' : undefined}
+          />
+        </FormControl>
+        {input.hintMessage && (
+          <p id={`${input.id}-hint`} className="text-xs text-muted-foreground mt-1">
+            {input.hintMessage}
+          </p>
+        )}
+        {error && <FormMessage id={`${input.id}-error`}>{error.message}</FormMessage>}
+      </FormItem>
+    );
+  };
 
   const InfoDialogContent = () => (
     <>
       <div className="p-6">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-        {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
+        <h2 id={titleId} className="text-lg font-semibold text-foreground">{title}</h2>
+        {message && (
+          <p id={descriptionId} className="mt-2 text-sm text-muted-foreground">
+            {message}
+          </p>
+        )}
       </div>
       <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end">
         <Button onClick={() => onResolve()}>{confirmButtonText}</Button>
@@ -160,19 +207,24 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
   const FormDialogContent = () => (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <div className="p-6">
-        <div className="flex justify-between items-start">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <div className="flex justify-between items-start gap-2">
+          <h2 id={titleId} className="text-lg font-semibold text-foreground">{title}</h2>
           {!hideModalHeaderCloseButton && (
             <button
               type="button"
               onClick={handleClose}
-              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={t('modal.closeButton')}
+              className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span aria-hidden="true">×</span>
             </button>
           )}
         </div>
-        {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
+        {message && (
+          <p id={descriptionId} className="mt-2 text-sm text-muted-foreground">
+            {message}
+          </p>
+        )}
 
         <div className="py-4">
           {inputs.map((input, index) => {
@@ -238,14 +290,23 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
   );
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
-      onClick={handleOverlayClick}
-    >
-      <div className="bg-card rounded-[var(--radius)] border border-border w-full max-w-md mx-auto">
-        {mode === 'info' ? <InfoDialogContent /> : <FormDialogContent />}
+    <Portal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 p-4 py-8"
+        onClick={handleOverlayClick}
+      >
+        <div
+          ref={cardRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={message ? descriptionId : undefined}
+          className="my-auto w-full max-w-md overflow-y-auto rounded-[var(--radius)] border border-border bg-card shadow-lg max-h-[calc(100dvh-4rem)]"
+        >
+          {mode === 'info' ? <InfoDialogContent /> : <FormDialogContent />}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 

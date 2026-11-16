@@ -31,14 +31,15 @@ export default function SettingsModal({ show, onClose, currentProvider, onProvid
               <button
                 key={p}
                 onClick={() => handleSelect(p)}
-                className={`w-full text-left px-4 py-2 rounded-[var(--radius)] border text-sm transition-colors ${
+                aria-pressed={currentProvider === p}
+                className={`w-full rounded-[var(--radius)] border px-4 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                   currentProvider === p
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:bg-muted text-foreground'
+                    : 'border-border text-foreground hover:bg-muted'
                 }`}
               >
                 {PROVIDER_LABELS[p] || p}
-                {currentProvider === p && <span className="float-right">✓</span>}
+                {currentProvider === p && <span className="float-right" aria-hidden="true">✓</span>}
               </button>
             ))}
           </div>

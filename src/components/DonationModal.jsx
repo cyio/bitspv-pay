@@ -14,7 +14,7 @@ const DonationModal = ({ show, onClose }) => {
 
   useEffect(() => {
     if (show && activeAddress) {
-      QRCode.toDataURL(activeAddress, { errorCorrectionLevel: 'H', width: 256 })
+      QRCode.toDataURL(activeAddress, { errorCorrectionLevel: 'H', width: 512 })
         .then(url => {
           setQrCodeUrl(url);
         })

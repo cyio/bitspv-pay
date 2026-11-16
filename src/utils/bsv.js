@@ -81,7 +81,7 @@ async function generatePrivateKeyQrCodeUrl(privateKeyWif) {
   }
   try {
     // Use errorCorrectionLevel: 'H' for high redundancy, and set width.
-    return await QRCode.toDataURL(privateKeyWif, { errorCorrectionLevel: 'H', width: 256 });
+    return await QRCode.toDataURL(privateKeyWif, { errorCorrectionLevel: 'H', width: 512 });
   } catch (err) {
     console.error('Failed to generate QR code URL:', err);
     return '';
@@ -102,7 +102,7 @@ async function generateEncryptedDataQrCodeUrl(backupData) {
     const backupDataString = JSON.stringify(backupData);
 
     // Use errorCorrectionLevel: 'H' for high redundancy, and set width.
-    return await QRCode.toDataURL(backupDataString, { errorCorrectionLevel: 'H', width: 256 });
+    return await QRCode.toDataURL(backupDataString, { errorCorrectionLevel: 'H', width: 512 });
   } catch (err) {
     console.error('Failed to generate encrypted data QR code URL:', err);
     return '';

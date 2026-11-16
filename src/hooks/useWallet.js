@@ -13,6 +13,10 @@ import { processRefund } from '../utils/transaction';
 import { isValidAddress, isValidPaymail } from '../utils/bsv';
 import { useLog, LOG_TYPES } from '../contexts/LogContext';
 
+// 地址二维码在收款弹窗里按 240 CSS px 展示，dpr=2 就是 480 物理像素。
+// 默认 256 被放大后会发虚，扫码器更难读。
+const ADDRESS_QR_OPTIONS = { width: 512, margin: 1, errorCorrectionLevel: 'M' };
+
 export function useWallet() {
   const { t } = useTranslation();
   const { addLog } = useLog();
@@ -36,6 +40,7 @@ export function useWallet() {
     total: 0,
   });
   const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState('');
   const [transferStatus, setTransferStatus] = useState(null);
   const [transferMessage, setTransferMessage] = useState('');
   const [isWatchOnly, setIsWatchOnly] = useState(storage.getIsWatchOnly());
@@ -50,6 +55,8 @@ export function useWallet() {
       try {
         const result = await getBalance(addr);
         setWalletBalanceState(result);
+        // 抓到余额就把上一次的错误清掉，否则恢复网络后界面还停留在「读不到余额」。
+        setBalanceError('');
         addLog(
           `Balance refreshed: ${result.total / 100000000} BSV (confirmed: ${result.confirmed}, unconfirmed: ${result.unconfirmed})`,
           LOG_TYPES.SUCCESS
@@ -73,12 +80,14 @@ export function useWallet() {
         const errorMsg = `refresh balance: ${error.message}`;
         console.error(errorMsg, error);
         addLog(errorMsg, LOG_TYPES.ERROR);
+        // 静默回退成 0 会让人以为钱包空了。把失败状态交给 UI 显示。
+        setBalanceError(error.message || t('bsvPayment.balanceUnavailable'));
         return null;
       } finally {
         setIsBalanceLoading(false);
       }
     },
-    [address, addLog]
+    [address, addLog, t]
   );
 
   /**
@@ -162,7 +171,7 @@ export function useWallet() {
           setAddress(addressFromStorage);
           setIsWatchOnly(true);
           setWalletName(storage.getWalletName() || '');
-          setQrcode(await QRCode.toDataURL(addressFromStorage));
+          setQrcode(await QRCode.toDataURL(addressFromStorage, ADDRESS_QR_OPTIONS));
           await refreshBalance(addressFromStorage);
           return { error: 0, address: addressFromStorage, watchOnly: true };
         }
@@ -284,7 +293,7 @@ export function useWallet() {
         }
 
         if (currentAddress) {
-          setQrcode(await QRCode.toDataURL(currentAddress));
+          setQrcode(await QRCode.toDataURL(currentAddress, ADDRESS_QR_OPTIONS));
           await refreshBalance(currentAddress);
         } else {
           console.log('Wallet is PIN protected, QR code will be shown after unlock.');
@@ -376,7 +385,7 @@ export function useWallet() {
     setIsWatchOnly(false);
     storage.setPublicKey(newPubKey.toDER('hex'));
     storage.setWalletAddress(generatedAddress);
-    setQrcode(await QRCode.toDataURL(generatedAddress));
+    setQrcode(await QRCode.toDataURL(generatedAddress, ADDRESS_QR_OPTIONS));
     await refreshBalance(generatedAddress);
     addLog(`Public key: ${newPubKey.toDER('hex')}`, LOG_TYPES.INFO);
 
@@ -403,7 +412,7 @@ export function useWallet() {
     setAddress(watchAddress);
     setIsWatchOnly(true);
     setWalletName(storage.getWalletName() || '');
-    setQrcode(await QRCode.toDataURL(watchAddress));
+    setQrcode(await QRCode.toDataURL(watchAddress, ADDRESS_QR_OPTIONS));
     await refreshBalance(watchAddress);
 
     return { error: 0, address: watchAddress, watchOnly: true };
@@ -497,7 +506,7 @@ export function useWallet() {
         if (currentBalance <= 0) {
           return {
             maxAmount: 0,
-            message: t('bsvPayment.statusMessages.balanceStatus.zeroBalance'),
+            message: t('bsvPayment.transfer.errors.zeroBalance'),
           };
         }
 
@@ -934,6 +943,7 @@ export function useWallet() {
     balance: walletBalanceState.total,
     walletBalance: walletBalanceState,
     isBalanceLoading,
+    balanceError,
     createWallet,
     createNewWallet,
     createWatchOnly,

@@ -30,6 +30,7 @@ export const useTransactionHistory = (address, pubKey) => {
       return {
         ...detailsMap[txid],
         blockheight: historyInfo ? historyInfo.height : 0,
+        delta: historyInfo ? historyInfo.delta : null,
       };
     });
     

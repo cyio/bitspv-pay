@@ -19,6 +19,8 @@ import jsQR from 'jsqr';
 import { checkGoogleConnectivity } from '../utils/network';
 import { copyText } from '../utils/clipboard';
 import { OFFLINE_RELEASE_URL } from '../utils/links';
+import { isValidAddress } from '../utils/bsv';
+import ReceiveModal from '../components/ReceiveModal.jsx';
 
 function WalletUI() {
   const { t } = useTranslation();
@@ -54,6 +56,7 @@ function WalletUI() {
     clearTransferStatus,
     utxos,
     isBalanceLoading,
+    balanceError,
   } = wallet;
 
   const { rate, refreshRate } = useRate();
@@ -61,6 +64,7 @@ function WalletUI() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [maxTransferAmount, setMaxTransferAmount] = useState(null);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [initError, setInitError] = useState('');
   /**
    * 'loading'  正在读取本地状态（只在 createWallet 真的在跑时）
@@ -290,6 +294,8 @@ function WalletUI() {
         const result = await sendTransaction(target, amount);
         console.log('Transfer result:', result);
         if (result.success) {
+          // Max 是按上一组 UTXO 算出来的；不重置，收款后想再转更大金额会被旧上限拦住。
+          setMaxTransferAmount(null);
           await refreshAll();
         }
       } catch (error) {
@@ -301,8 +307,8 @@ function WalletUI() {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto flex min-h-screen w-full max-w-[640px] flex-col border-border bg-card sm:border-x">
+      <div className="min-h-dvh bg-background">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col border-border bg-card sm:border-x">
           <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
             <div>
               <h1 className="text-[15px] leading-5 text-foreground">
@@ -328,20 +334,20 @@ function WalletUI() {
                 {t('bsvPayment.tagline')}
               </p>
             </div>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowAboutModal(true)}
                 title={t('paymentAbout.title')}
                 aria-label={t('paymentAbout.title')}
-                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Info className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setIsDonationModalVisible(true)}
-                title={t('donationModal.title')}
-                aria-label={t('donationModal.title')}
-                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
+                title={t('donation.title')}
+                aria-label={t('donation.title')}
+                className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Coffee className="h-5 w-5" />
               </button>
@@ -349,7 +355,7 @@ function WalletUI() {
                 onClick={() => setShowHistoryModal(true)}
                 title={t('transactionHistory.title')}
                 aria-label={t('transactionHistory.title')}
-                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <History className="h-5 w-5" />
               </button>
@@ -357,7 +363,7 @@ function WalletUI() {
                 onClick={() => setShowSettingsModal(true)}
                 title={t('bsvPayment.settings.title')}
                 aria-label={t('bsvPayment.settings.title')}
-                className="rounded p-2 text-muted-foreground transition-colors hover:text-foreground"
+                className="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Settings className="h-5 w-5" />
               </button>
@@ -391,6 +397,7 @@ function WalletUI() {
                   isRefreshing={isRefreshing}
                   showQR={false}
                   isBalanceLoading={isBalanceLoading}
+                  balanceError={balanceError}
                 />
                 <WalletManager
                   ref={walletManagerRef}
@@ -409,6 +416,7 @@ function WalletUI() {
                   onRequestEstimateTransfer={estimateTransfer}
                   onTransferFunds={handleTransferFunds}
                   onRequestImportWallet={handleRequestImportWallet}
+                  onOpenReceive={() => setShowReceiveModal(true)}
                   transferStatus={transferStatus}
                   transferMessage={transferMessage}
                   onClearTransferStatus={clearTransferStatus}
@@ -516,7 +524,8 @@ function WalletUI() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-foreground hover:opacity-70"
-                title="Source Code on GitHub"
+                title={t('bsvPayment.footer.sourceCode')}
+                aria-label={t('bsvPayment.footer.sourceCode')}
               >
                 <svg
                   role="img"
@@ -533,7 +542,7 @@ function WalletUI() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground hover:underline"
-                title="Offline single-file build"
+                title={t('bsvPayment.footer.offlineBuild')}
               >
                 {t('bsvPayment.coldStorage.footer')}
               </a>
@@ -567,8 +576,10 @@ function WalletUI() {
                     setImportText(e.target.value);
                     if (importError) setImportError('');
                   }}
+                  aria-label={t('bsvPayment.importDialog.placeholder')}
+                  aria-invalid={importError ? 'true' : undefined}
                   placeholder={t('bsvPayment.importDialog.placeholder')}
-                  className="min-h-[140px] w-full rounded-[var(--radius)] border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="min-h-[140px] w-full rounded-[var(--radius)] border border-input bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
                   spellCheck={false}
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -606,6 +617,13 @@ function WalletUI() {
             </DialogContent>
           </Dialog>
 
+          <ReceiveModal
+            open={showReceiveModal}
+            onClose={() => setShowReceiveModal(false)}
+            address={address}
+            qrcode={qrcode}
+          />
+
           <SettingsModal
             show={showSettingsModal}
             onClose={() => setShowSettingsModal(false)}
@@ -623,7 +641,7 @@ function WalletUI() {
             type="file"
             ref={importFileInput}
             onChange={handleFileChange}
-            accept="image/*,.bsv"
+            accept="image/*,.bsv,.json,.txt"
             style={{ display: 'none' }}
           />
         </div>
@@ -852,10 +870,17 @@ export default function Payment() {
             inputs: [
               {
                 id: 'pin',
+                htmlName: 'watchAddress',
+                autoComplete: 'off',
                 label: t('bsvPayment.watchAddress.addressLabel'),
                 type: 'text',
                 placeholder: t('bsvPayment.watchAddress.placeholder'),
                 required: true,
+                // 观察地址只用来查余额/历史。不校验就会把任意字符串存下来，
+                // 之后余额请求失败，界面却只显示 0.
+                validate: v =>
+                  isValidAddress(String(v || '').trim()) ||
+                  t('bsvPayment.statusMessages.errors.invalidAddress'),
               },
             ],
             confirmButtonText: t('bsvPayment.watchAddress.confirmButton'),
