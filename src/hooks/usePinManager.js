@@ -22,7 +22,9 @@ export function usePinManager() {
     }
 
     try {
-      const pinData = await promptForPin('unlock');
+      // 带上缓存地址，浏览器密码库才能按地址匹配到对应那条密码。
+      // 缓存丢了就留空，退化成旧版行为（旧条目 username 也是空的）。
+      const pinData = await promptForPin('unlock', { walletAddress: storage.getWalletAddress() || '' });
       const pin = pinData.pin;
 
       // promptForPin promise rejects on cancellation, caught below.
@@ -64,7 +66,7 @@ export function usePinManager() {
 
     let pin = prefilledPin;
     if (!pin) {
-      const result = await promptForPin('unlock');
+      const result = await promptForPin('unlock', { walletAddress: address || '' });
       pin = result.pin;
       if (!pin) {
         console.log('User cancelled backup data generation.');

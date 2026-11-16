@@ -134,6 +134,8 @@ export default {
       confirmButton: 'Confirm PIN', // Retained for consistency
       unlockTitle: 'Unlock Wallet',
       unlockPrompt: 'Enter your PIN to unlock the wallet:',
+      walletAddressLabel: 'Wallet address',
+      walletAddressHint: 'Your browser saves the password per address',
       unlockButton: 'Unlock',
       cancelButton: 'Cancel',
       setupCancelledTitle: 'PIN Setup Cancelled',

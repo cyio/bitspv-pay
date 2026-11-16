@@ -128,6 +128,8 @@ export default {
       confirmButton: '确认PIN码', // 移除确认 PIN 步骤后，此项可能不再需要，但保留以防万一
       unlockTitle: '解锁钱包',
       unlockPrompt: '输入您的PIN码以解锁钱包：',
+      walletAddressLabel: '钱包地址',
+      walletAddressHint: '浏览器按这个地址记住密码，换钱包就换一条',
       unlockButton: '解锁',
       cancelButton: '取消',
       setupCancelledTitle: 'PIN码设置已取消',

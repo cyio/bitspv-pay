@@ -79,17 +79,34 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
   const onSubmit = (values) => {
     onResolve(values);
   };
+
+  // 只读的地址栏不参与聚焦：光标直接落在第一个可编辑的输入框。
+  const firstEditableIndex = inputs.findIndex((input) => !input.readOnly);
   
   const renderField = ({ field, fieldState, formState }, input) => (
     <FormItem className="mb-4">
       <FormLabel>{input.label}</FormLabel>
       <FormControl>
         <Input
+          {...field}
+          // RHF 的 field.name 只是内部注册名；浏览器密码库认的是 DOM 上的
+          // name/id/autocomplete，所以这里必须覆盖成标准名字（username / password），
+          // 否则一个 origin 下只能存住一条凭据。
+          name={input.htmlName || input.id}
+          id={input.id}
           type={input.type}
           placeholder={input.placeholder}
           maxLength={input.maxLength}
-          {...field}
+          autoComplete={input.autoComplete}
+          readOnly={input.readOnly}
+          tabIndex={input.readOnly ? -1 : undefined}
+          aria-readonly={input.readOnly ? 'true' : undefined}
           autoFocus={input.autoFocus}
+          className={
+            input.readOnly
+              ? 'cursor-default opacity-70'
+              : undefined
+          }
         />
       </FormControl>
       {input.hintMessage && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{input.hintMessage}</p>}
@@ -155,7 +172,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
                 control={form.control}
                 name={input.id}
                 rules={rules}
-                render={(props) => renderField(props, { ...input, autoFocus: index === 0 })}
+                render={(props) => renderField(props, { ...input, autoFocus: index === firstEditableIndex })}
               />
             );
           })}

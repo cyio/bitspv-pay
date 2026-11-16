@@ -462,17 +462,37 @@ export default function Payment() {
       let config = {};
       const defaultWalletName = t('bsvPayment.pinModal.defaultWalletName');
 
+      // 浏览器密码库的键是 (origin, username)，路径不参与。把一个只读的
+      // autocomplete="username" 地址栏塞进表单，同一个 origin 下的每个钱包地址
+      // 就各存一条密码，删了再导入也不会互相覆盖。
+      const addressInput = options.walletAddress
+        ? [{
+            id: 'username',
+            htmlName: 'username',
+            label: t('bsvPayment.pinModal.walletAddressLabel'),
+            type: 'text',
+            readOnly: true,
+            autoComplete: 'username',
+            defaultValue: options.walletAddress,
+            hintMessage: t('bsvPayment.pinModal.walletAddressHint'),
+          }]
+        : [];
+
       if (mode === 'set') {
         config = {
           mode: 'set',
           title: t('bsvPayment.pinModal.setTitle'),
           inputs: [
-            { id: 'walletName', label: t('bsvPayment.pinModal.walletNamePrompt'), type: 'text', placeholder: t('bsvPayment.pinModal.walletNamePlaceholder'), defaultValue: defaultWalletName, maxLength: 20 },
-            { id: 'pin', label: t('bsvPayment.pinModal.setPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20, hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
+            ...addressInput,
+            // 钱包名单独标成 off：否则浏览器会把它当用户名，地址栏就白加了。
+            { id: 'walletName', htmlName: 'walletName', autoComplete: 'off', label: t('bsvPayment.pinModal.walletNamePrompt'), type: 'text', placeholder: t('bsvPayment.pinModal.walletNamePlaceholder'), defaultValue: defaultWalletName, maxLength: 20 },
+            // 这里故意用 current-password 而不是 new-password：后者会让 Chrome
+            // 推荐一个随机强密码，用户看不见它，备份 QR 就变成只有这台浏览器能解。
+            { id: 'pin', htmlName: 'password', autoComplete: 'current-password', label: t('bsvPayment.pinModal.setPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20, hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
               validate: (v) => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) || t('bsvPayment.pinModal.validation.pinStrength') },
             // 二次输入：PIN 只存在于用户脑子里，输错一个字符就等于把钱包（以及同 PIN
             // 加密的备份文件）永久锁死。这一栏是唯一能在资金不可用之前发现笔误的地方。
-            { id: 'pinConfirm', label: t('bsvPayment.pinModal.pinConfirmPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20,
+            { id: 'pinConfirm', htmlName: 'pinConfirm', autoComplete: 'off', label: t('bsvPayment.pinModal.pinConfirmPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true, maxLength: 20,
               validate: (v, allValues) => v === allValues?.pin || t('bsvPayment.pinModal.validation.pinMismatch') },
           ],
           confirmButtonText: t('bsvPayment.pinModal.setButton'),
@@ -499,7 +519,10 @@ export default function Payment() {
         config = {
           mode: 'unlock',
           title: t('bsvPayment.pinModal.unlockTitle'),
-          inputs: [{ id: 'pin', label: t('bsvPayment.pinModal.unlockPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true }],
+          inputs: [
+            ...addressInput,
+            { id: 'pin', htmlName: 'password', autoComplete: 'current-password', label: t('bsvPayment.pinModal.unlockPrompt'), type: 'password', placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'), required: true },
+          ],
           confirmButtonText: t('bsvPayment.pinModal.unlockButton'),
           cancelButtonText: t('bsvPayment.pinModal.cancelButton'),
           showCancelButton: true,

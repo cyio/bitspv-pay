@@ -80,7 +80,7 @@ export function useWallet() {
     }
 
     try {
-      const { pin } = await promptForPin('unlock');
+      const { pin } = await promptForPin('unlock', { walletAddress: storage.getWalletAddress() || '' });
       if (!pin) {
         return { error: 'wallet-needs-recovery', message: t('bsvPayment.statusMessages.errors.walletRecoveryCancelled') };
       }
@@ -179,7 +179,15 @@ export function useWallet() {
         console.log('Old plaintext WIF found. Starting migration to PIN protection.');
         await showInfo(t('bsvPayment.pinModal.migrationTitle'), t('bsvPayment.pinModal.migrationMessage'));
         
-        const { pin: walletPin, walletName: fetchedWalletName } = await promptForPin('set');
+        // 明文 WIF 迁移：地址可以直接派生，密码框就能带上它。
+        let migrationAddress = '';
+        try {
+          migrationAddress = PrivateKey.fromWif(oldPlaintextWif).toPublicKey().toAddress().toString();
+        } catch (addressError) {
+          console.warn('Could not derive address before migration prompt:', addressError);
+        }
+
+        const { pin: walletPin, walletName: fetchedWalletName } = await promptForPin('set', { walletAddress: migrationAddress });
         if (!walletPin) {
           return { error: 'migration-cancelled', message: t('bsvPayment.pinModal.migrationCancelled') };
         }
@@ -240,14 +248,17 @@ export function useWallet() {
         }
 
         // Step 2: Create new wallet (User chose 'create')
+        // 先生成密钥，密码框才能带上地址；浏览器按地址决定记住哪一条密码。
+        const generatedPrivKey = PrivateKey.fromRandom();
+        const generatedAddress = generatedPrivKey.toPublicKey().toAddress().toString();
         console.log('User chose to create new wallet. Prompting for PIN.');
-        const { pin: walletPin, walletName: fetchedWalletName } = await promptForPin('set');
-        
+        const { pin: walletPin, walletName: fetchedWalletName } = await promptForPin('set', { walletAddress: generatedAddress });
+
         if (!walletPin) {
           return { error: 'setup-cancelled', message: t('bsvPayment.pinModal.setupCancelledMessage') };
         }
         newWalletName = fetchedWalletName;
-        tempPrivKey = PrivateKey.fromRandom();
+        tempPrivKey = generatedPrivKey;
         currentWif = tempPrivKey.toWif();
         try {
           const encryptionResult = await encryptData(currentWif, walletPin);
@@ -538,7 +549,15 @@ export function useWallet() {
         const importedWif = importDataContent.wif;
         console.log('Importing plain WIF.');
 
-        const { pin, walletName: newWalletName } = await promptForPin('set').catch(() => ({ pin: null }));
+        // 先派生地址，密码框才能带上它。WIF 无效时留空，后续照常报错。
+        let importedAddress = '';
+        try {
+          importedAddress = PrivateKey.fromWif(importedWif).toPublicKey().toAddress().toString();
+        } catch (addressError) {
+          console.warn('Could not derive address before import prompt:', addressError);
+        }
+
+        const { pin, walletName: newWalletName } = await promptForPin('set', { walletAddress: importedAddress }).catch(() => ({ pin: null }));
         if (!pin) {
           await showInfo(t('bsvPayment.pinModal.importCancelledTitle'), t('bsvPayment.pinModal.importCancelledMessage'));
           return { error: 'import-cancelled' };
@@ -556,7 +575,7 @@ export function useWallet() {
         console.log('Importing encrypted data.');
         const { encryptedWif, iv, salt, address: importedAddressFromData, walletName: dataWalletName } = importDataContent;
 
-        const { pin } = await promptForPin('unlock').catch(() => ({ pin: null }));
+        const { pin } = await promptForPin('unlock', { walletAddress: importedAddressFromData || '' }).catch(() => ({ pin: null }));
         if (!pin) {
           await showInfo(t('bsvPayment.pinModal.unlockCancelledTitle'), t('bsvPayment.pinModal.unlockCancelledMessage'));
           return { error: 'unlock-cancelled' };
