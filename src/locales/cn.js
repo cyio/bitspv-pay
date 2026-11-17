@@ -162,7 +162,14 @@ export default {
       decryptionFailedTitle: '解密失败',
       decryptionFailedMessage: '解密钱包数据失败。密码可能不正确或数据已损坏。请重试。',
       pinHintForSet:
-        '至少 8 位，需同时包含字母和数字。这是本地钱包密码：没有账号，也无法找回。它只用来加密私钥，本网站不会保存。',
+        '至少 8 位，建议 12 位或更长。字母、数字、符号和空格都可以用。这是本地钱包密码：没有账号，忘记后无法找回。导出的备份文件可以被离线猜密码，请使用不与其他网站重复的长密码。',
+      strengthLabel: '密码强度',
+      strengthWeak: '弱',
+      strengthFair: '一般',
+      strengthStrong: '强',
+      strengthHintWeak: '建议 12 位或更长，可以用一句好记的短语。',
+      strengthHintFair: '再长一些，别人拿备份文件就更难猜出。',
+      strengthHintStrong: '强度足够。请把密码保存在安全的地方，它无法找回。',
       pinConfirmPrompt: '再次输入密码：',
       defaultWalletName: '钱包1', // 新增
       walletNamePrompt: '请输入钱包名称（可选，不超过 20 字符）：', // 新增
@@ -172,8 +179,8 @@ export default {
         required: '请输入{{field}}',
         maxLength: '{{field}}不能超过 {{max}} 个字符',
         minLength: '{{field}}不能少于 {{min}} 个字符',
-        pattern: '密码必须同时包含字母和数字',
-        pinStrength: '密码至少 8 位，且必须同时包含字母和数字',
+        pattern: '字母、数字、符号和空格都可以使用',
+        pinStrength: '密码至少 8 位。越长越安全，符号和空格都可以使用。',
         pinMismatch: '两次输入的密码不一致',
       },
     },
@@ -337,7 +344,7 @@ export default {
     changePasswordButton: '修改密码',
     importWalletButton: '导入钱包',
     privateKeyWarning:
-      '警告：备份二维码包含用密码加密的私钥。丢失二维码或密码都将导致资金无法找回，请妥善保管。',
+      '注意：此二维码包含用密码加密的私钥。拿到文件的人可以离线反复猜密码。二维码或密码任一丢失，资金将无法找回。',
     copyPkButton: '复制私钥',
     pkCopiedTitle: '私钥已复制',
     pkCopiedMessage: '私钥 (WIF) 已复制到您的剪贴板。',

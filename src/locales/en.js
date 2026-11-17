@@ -180,7 +180,14 @@ export default {
       decryptionFailedMessage:
         'Failed to decrypt wallet data. The password might be incorrect or the data corrupted. Please try again.',
       pinHintForSet:
-        'At least 8 characters, with both letters and numbers. This is a local wallet password: no account, no recovery. It only encrypts your private key, and this site never stores it.',
+        'At least 8 characters; 12 or more is recommended. Letters, numbers, symbols and spaces all work. This is a local wallet password: no account, no recovery. An exported backup can be guessed offline, so use a long password you do not use elsewhere.',
+      strengthLabel: 'Password strength',
+      strengthWeak: 'Weak',
+      strengthFair: 'Fair',
+      strengthStrong: 'Strong',
+      strengthHintWeak: 'Use 12 or more characters. Try a short phrase you can remember.',
+      strengthHintFair: 'Longer passwords are harder to guess from a backup file.',
+      strengthHintStrong: 'Good. Keep this password somewhere safe — it cannot be recovered.',
       pinConfirmPrompt: 'Enter the same password again:',
       defaultWalletName: 'Wallet 1', // New
       walletNamePrompt: 'Enter wallet name (optional, max 20 characters):', // New
@@ -190,9 +197,9 @@ export default {
         required: '{{field}} is required',
         maxLength: '{{field}} cannot exceed {{max}} characters',
         minLength: '{{field}} must be at least {{min}} characters',
-        pattern: 'The password must contain both letters and numbers',
+        pattern: 'Letters, numbers, symbols and spaces are all allowed',
         pinStrength:
-          'The password must be at least 8 characters and contain both letters and numbers',
+          'Use at least 8 characters. Longer is stronger; symbols and spaces are allowed.',
         pinMismatch: 'The two passwords do not match',
       },
     },
@@ -365,7 +372,7 @@ export default {
     changePasswordButton: 'Change Password',
     importWalletButton: 'Import Wallet',
     privateKeyWarning:
-      'Warning: The backup QR code contains a password-encrypted private key. Losing either the QR code or the password will make your funds unrecoverable. Keep it safe.',
+      'Warning: This QR contains a password-encrypted private key. Anyone who gets the file can guess the password offline. Losing either the QR or the password makes the funds unrecoverable.',
     copyPkButton: 'Copy Private Key',
     pkCopiedTitle: 'Private Key Copied',
     pkCopiedMessage: 'Private Key (WIF) has been copied to your clipboard.',

@@ -44,6 +44,72 @@ const Button = ({ children, variant, ...props }) => {
   );
 };
 
+/**
+ * 轻量强度估算：按字符池大小估计可猜测空间，不强制字符组合。
+ * 只用于即时反馈，不参与校验；真正的门槛只有「至少 8 位」。
+ */
+const estimatePasswordStrength = value => {
+  const v = String(value || '');
+  if (!v) return 0;
+  const classes = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(re => re.test(v)).length;
+  const pool = [0, 26, 52, 62, 95][classes];
+  const bits = v.length * Math.log2(pool);
+  const common = /password|123456|qwerty|111111|abc123|letmein/i.test(v);
+  const repetitive = /(.)\1{3,}/.test(v) || new Set(v).size <= 3;
+  if (common || repetitive || bits < 45) return 1;
+  if (bits < 65) return 2;
+  return 3;
+};
+
+const StrengthMeter = ({ score }) => {
+  const { t } = useTranslation();
+  const labels = [
+    '',
+    t('bsvPayment.pinModal.strengthWeak'),
+    t('bsvPayment.pinModal.strengthFair'),
+    t('bsvPayment.pinModal.strengthStrong'),
+  ];
+  const hints = [
+    '',
+    t('bsvPayment.pinModal.strengthHintWeak'),
+    t('bsvPayment.pinModal.strengthHintFair'),
+    t('bsvPayment.pinModal.strengthHintStrong'),
+  ];
+  const tone = [
+    '',
+    { text: 'text-[var(--danger)]', bar: 'bg-[var(--danger)]' },
+    { text: 'text-[var(--warn)]', bar: 'bg-[var(--warn)]' },
+    { text: 'text-[var(--seal-text)]', bar: 'bg-[var(--seal)]' },
+  ][score];
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{t('bsvPayment.pinModal.strengthLabel')}</span>
+        <span className={tone.text} aria-live="polite">
+          {labels[score]}
+        </span>
+      </div>
+      <div
+        className="mt-1 flex gap-1"
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={3}
+        aria-valuenow={score}
+        aria-valuetext={labels[score]}
+      >
+        {[1, 2, 3].map(level => (
+          <span
+            key={level}
+            className={`h-1 flex-1 rounded-[var(--radius)] ${level <= score ? tone.bar : 'bg-muted'}`}
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">{hints[score]}</p>
+    </div>
+  );
+};
+
 const PinDialog = ({ pinState, onResolve, onReject }) => {
   const { t } = useTranslation();
   const {
@@ -102,8 +168,11 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
 
   const {
     reset,
+    watch,
     formState: { errors },
   } = form;
+  const passwordValue = watch('pin') || '';
+  const strength = estimatePasswordStrength(passwordValue);
 
   const stringifiedInputs = JSON.stringify(inputs);
   useEffect(() => {
@@ -228,6 +297,11 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
           </p>
         )}
         {error && <FormMessage id={`${input.id}-error`}>{error.message}</FormMessage>}
+        {input.showStrength &&
+          inputs.some(item => item.id === 'pinConfirm') &&
+          passwordValue && (
+            <StrengthMeter score={strength} />
+          )}
       </FormItem>
     );
   };

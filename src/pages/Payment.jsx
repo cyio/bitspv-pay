@@ -754,10 +754,9 @@ export default function Payment() {
                 placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'),
                 required: true,
                 maxLength: 20,
+                minLength: 8,
+                showStrength: true,
                 hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
-                validate: v =>
-                  (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) ||
-                  t('bsvPayment.pinModal.validation.pinStrength'),
               },
               // 二次输入：PIN 只存在于用户脑子里，输错一个字符就等于把钱包（以及同 PIN
               // 加密的备份文件）永久锁死。这一栏是唯一能在资金不可用之前发现笔误的地方。
@@ -814,10 +813,9 @@ export default function Payment() {
                 placeholder: t('bsvPayment.pinModal.pinInputPlaceholder'),
                 required: true,
                 maxLength: 20,
+                minLength: 8,
+                showStrength: true,
                 hintMessage: t('bsvPayment.pinModal.pinHintForSet'),
-                validate: v =>
-                  (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)) ||
-                  t('bsvPayment.pinModal.validation.pinStrength'),
               },
               {
                 id: 'pinConfirm',
