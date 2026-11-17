@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Check } from 'lucide-react';
+import { X, Check, Copy } from 'lucide-react';
 import { useDialog } from '../contexts/DialogContext';
 import QRScanner from './QRScanner';
 import { SimpleSelect, SimpleSelectItem } from '@/components/ui/SimpleSelect';
 import { isValidAddress, isValidPaymail, convertSatoshisToBSV, convertSatoshisToFiat } from '../utils/bsv';
+import { copyText } from '../utils/clipboard';
 import { useLockBodyScroll } from './Portal';
 import { getTxExplorerUrl } from '../utils/apiProviderHealth';
 
@@ -40,7 +41,7 @@ export default function SendPanel({
   transferMessage,
   onClearTransferStatus,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showDialog } = useDialog();
   const addressRef = useRef(null);
   const amountRef = useRef(null);
@@ -60,13 +61,16 @@ export default function SendPanel({
   const [isEstimating, setIsEstimating] = useState(false);
   const [isCalculatingMax, setIsCalculatingMax] = useState(false);
   const [maxApplied, setMaxApplied] = useState(false);
-  const [sentTxid, setSentTxid] = useState('');
+  const [receipt, setReceipt] = useState(null);
+  const [isTxidCopied, setIsTxidCopied] = useState(false);
   const titleId = React.useId();
 
   useLockBodyScroll(true);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => addressRef.current?.focus());
+    // 上次成功留下的全局状态不该在新一次打开时变成红色错误行。
+    onClearTransferStatus?.();
     const onKeyDown = event => {
       if (event.key === 'Escape') onClose();
     };
@@ -75,7 +79,7 @@ export default function SendPanel({
       cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [onClose]);
+  }, []); // 只在挂载时执行一次
 
   const isTargetValid = !target ? null : isValidAddress(target) || isValidPaymail(target);
   const amountSatoshis = useMemo(() => {
@@ -204,7 +208,15 @@ export default function SendPanel({
     try {
       const result = await onTransferFunds(target, amountSatoshis);
       if (result?.success) {
-        setSentTxid(result.txid || '');
+        setReceipt({
+          txid: result.txid || '',
+          target,
+          amount: amountSatoshis,
+          fee: estimate?.fee ?? 0,
+          total: estimate?.total ?? amountSatoshis + (estimate?.fee ?? 0),
+          at: Date.now(),
+        });
+        setIsTxidCopied(false);
         setTarget('');
         setAmount('');
         setMaxApplied(false);
@@ -216,7 +228,26 @@ export default function SendPanel({
     }
   };
 
-  const statusText = formError || transferMessage;
+  // 成功消息是带链接的对象，交给回执视图；这里只保留真正的错误文本。
+  const statusText = formError || (typeof transferMessage === 'string' ? transferMessage : '');
+
+  const handleCopyTxid = async () => {
+    if (!receipt?.txid) return;
+    const ok = await copyText(receipt.txid);
+    if (ok) {
+      setIsTxidCopied(true);
+      setTimeout(() => setIsTxidCopied(false), 2000);
+    }
+  };
+
+  const handleSendAnother = () => {
+    setReceipt(null);
+    setFormError('');
+    setEstimate(null);
+    setEstimateError('');
+    requestAnimationFrame(() => addressRef.current?.focus());
+  };
+
   const isProcessing = transferStatus === 'processing' || transferStatus === 'preparing';
 
   return (
@@ -241,29 +272,94 @@ export default function SendPanel({
           </button>
         </header>
 
-        {sentTxid ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-5 py-10 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-[var(--seal-border)] bg-[var(--seal-soft)] text-[var(--seal-text)]">
-              <Check className="h-6 w-6" />
+        {receipt ? (
+          <div className="flex-1 px-5 py-6" role="status">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--seal-border)] bg-[var(--seal-soft)] text-[var(--seal-text)]">
+                <Check className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-lg font-semibold text-[var(--seal-text)]">
+                {t('bsvPayment.transfer.broadcastPending')}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('bsvPayment.transfer.broadcastPendingHint')}
+              </p>
             </div>
-            <p className="text-lg font-semibold text-foreground">{t('bsvPayment.statusMessages.transactionSent')}</p>
-            {sentTxid && (
-              <a
-                href={getTxExplorerUrl(sentTxid)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 break-all text-sm text-primary underline"
-              >
-                {sentTxid}
-              </a>
+
+            <dl className="mt-6 space-y-2 rounded-[var(--radius)] bg-muted p-4 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{t('bsvPayment.transfer.confirmAmount')}</dt>
+                <dd className="text-right font-mono">
+                  {convertSatoshisToBSV(receipt.amount)} BSV ({receipt.amount} sats)
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{t('bsvPayment.transfer.confirmRecipient')}</dt>
+                <dd className="min-w-0 break-all text-right font-mono text-xs">{receipt.target}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{t('bsvPayment.transfer.confirmFee')}</dt>
+                <dd className="text-right font-mono">{receipt.fee} sats</dd>
+              </div>
+              <div className="flex justify-between gap-3 border-t border-border pt-2 font-medium">
+                <dt>{t('bsvPayment.transfer.confirmTotal')}</dt>
+                <dd className="text-right font-mono">{convertSatoshisToBSV(receipt.total)} BSV</dd>
+              </div>
+              <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+                <dt>{t('bsvPayment.transfer.sentAt')}</dt>
+                <dd>
+                  {new Date(receipt.at).toLocaleString(
+                    String(i18n.language || '').startsWith('zh') ? 'zh-CN' : 'en-US'
+                  )}
+                </dd>
+              </div>
+            </dl>
+
+            {receipt.txid && (
+              <div className="mt-4 rounded-[var(--radius)] border border-border p-3">
+                <p className="text-xs text-muted-foreground">{t('transactionHistory.txid')}</p>
+                <div className="mt-1 flex items-start gap-2">
+                  <p className="min-w-0 flex-1 break-all font-mono text-xs">{receipt.txid}</p>
+                  <button
+                    type="button"
+                    onClick={handleCopyTxid}
+                    aria-label={isTxidCopied ? t('transactionHistory.copied') : t('transactionHistory.copy')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius)] text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {isTxidCopied ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                <a
+                  href={getTxExplorerUrl(receipt.txid)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs text-primary underline"
+                >
+                  {t('bsvPayment.viewOnExplorer')} ↗
+                </a>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-8 w-full rounded-[var(--radius)] bg-primary px-4 py-2.5 font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {t('bsvPayment.transfer.done')}
-            </button>
+
+            <div className="mb-[max(1rem,env(safe-area-inset-bottom))] mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded-[var(--radius)] bg-primary px-4 py-2.5 font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {t('bsvPayment.transfer.done')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSendAnother}
+                className="w-full rounded-[var(--radius)] border border-border px-4 py-2.5 font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {t('bsvPayment.transfer.sendAnother')}
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 px-5 py-5">
@@ -405,7 +501,7 @@ export default function SendPanel({
                 aria-live="polite"
                 className="mb-3 break-words text-sm text-[var(--danger)]"
               >
-                {typeof statusText === 'object' ? statusText.text : statusText}
+                {statusText}
               </p>
             )}
 
