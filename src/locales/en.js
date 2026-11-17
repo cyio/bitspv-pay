@@ -321,8 +321,6 @@ export default {
       title: 'Receive BSV',
       description: 'Scan this code or share the address below. This wallet uses one address for every payment.',
       addressLabel: 'Your address',
-      showQr: 'Show receive QR code',
-      hideQr: 'Hide receive QR code',
       copyAddress: 'Copy address',
       copied: 'Copied',
     },

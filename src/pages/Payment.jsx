@@ -387,7 +387,6 @@ function WalletUI() {
             {isWalletUiVisible ? (
               <>
                 <WalletInfo
-                  qrcode={qrcode}
                   address={address}
                   isCopied={isCopied}
                   copyAddress={copyAddress}
@@ -395,7 +394,6 @@ function WalletUI() {
                   rate={rate}
                   refreshAll={refreshAll}
                   isRefreshing={isRefreshing}
-                  showQR={false}
                   isBalanceLoading={isBalanceLoading}
                   balanceError={balanceError}
                 />

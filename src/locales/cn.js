@@ -295,8 +295,6 @@ export default {
       title: '接收 BSV',
       description: '扫描二维码或分享下方地址。本钱包所有收款都使用同一个地址。',
       addressLabel: '你的地址',
-      showQr: '显示收款码',
-      hideQr: '收起收款码',
       copyAddress: '复制地址',
       copied: '已复制',
     },

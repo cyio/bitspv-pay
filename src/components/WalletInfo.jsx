@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Check, RefreshCw, QrCode, ChevronUp } from 'lucide-react';
+import { Copy, Check, RefreshCw } from 'lucide-react';
 import { convertSatoshisToBSV, convertSatoshisToFiat } from '../utils/bsv';
 
 const WalletInfo = ({
-  qrcode,
   address,
   isCopied,
   copyAddress,
@@ -12,20 +11,15 @@ const WalletInfo = ({
   rate,
   refreshAll,
   isRefreshing,
-  showQR = false,
   isBalanceLoading = false,
   balanceError = '',
 }) => {
   const { t } = useTranslation();
-  const [qrExpanded, setQrExpanded] = useState(showQR);
 
   const unconfirmed = walletBalance?.unconfirmed || 0;
   const copyLabel = isCopied
     ? t('bsvPayment.statusMessages.addressCopied')
     : t('bsvPayment.copyButton');
-  const qrLabel = qrExpanded
-    ? t('bsvPayment.receive.hideQr')
-    : t('bsvPayment.receive.showQr');
 
   return (
     <>
@@ -37,38 +31,15 @@ const WalletInfo = ({
             </p>
             <div className="select-all break-all font-mono text-sm">{address}</div>
           </div>
-          <div className="flex shrink-0 gap-1">
-            <button
-              onClick={copyAddress}
-              title={copyLabel}
-              aria-label={copyLabel}
-              className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              {isCopied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
-            </button>
-            {qrcode && (
-              <button
-                onClick={() => setQrExpanded(v => !v)}
-                title={qrLabel}
-                aria-label={qrLabel}
-                aria-expanded={qrExpanded}
-                className="flex h-9 w-9 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {qrExpanded ? <ChevronUp size={16} /> : <QrCode size={16} />}
-              </button>
-            )}
-          </div>
+          <button
+            onClick={copyAddress}
+            title={copyLabel}
+            aria-label={copyLabel}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {isCopied ? <Check size={16} className="text-primary" /> : <Copy size={16} />}
+          </button>
         </div>
-        {qrcode && qrExpanded && (
-          <div className="mt-2 flex justify-center">
-            <img
-              src={qrcode}
-              alt={t('bsvPayment.qrCode')}
-              // 二维码自带静区，深色底上必须给白底，否则部分扫码器读不出来。
-              className="h-48 w-48 rounded-[var(--radius)] border border-border bg-white p-2"
-            />
-          </div>
-        )}
       </div>
       <div className="mb-4 flex items-center justify-center gap-2 text-muted-foreground">
         {isBalanceLoading ? (
