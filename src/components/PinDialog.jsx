@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import Portal, { useLockBodyScroll } from './Portal';
@@ -56,7 +56,13 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     showCancelButton,
     hideModalHeaderCloseButton,
     mode,
+    // 异步校验器：由调用方提供（比如用密码解密私钥）。失败时弹窗不关闭，
+    // 错误就地显示，用户可以直接重输；成功时才 resolve 表单值。
+    validate: validatePassword,
   } = pinState;
+
+  const [formError, setFormError] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
 
   const form = useForm({
     defaultValues: inputs.reduce(
@@ -106,6 +112,8 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
       reset(
         currentInputs.reduce((acc, input) => ({ ...acc, [input.id]: input.defaultValue || '' }), {})
       );
+      setFormError('');
+      setIsValidating(false);
     }
   }, [isOpen, stringifiedInputs, reset]);
 
@@ -142,8 +150,35 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
     }
   };
 
-  const onSubmit = values => {
-    onResolve(values);
+  const focusPasswordField = () => {
+    const field = cardRef.current?.querySelector('input:not([readonly])');
+    field?.focus();
+    field?.select?.();
+  };
+
+  const onSubmit = async values => {
+    if (isValidating) return;
+    setFormError('');
+    if (!validatePassword) {
+      onResolve(values);
+      return;
+    }
+    setIsValidating(true);
+    try {
+      const result = await validatePassword(values);
+      if (result && result.ok === false) {
+        // 关键：不关弹窗、不 reject promise。调用方的 await 会继续等这一次输入。
+        setFormError(result.error || t('bsvPayment.pinModal.wrongPassword'));
+        focusPasswordField();
+        return;
+      }
+      onResolve({ ...values, ...(result?.data || {}) });
+    } catch (error) {
+      setFormError(error?.message || t('bsvPayment.pinModal.wrongPassword'));
+      focusPasswordField();
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   // 只读的地址栏不参与聚焦：光标直接落在第一个可编辑的输入框。
@@ -151,7 +186,11 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
 
   const renderField = ({ field, fieldState, formState }, input) => {
     const error = formState.errors[input.id];
-    const describedBy = [input.hintMessage ? `${input.id}-hint` : null, error ? `${input.id}-error` : null]
+    const describedBy = [
+      input.hintMessage ? `${input.id}-hint` : null,
+      error ? `${input.id}-error` : null,
+      formError && input.type === 'password' ? 'pin-form-error' : null,
+    ]
       .filter(Boolean)
       .join(' ');
     return (
@@ -160,6 +199,11 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
         <FormControl>
           <Input
             {...field}
+            // 用户开始改密码时清掉上一次的「密码不正确」，避免误导。
+            onChange={event => {
+              if (formError) setFormError('');
+              field.onChange(event);
+            }}
             // RHF 的 field.name 只是内部注册名；浏览器密码库认的是 DOM 上的
             // name/id/autocomplete，所以这里必须覆盖成标准名字（username / password），
             // 否则一个 origin 下只能存住一条凭据。
@@ -172,7 +216,7 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
             readOnly={input.readOnly}
             tabIndex={input.readOnly ? -1 : undefined}
             aria-readonly={input.readOnly ? 'true' : undefined}
-            aria-invalid={error ? 'true' : undefined}
+            aria-invalid={error || (formError && input.type === 'password') ? 'true' : undefined}
             aria-describedby={describedBy || undefined}
             autoFocus={input.autoFocus}
             className={input.readOnly ? 'cursor-default opacity-70' : undefined}
@@ -272,6 +316,16 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
             );
           })}
         </div>
+
+        {formError && (
+          <p
+            id="pin-form-error"
+            role="alert"
+            className="rounded-[var(--radius)] border border-[var(--danger)] px-3 py-2 text-sm text-[var(--danger)]"
+          >
+            {formError}
+          </p>
+        )}
       </div>
 
       <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end gap-2">
@@ -279,12 +333,15 @@ const PinDialog = ({ pinState, onResolve, onReject }) => {
           <Button
             type="button"
             variant="outline"
+            disabled={isValidating}
             onClick={() => onReject(new Error('User cancelled.'))}
           >
             {cancelButtonText}
           </Button>
         )}
-        <Button type="submit">{confirmButtonText}</Button>
+        <Button type="submit" disabled={isValidating}>
+          {isValidating ? t('bsvPayment.pinModal.checkingButton') : confirmButtonText}
+        </Button>
       </div>
     </form>
   );

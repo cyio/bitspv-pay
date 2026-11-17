@@ -108,8 +108,24 @@ export function useWallet() {
     }
 
     try {
-      const { pin } = await promptForPin('unlock', {
+      const validatePassword = async ({ pin }) => {
+        const decryptedWif = await decryptData(ciphertext, iv, salt, pin);
+        if (!decryptedWif) {
+          return { ok: false, error: t('bsvPayment.pinModal.wrongPassword') };
+        }
+        let privKey;
+        try {
+          privKey = PrivateKey.fromWif(decryptedWif);
+        } catch {
+          return { ok: false, error: t('bsvPayment.statusMessages.errors.decryptionFailedGeneric') };
+        }
+        // 校验器只负责证明密码正确；缓存写回放到 resolve 之后，避免输错一次就落盘。
+        return { ok: true, data: { privKey } };
+      };
+
+      const { pin, privKey } = await promptForPin('unlock', {
         walletAddress: storage.getWalletAddress() || '',
+        validate: validatePassword,
       });
       if (!pin) {
         return {
@@ -118,15 +134,6 @@ export function useWallet() {
         };
       }
 
-      const decryptedWif = await decryptData(ciphertext, iv, salt, pin);
-      if (!decryptedWif) {
-        return {
-          error: 'wallet-needs-recovery',
-          message: t('bsvPayment.statusMessages.errors.decryptionFailedPinIncorrect'),
-        };
-      }
-
-      const privKey = PrivateKey.fromWif(decryptedWif);
       const recoveredPubKey = privKey.toPublicKey();
       const recoveredAddress = recoveredPubKey.toAddress().toString();
 
@@ -849,8 +856,18 @@ export function useWallet() {
             walletName: dataWalletName,
           } = importDataContent;
 
-          const { pin } = await promptForPin('unlock', {
+          // 加密备份导入同样走弹窗内校验：密码错就地提示，不用重选文件/重粘文本。
+          const validatePassword = async ({ pin }) => {
+            const wif = await decryptData(encryptedWif, iv, salt, pin);
+            if (!wif) {
+              return { ok: false, error: t('bsvPayment.pinModal.wrongPassword') };
+            }
+            return { ok: true, data: { importedWif: wif } };
+          };
+
+          const { pin, importedWif } = await promptForPin('unlock', {
             walletAddress: importedAddressFromData || '',
+            validate: validatePassword,
           }).catch(() => ({ pin: null }));
           if (!pin) {
             await showInfo(
@@ -858,15 +875,6 @@ export function useWallet() {
               t('bsvPayment.pinModal.unlockCancelledMessage')
             );
             return { error: 'unlock-cancelled' };
-          }
-
-          const importedWif = await decryptData(encryptedWif, iv, salt, pin);
-          if (!importedWif) {
-            await showInfo(
-              t('bsvPayment.pinModal.decryptionFailedTitle'),
-              t('bsvPayment.statusMessages.errors.decryptionFailedPinIncorrect')
-            );
-            return { error: 'decryption-failed' };
           }
 
           const decryptedPrivKey = PrivateKey.fromWif(importedWif);

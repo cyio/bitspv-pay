@@ -143,6 +143,8 @@ export default {
       setTitle: 'Set new wallet', // Modified title
       setPrompt: 'Set a password for your wallet:',
       setButton: 'Set password',
+      checkingButton: 'Checking…',
+      wrongPassword: 'Incorrect password. Try again here.',
       confirmTitle: 'Confirm password', // Retained for consistency, though no longer used in combined flow
       confirmPrompt: 'Re-enter your password to confirm:', // Retained for consistency
       confirmButton: 'Confirm password', // Retained for consistency

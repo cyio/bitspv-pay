@@ -130,6 +130,8 @@ export default {
       setTitle: '设置新钱包', // 修改标题
       setPrompt: '为您的钱包设置密码：',
       setButton: '设置密码',
+      checkingButton: '验证中…',
+      wrongPassword: '密码不正确，请在此重新输入。',
       confirmTitle: '确认密码', // 确认步骤已移除，此项暂时保留
       confirmPrompt: '重新输入您的密码以确认：', // 确认步骤已移除，此项暂时保留
       confirmButton: '确认密码', // 确认步骤已移除，此项暂时保留

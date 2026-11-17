@@ -21,25 +21,33 @@ export function usePinManager() {
       throw new Error(t('bsvPayment.statusMessages.errors.encryptedDataMissing'));
     }
 
+    // 解密放进弹窗的异步校验器里：密码错了弹窗不关，错误就地显示，
+    // 用户在同一个输入框里重输即可，不必重新发起转账/备份流程。
+    const validatePassword = async ({ pin }) => {
+      const decryptedWif = await decryptData(encryptedWif, iv, salt, pin);
+      if (!decryptedWif) {
+        return { ok: false, error: t('bsvPayment.pinModal.wrongPassword') };
+      }
+      let loadedPrivKey;
+      try {
+        loadedPrivKey = PrivateKey.fromWif(decryptedWif);
+      } catch {
+        return { ok: false, error: t('bsvPayment.statusMessages.errors.decryptionFailedGeneric') };
+      }
+      if (currentPubKey && currentPubKey instanceof PublicKey && loadedPrivKey.toPublicKey().toDER('hex') !== currentPubKey.toDER('hex')) {
+        return { ok: false, error: t('bsvPayment.statusMessages.errors.privateKeyMismatch') };
+      }
+      return { ok: true, data: { loadedPrivKey } };
+    };
+
     try {
       // 带上缓存地址，浏览器密码库才能按地址匹配到对应那条密码。
       // 缓存丢了就留空，退化成旧版行为（旧条目 username 也是空的）。
-      const pinData = await promptForPin('unlock', { walletAddress: storage.getWalletAddress() || '' });
-      const pin = pinData.pin;
+      const { pin, loadedPrivKey } = await promptForPin('unlock', {
+        walletAddress: storage.getWalletAddress() || '',
+        validate: validatePassword,
+      });
 
-      // promptForPin promise rejects on cancellation, caught below.
-
-      const decryptedWif = await decryptData(encryptedWif, iv, salt, pin);
-      if (!decryptedWif) {
-        throw new Error(t('bsvPayment.statusMessages.errors.decryptionFailedPinIncorrect'));
-      }
-      const loadedPrivKey = PrivateKey.fromWif(decryptedWif);
-
-      if (currentPubKey && currentPubKey instanceof PublicKey && loadedPrivKey.toPublicKey().toDER('hex') !== currentPubKey.toDER('hex')) {
-        console.error("CRITICAL: Decrypted private key does not match cached public key!");
-        throw new Error(t('bsvPayment.statusMessages.errors.privateKeyMismatch'));
-      }
-      
       console.log('Private key decrypted and loaded successfully.');
       return { loadedPrivKey, pin, walletName: storedWalletName };
 
@@ -51,9 +59,7 @@ export function usePinManager() {
 
       console.error('Failed to load private key:', error);
       const errorMessage = error.message || t('bsvPayment.statusMessages.errors.decryptionFailedGeneric');
-      await showInfo(t('bsvPayment.pinModal.decryptionFailedTitle'), t('bsvPayment.pinModal.decryptionFailedMessage'));
-
-      // Throw a new error to ensure the calling function's flow is stopped
+      await showInfo(t('bsvPayment.pinModal.decryptionFailedTitle'), errorMessage);
       throw new Error(errorMessage);
     }
   }, [storage, t, promptForPin, showInfo]);
