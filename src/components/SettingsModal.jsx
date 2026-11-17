@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { Monitor, Sun, Moon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getAvailableProviders, setPreferredProvider } from '../utils/apiProviderHealth';
+import {
+  getAvailableProviders,
+  setPreferredProvider,
+  getCurrentProviderName,
+} from '../utils/apiProviderHealth';
 import { getThemePreference, setThemePreference } from '../utils/theme';
 
 const PROVIDER_LABELS = {
@@ -17,11 +21,20 @@ const LANGUAGE_OPTIONS = [
   { value: 'zh', label: '中文' },
 ];
 
-export default function SettingsModal({ show, onClose, currentProvider, onProviderChange }) {
+export default function SettingsModal({ show, onClose }) {
   const { t } = useTranslation();
   const providers = getAvailableProviders();
   const [themePreference, setThemePreferenceState] = useState(getThemePreference);
+  const [providerName, setProviderName] = useState(getCurrentProviderName);
   const currentLanguage = String(i18n.language || 'en').startsWith('zh') ? 'zh' : 'en';
+
+  // 每次打开都从真正的状态源刷新：后台健康检测可能在菜单关闭期间换过 provider，
+  // 主题偏好也可能在其他标签页改过。只信本地 state 就会出现按钮高亮对不上。
+  useEffect(() => {
+    if (!show) return;
+    setThemePreferenceState(getThemePreference());
+    setProviderName(getCurrentProviderName());
+  }, [show]);
 
   const themeOptions = [
     { value: 'auto', label: t('bsvPayment.settings.themeAuto'), Icon: Monitor },
@@ -31,7 +44,8 @@ export default function SettingsModal({ show, onClose, currentProvider, onProvid
 
   const handleSelect = (name) => {
     setPreferredProvider(name);
-    onProviderChange(name);
+    // 以实际生效值为准，而不是按点击的按钮硬写。
+    setProviderName(getCurrentProviderName());
   };
 
   const handleTheme = (value) => {
@@ -95,15 +109,15 @@ export default function SettingsModal({ show, onClose, currentProvider, onProvid
                 <button
                   key={p}
                   onClick={() => handleSelect(p)}
-                  aria-pressed={currentProvider === p}
+                  aria-pressed={providerName === p}
                   className={`w-full rounded-[var(--radius)] border px-4 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    currentProvider === p
+                    providerName === p
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border text-foreground hover:bg-muted'
                   }`}
                 >
                   {PROVIDER_LABELS[p] || p}
-                  {currentProvider === p && <span className="float-right" aria-hidden="true">✓</span>}
+                  {providerName === p && <span className="float-right" aria-hidden="true">✓</span>}
                 </button>
               ))}
             </div>

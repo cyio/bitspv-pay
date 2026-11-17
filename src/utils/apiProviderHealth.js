@@ -100,6 +100,14 @@ function getRecommendedProvider() {
   return { name: currentPreferredProviderName, ...serviceProviders[currentPreferredProviderName] };
 }
 
+/**
+ * 当前实际生效的 provider 名。健康检测会在后台静默切换/清空偏好，
+ * UI 不能只信自己保存的那一份状态。
+ */
+function getCurrentProviderName() {
+  return getRecommendedProvider()?.name || 'bananablocks';
+}
+
 function getTxExplorerUrl(txid) {
   const provider = currentPreferredProviderName || 'whatsOnChain';
   const base = explorerUrls[provider] || explorerUrls.whatsOnChain;
@@ -112,4 +120,5 @@ export {
   getTxExplorerUrl,
   setPreferredProvider,
   getAvailableProviders,
+  getCurrentProviderName,
 };

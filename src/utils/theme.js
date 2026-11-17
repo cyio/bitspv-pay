@@ -34,7 +34,9 @@ export function setThemePreference(preference) {
   } catch {
     // 隐私模式下写不进 localStorage：本次会话仍然生效，只是不持久化。
   }
-  return applyTheme(value);
+  applyTheme(value);
+  // 返回的是偏好值（auto/light/dark），不是解析后的模式，供设置页按钮回显。
+  return value;
 }
 
 /** OS 主题变化且用户选择「跟随系统」时同步更新。 */

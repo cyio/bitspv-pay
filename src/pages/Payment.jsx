@@ -6,7 +6,6 @@ import { useRate } from '../hooks/useRate';
 import { Info, Coffee, History, Settings } from 'lucide-react';
 import TransactionHistory from '../components/TransactionHistory.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
-import { getRecommendedProvider } from '../utils/apiProviderHealth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PaymentAbout from '../components/PaymentAbout.jsx';
 import DonationModal from '../components/DonationModal.jsx';
@@ -83,9 +82,6 @@ function WalletUI() {
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [currentProvider, setCurrentProvider] = useState(
-    () => getRecommendedProvider()?.name || 'bananablocks'
-  );
   const isInitializing = useRef(false);
 
   // 地址被清空（删钱包）时不要落回 loading：ready 但没有地址就是空态。
@@ -622,12 +618,7 @@ function WalletUI() {
             qrcode={qrcode}
           />
 
-          <SettingsModal
-            show={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
-            currentProvider={currentProvider}
-            onProviderChange={setCurrentProvider}
-          />
+          <SettingsModal show={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
 
           <DonationModal
             show={isDonationModalVisible}
