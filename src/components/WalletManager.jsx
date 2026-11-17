@@ -1,21 +1,15 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Check, QrCode } from 'lucide-react';
 import { isWeChat } from '../utils';
 import { copyText } from '../utils/clipboard';
 import {
-  isValidAddress,
-  convertSatoshisToBSV,
-  isValidPaymail,
   generateEncryptedDataQrCodeUrl,
   downloadEncryptedDataQrCode,
-  convertSatoshisToFiat,
-  convertFiatToSatoshis,
 } from '../utils/bsv';
 import { useDialog } from '../contexts/DialogContext';
-import QRScanner from './QRScanner';
 import { AirGapSender, AirGapSigner } from './AirGapFlow';
+import SendPanel from './SendPanel';
 import {
   Dialog,
   DialogContent,
@@ -31,16 +25,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { SimpleSelect, SimpleSelectItem } from '@/components/ui/SimpleSelect';
-
-
-const ScanIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
 
 
 const WalletManager = ({
@@ -68,45 +52,16 @@ const WalletManager = ({
   const { showDialog } = useDialog();
 
   const [showManageSheet, setShowManageSheet] = useState(false);
+  const [showSendPanel, setShowSendPanel] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [privateKeyQrCodeUrl, setPrivateKeyQrCodeUrl] = useState('');
-  const [showTransferSection, setShowTransferSection] = useState(false);
   const [activeBackupData, setActiveBackupData] = useState(null);
-  const [targetAddress, setTargetAddress] = useState('');
-  const [formError, setFormError] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState('BSV');
-  const [inputAmount, setInputAmount] = useState('');
   const [showPubKeyModal, setShowPubKeyModal] = useState(false);
   const [isPubKeyCopied, setIsPubKeyCopied] = useState(false);
   const [pubKeyCopyError, setPubKeyCopyError] = useState('');
-  const [isEstimating, setIsEstimating] = useState(false);
-  // 只有用户在本表单里点过 Max，才把「可花上限」当作硬校验；
-  // 否则上一次会话算出的旧上限会拦住后续更大的转账。
-  const [maxApplied, setMaxApplied] = useState(false);
 
   // air-gap 模式：'sender' | 'signer' | null
   const [airGapMode, setAirGapMode] = useState(null);
-
-  const isTargetAddressValid = !targetAddress
-    ? null
-    : isValidAddress(targetAddress) || isValidPaymail(targetAddress);
-  
-  const transferAmountSatoshis = useMemo(() => {
-    if (inputAmount === '') return null;
-    const amount = Number(inputAmount);
-    if (isNaN(amount)) return null;
-
-    switch (selectedUnit) {
-      case 'BSV':
-        return Math.round(amount * 100000000);
-      case 'sats':
-        return Math.round(amount);
-      case 'USD':
-        return rate ? convertFiatToSatoshis(amount, rate) : null;
-      default:
-        return null;
-    }
-  }, [inputAmount, selectedUnit, rate]);
 
   const pubKeyHex = useMemo(() => {
     try {
@@ -130,45 +85,6 @@ const WalletManager = ({
       setTimeout(() => setIsPubKeyCopied(false), 2000);
     } else {
       setPubKeyCopyError(t('bsvPayment.publicKeyCopyFailed'));
-    }
-  };
-
-  const setSatoshiValue = (satoshiValue) => {
-    if (satoshiValue === null) {
-      setInputAmount('');
-      return;
-    }
-    let valueToSet;
-    switch (selectedUnit) {
-      case 'BSV':
-        valueToSet = convertSatoshisToBSV(satoshiValue);
-        break;
-      case 'sats':
-        valueToSet = satoshiValue;
-        break;
-      case 'USD':
-        valueToSet = rate ? convertSatoshisToFiat(satoshiValue, rate) : '';
-        break;
-      default:
-        valueToSet = '';
-    }
-    setInputAmount(valueToSet.toString());
-  };
-
-  useEffect(() => {
-    if (transferAmountSatoshis !== null) {
-      setSatoshiValue(transferAmountSatoshis);
-    }
-  }, [selectedUnit]);
-  const handleScanResult = (result) => {
-    if (result.error) {
-      setFormError(result.error);
-    } else if (result.data) {
-      setTargetAddress(result.data);
-      setFormError('');
-      if (transferStatus) onClearTransferStatus();
-    } else {
-      setFormError(t('bsvPayment.statusMessages.errors.invalidQRCode'));
     }
   };
 
@@ -197,9 +113,7 @@ const WalletManager = ({
     setShowQrModal(false);
     setPrivateKeyQrCodeUrl('');
     setActiveBackupData(null);
-    setShowTransferSection(false);
     setAirGapMode(null);
-    setFormError('');
     if (transferStatus) onClearTransferStatus();
   };
 
@@ -242,7 +156,12 @@ const WalletManager = ({
       await downloadEncryptedDataQrCode(activeBackupData, address);
     } else {
       console.error('Encrypted backup data or address is not available for QR code download.');
-      setFormError(t('bsvPayment.statusMessages.errors.privateKeyNotAvailableForDownload'));
+      await showDialog({
+        title: t('bsvPayment.privateKeyQrModalTitle'),
+        message: t('bsvPayment.statusMessages.errors.privateKeyNotAvailableForDownload'),
+        confirmText: t('dialog.gotIt'),
+        showCancel: false,
+      });
     }
   };
 
@@ -252,129 +171,6 @@ const WalletManager = ({
       setPrivateKeyQrCodeUrl('');
     }
   }, [showQrModal]);
-
-  const toggleTransferSection = () => {
-    if (showTransferSection) {
-      setShowTransferSection(false);
-      setMaxApplied(false);
-      return;
-    }
-    resetPanels();
-    setShowTransferSection(true);
-    setMaxApplied(false);
-    setInputAmount('');
-  };
-
-  const [isCalculatingMax, setIsCalculatingMax] = useState(false);
-
-  const handleSetAmountToMax = async () => {
-    setIsCalculatingMax(true);
-    setFormError('');
-    try {
-      const result = await onRequestCalculateMaxTransfer(targetAddress);
-      const maxSats = result?.maxAmount ?? maxTransferAmountValue;
-      if (maxSats === null || maxSats === undefined || maxSats <= 0) {
-        // 以前这里什么都不显示，用户点了 Max 像是没反应。把原因说出来。
-        setFormError(result?.message || t('bsvPayment.transfer.errors.maxUnavailable'));
-        return;
-      }
-      setMaxApplied(true);
-      // 保留用户选的单位：选 USD 就填 USD，不要静默改成 BSV。
-      setSatoshiValue(maxSats);
-    } finally {
-      setIsCalculatingMax(false);
-    }
-  };
-
-  const executeTransfer = async () => {
-    setFormError('');
-    if (transferStatus) onClearTransferStatus();
-
-    if (!targetAddress || (!isValidAddress(targetAddress) && !isValidPaymail(targetAddress))) {
-      setFormError(t('bsvPayment.statusMessages.errors.invalidTargetAddress'));
-      return;
-    }
-    const amount = transferAmountSatoshis;
-    if (!amount || amount <= 0) {
-      setFormError(t('bsvPayment.transfer.errors.invalidAmount'));
-      return;
-    }
-    if (maxApplied && maxTransferAmountValue !== null && amount > maxTransferAmountValue) {
-      setFormError(t('bsvPayment.transfer.errors.amountExceedsMax'));
-      return;
-    }
-
-    let estimate = null;
-    if (onRequestEstimateTransfer) {
-      setIsEstimating(true);
-      try {
-        estimate = await onRequestEstimateTransfer(targetAddress, amount);
-      } finally {
-        setIsEstimating(false);
-      }
-      if (!estimate || estimate.error) {
-        setFormError(estimate?.message || t('bsvPayment.statusMessages.feeCalculationFailed'));
-        return;
-      }
-
-      const total = estimate.total ?? amount + (estimate.fee || 0);
-      const amountBsv = convertSatoshisToBSV(amount);
-      const feeSats = estimate.fee ?? 0;
-      const totalBsv = convertSatoshisToBSV(total);
-      const amountFiat = rate ? convertSatoshisToFiat(amount, rate) : null;
-      const totalFiat = rate ? convertSatoshisToFiat(total, rate) : null;
-
-      const confirmed = await showDialog({
-        title: t('bsvPayment.transfer.confirmTitle'),
-        message: (
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmRecipient')}</span>
-              <span className="font-mono text-right break-all">{targetAddress}</span>
-            </div>
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmAmount')}</span>
-              <span className="text-right">
-                {amountBsv} BSV ({amount} sats){amountFiat ? ` · $${amountFiat}` : ''}
-              </span>
-            </div>
-            <div className="flex items-start justify-between gap-4">
-              <span className="text-muted-foreground">{t('bsvPayment.transfer.confirmFee')}</span>
-              <span className="text-right">{feeSats} sats</span>
-            </div>
-            <div className="flex items-start justify-between gap-4 border-t border-border pt-2 font-medium">
-              <span>{t('bsvPayment.transfer.confirmTotal')}</span>
-              <span className="text-right">
-                {totalBsv} BSV ({total} sats){totalFiat ? ` · $${totalFiat}` : ''}
-              </span>
-            </div>
-          </div>
-        ),
-        confirmText: t('bsvPayment.transfer.confirmAction'),
-        cancelText: t('bsvPayment.cancelButton'),
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      await onTransferFunds(targetAddress, amount);
-      // On success, the status will be updated by useWallet, and we can clear the form.
-      setTargetAddress('');
-      setInputAmount('');
-      setMaxApplied(false);
-    } catch (error) {
-      // Errors, including cancellation, are caught here.
-      // useWallet is already handling the state change for real errors.
-      // If it's a cancellation, we do nothing to avoid showing an error.
-      if (error && error.cancelled) {
-        console.log('Transfer cancelled by user at PIN prompt.');
-      } else {
-        // For any other error, useWallet has already set the error state.
-        // We just log it here for debugging.
-        console.error('Failed to execute transfer:', error);
-      }
-    }
-  };
 
   const triggerImportWallet = async () => {
     resetPanels();
@@ -386,7 +182,12 @@ const WalletManager = ({
         cancelText: t('bsvPayment.importConfirmation.cancelButton')
       });
       if (!confirmed) {
-        setFormError(t('bsvPayment.statusMessages.info.importCancelled'));
+        await showDialog({
+          title: t('bsvPayment.importDialog.title'),
+          message: t('bsvPayment.statusMessages.info.importCancelled'),
+          confirmText: t('dialog.gotIt'),
+          showCancel: false,
+        });
         return;
       }
     }
@@ -406,9 +207,6 @@ const WalletManager = ({
     }
   };
 
-  const displayMessage = transferMessage || formError;
-  const displayStatus = transferStatus || (formError ? 'error' : null);
-  
   const handleAirGapDone = useCallback(() => {
     console.log('[DEBUG] AirGapSender onDone called');
     setAirGapMode(null);
@@ -422,19 +220,6 @@ const WalletManager = ({
   const airGapSheetTitle = airGapMode === 'sender'
     ? t('bsvPayment.airGap.transferOffline')
     : t('bsvPayment.airGap.signerButton');
-
-  const getTransferStatusClass = (status) => {
-    switch (status) {
-      case 'processing':
-        return 'text-primary';
-      case 'completed':
-        return 'text-[var(--seal)]';
-      case 'error':
-        return 'text-destructive';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
 
   if (!isWalletMode) return null;
 
@@ -451,140 +236,11 @@ const WalletManager = ({
             {t('bsvPayment.airGap.transferOffline')}
           </Button>
         ) : (
-          <Button className="flex-1" onClick={toggleTransferSection}>
+          <Button className="flex-1" onClick={() => setShowSendPanel(true)}>
             {t('bsvPayment.transfer.transferButton')}
           </Button>
         )}
       </div>
-
-      {showTransferSection && (
-        <div className="mt-4 rounded-[var(--radius)] bg-muted px-2 py-4">
-          <h2 className="text-lg font-semibold mb-3">{t('bsvPayment.transfer.transferTitle')}</h2>
-          <div className="mb-3">
-            <label htmlFor="targetAddress" className="block text-sm font-medium text-foreground mb-1">
-              {t('bsvPayment.transfer.targetAddressLabel')}
-            </label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                id="targetAddress"
-                inputMode="text"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                value={targetAddress}
-                onChange={(e) => {
-                  setTargetAddress(e.target.value.trim());
-                  setFormError('');
-                  if (transferStatus) onClearTransferStatus();
-                }}
-                placeholder={t('bsvPayment.transfer.targetAddressPlaceholder')}
-                aria-invalid={isTargetAddressValid === false}
-                aria-describedby={isTargetAddressValid === false ? 'targetAddress-error' : undefined}
-              />
-              <QRScanner onScanResult={handleScanResult}>
-                {({ scan }) => (
-                  <Button
-                    onClick={scan}
-                    size="icon"
-                    variant="outline"
-                    title={t('bsvPayment.scanButton')}
-                    aria-label={t('bsvPayment.scanButton')}
-                  >
-                    <ScanIcon />
-                  </Button>
-                )}
-              </QRScanner>
-            </div>
-            {targetAddress && isTargetAddressValid === false && (
-              <p id="targetAddress-error" role="alert" className="mt-1 text-xs text-destructive">
-                {t('bsvPayment.statusMessages.errors.invalidTargetAddress')}
-              </p>
-            )}
-          </div>
-          <div className="mb-3">
-            <label htmlFor="transferAmount" className="block text-sm font-medium text-foreground mb-1">
-              {t('bsvPayment.transfer.transferAmountLabel')}
-            </label>
-            <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              id="transferAmount"
-              inputMode="decimal"
-              value={inputAmount}
-              onChange={(e) => {
-                setInputAmount(e.target.value);
-                setFormError('');
-                if (transferStatus) onClearTransferStatus();
-              }}
-              placeholder={t('bsvPayment.transfer.transferAmountPlaceholder')}
-              autoComplete="off"
-              step="any"
-            />
-            <SimpleSelect
-              value={selectedUnit}
-              onValueChange={setSelectedUnit}
-              className="w-[92px]"
-              ariaLabel={t('bsvPayment.transfer.unitLabel')}
-            >
-              <SimpleSelectItem value="BSV">BSV</SimpleSelectItem>
-              <SimpleSelectItem value="sats">sats</SimpleSelectItem>
-              {rate && <SimpleSelectItem value="USD">USD</SimpleSelectItem>}
-            </SimpleSelect>
-            </div>
-            <div className="mt-2 text-sm text-muted-foreground">
-              <button
-                onClick={handleSetAmountToMax}
-                disabled={isCalculatingMax}
-                aria-label={t('bsvPayment.transfer.maxLabel')}
-                className="min-h-8 rounded-[var(--radius)] border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-              >
-                {isCalculatingMax ? `${t('bsvPayment.transfer.calculating')}...` : t('bsvPayment.transfer.maxLabel')}
-              </button>
-            </div>
-          </div>
-          {displayStatus && (
-            <div
-              role={displayStatus === 'error' ? 'alert' : 'status'}
-              aria-live="polite"
-              className={`mb-3 break-words text-sm ${getTransferStatusClass(displayStatus)}`}
-            >
-              {typeof displayMessage === 'object' ? (
-                <>
-                  {displayMessage.text}{' '}
-                  {displayMessage.linkUrl && (
-                    <a
-                      href={displayMessage.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      {displayMessage.linkText}
-                    </a>
-                  )}
-                </>
-              ) : (
-                <span>{displayMessage}</span>
-              )}
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button onClick={toggleTransferSection} variant="outline">
-              {t('bsvPayment.cancelButton')}
-            </Button>
-            <Button
-              onClick={executeTransfer}
-              disabled={transferStatus === 'processing' || isEstimating}
-            >
-              {transferStatus === 'processing'
-                ? t('bsvPayment.processingButton')
-                : isEstimating
-                  ? `${t('bsvPayment.transfer.calculating')}...`
-                  : t('bsvPayment.confirmTransferButton')}
-            </Button>
-          </div>
-        </div>
-      )}
 
       <Button
         onClick={() => setShowManageSheet(true)}
@@ -761,6 +417,20 @@ const WalletManager = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showSendPanel && (
+        <SendPanel
+          onClose={() => setShowSendPanel(false)}
+          rate={rate}
+          maxTransferAmountValue={maxTransferAmountValue}
+          onRequestCalculateMaxTransfer={onRequestCalculateMaxTransfer}
+          onRequestEstimateTransfer={onRequestEstimateTransfer}
+          onTransferFunds={onTransferFunds}
+          transferStatus={transferStatus}
+          transferMessage={transferMessage}
+          onClearTransferStatus={onClearTransferStatus}
+        />
+      )}
     </div>
   );
 };

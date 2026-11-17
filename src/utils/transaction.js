@@ -92,7 +92,7 @@ export const processRefund = async (utxos, request, { privateKey, dryRun = false
 
         let satsIn = 0;
         let fee = 0;
-        const feeModel = new LivePolicy();
+        const feeModel = LivePolicy.getInstance();
         // const feeModel = new SatoshisPerKilobyte(await fetchMinerFee());
         const P2PKH_INPUT_SIZE = 148;
         const minimumFeeForOneInput = Math.ceil(feeModel.value * (P2PKH_INPUT_SIZE / 1000));
