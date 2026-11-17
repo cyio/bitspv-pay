@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 import { Monitor, Sun, Moon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -22,7 +21,7 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function SettingsModal({ show, onClose }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const providers = getAvailableProviders();
   const [themePreference, setThemePreferenceState] = useState(getThemePreference);
   const [providerName, setProviderName] = useState(getCurrentProviderName);
