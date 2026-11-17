@@ -16,6 +16,113 @@
 
 import { EXPECTED_CSP_ORIGINS } from '../security/expectedCsp';
 
+/**
+ * 诊断输出跟随界面语言。这里按中文原文做片段映射（中文 locale 直接用原文，
+ * 英文 locale 逐段替换），避免为一份开发者报告维护上百个 i18n key。
+ */
+const DIAGNOSTIC_EN = {
+  '安全上下文 (HTTPS / localhost)': 'Secure context (HTTPS / localhost)',
+  '非安全上下文，WebCrypto 与密钥操作可能不可用':
+    'Insecure context; WebCrypto and key operations may be unavailable',
+  'WebCrypto (crypto.subtle) 可用': 'WebCrypto (crypto.subtle) available',
+  '缺少 crypto.subtle，签名/加密将无法运行': 'Missing crypto.subtle; signing and encryption will fail',
+  '未被 iframe 嵌套 (防点击劫持)': 'Not framed (clickjacking protection)',
+  '页面被嵌入 iframe，存在点击劫持风险': 'Page is embedded in an iframe; clickjacking risk',
+  '未找到 CSP meta，且无法从 JS 读取 HTTP 头':
+    'No CSP meta tag found; HTTP headers cannot be read from JS',
+  '离线单文件：connect-src 为 * 、无 script-src 哈希，跳过 Web 出站白名单比对':
+    'Offline single file: connect-src is *, no script-src hashes; web outbound allowlist comparison skipped',
+  '离线版：CSP 有意放宽（单文件、无网络需求），跳过 Web 出站白名单比对':
+    'Offline build: CSP is intentionally relaxed (single file, no network needs); web outbound allowlist comparison skipped',
+  '离线单文件构建跳过（整包内联，CSP 不含哈希）':
+    'Skipped for offline single file (all inlined; CSP has no hashes)',
+  '开发模式跳过（dev server 会注入内联脚本）':
+    'Skipped in dev (the dev server injects inline scripts)',
+  'script-src 含 \'unsafe-inline\'，XSS 防护被削弱':
+    'script-src includes \'unsafe-inline\'; XSS protection is weakened',
+  "script-src 含 'unsafe-eval'": "script-src includes 'unsafe-eval'",
+  "未设置 require-trusted-types-for 'script'": "require-trusted-types-for 'script' is not set",
+  'CSP 来源异常 (punycode / 裸 IP / http / 通配)':
+    'CSP anomalous sources (punycode / raw IP / http / wildcard)',
+  'CSP 出站白名单 (connect-src)': 'CSP outbound allowlist (connect-src)',
+  'CSP 脚本白名单 (script-src)': 'CSP script allowlist (script-src)',
+  'CSP 策略存在': 'CSP policy present',
+  'CSP 出站': 'CSP outbound',
+  'CSP 脚本': 'CSP scripts',
+  'CSP 对外访问范围': 'CSP outbound access',
+  'CSP 来源异常': 'CSP source anomalies',
+  'Trusted Types 强制 (require-trusted-types-for)': 'Trusted Types enforced (require-trusted-types-for)',
+  '外部脚本完整性 (SRI)': 'External script integrity (SRI)',
+  '内联脚本哈希校验': 'Inline script hash verification',
+  '安全与完整性自检': 'Security & integrity audit',
+  '与预期白名单一致 ✓': 'matches expected allowlist ✓',
+  '备注（均为预期来源）': 'notes (all expected sources)',
+  '无外部脚本（共': 'No external scripts (',
+  '个外部脚本未带 SRI，但已被 CSP 信任：': 'external scripts missing SRI but trusted by CSP: ',
+  '个外部脚本缺少 SRI 且未被 CSP 允许：': 'external scripts missing SRI and not allowed by CSP: ',
+  '个外部脚本均带 SRI': 'external scripts all have SRI',
+  '个内联脚本与 CSP 哈希不匹配': 'inline scripts do not match CSP hashes',
+  '个内联脚本哈希一致': 'inline script hashes match',
+  '安全校验': 'Security checks',
+  '通过': 'passed',
+  '：': ': ',
+  '出站白名单指纹': 'Outbound allowlist fingerprint',
+  '未预期来源异常': 'unexpected anomalous sources',
+  '新增未预期来源：': 'unexpected additions: ',
+  '较预期减少：': 'fewer than expected: ',
+  '未预期(非预期)': 'Unexpected additions',
+  '脚本新增(非预期)': 'Script additions (unexpected)',
+  '减少(预期缺失)': 'Removed (expected missing)',
+  '备注(预期内)': 'Notes (expected)',
+  'BitSPV 诊断报告': 'BitSPV Diagnostics Report',
+  '注意：CSP 由页面自身声明，可被作者篡改。真正的信任锚是开源仓库 + 出站白名单指纹。':
+    'Note: the page declares its own CSP and an author could alter it. Trust anchors are the open-source repository and the outbound allowlist fingerprint.',
+  'default-src 限定为': 'default-src restricted to',
+  "default-src 未包含": 'default-src missing',
+  "script-src 禁止": 'script-src forbids',
+  '离线版 CSP（有意放宽）': 'Offline build CSP (intentionally relaxed)',
+  '语言 / 时区': 'Language / timezone',
+  '生成时间': 'Generated',
+  '构建时间': 'Build time',
+  '构建模式': 'Build mode',
+  '安全检查': 'Security checks',
+  '任意来源通配': 'wildcard any origin',
+  'punycode 域名': 'punycode domain',
+  '非加密 http': 'plain HTTP',
+  '裸 IP': 'raw IP',
+  '无风险项': 'no issues',
+  '项需关注': 'issues to review',
+  'WebCrypto 不可用': 'WebCrypto unavailable',
+  '无 CSP，无法比对': 'No CSP; cannot compare',
+  '无内联脚本': 'No inline scripts',
+  ' (离线单文件)': ' (offline single file)',
+  '条指令': 'directives',
+  ' 个来源': ' origins',
+  ' · 指纹 sha256:': ' · fingerprint sha256:',
+  ' · 新增: ': ' · added: ',
+  ' · 与预期一致': ' · matches expected',
+  'App 版本': 'App version',
+  '个）': ')',
+  '离线版': 'offline',
+  '构建': 'build',
+  '新增(非预期)': 'Added (unexpected)',
+  '屏幕': 'Screen',
+  '网络': 'Network',
+  '显示模式': 'Display mode',
+  '环境': 'Environment',
+  '未预期': 'Unexpected',
+  '无': 'none',
+};
+const DIAGNOSTIC_KEYS = Object.keys(DIAGNOSTIC_EN).sort((a, b) => b.length - a.length);
+
+function localize(text) {
+  if (typeof text !== 'string') return text;
+  if (String(document.documentElement.lang || '').startsWith('zh')) return text;
+  let out = text;
+  for (const zh of DIAGNOSTIC_KEYS) out = out.split(zh).join(DIAGNOSTIC_EN[zh]);
+  return out;
+}
+
 const IS_OFFLINE = import.meta.env.VITE_OFFLINE_BUILD === 'true';
 const IS_DEV = import.meta.env.DEV;
 
@@ -230,7 +337,8 @@ function isOriginAllowedByCsp(origin, scriptSrcTokens) {
 async function runChecks() {
   const checks = [];
   /** @param {CheckStatus} status */
-  const add = (id, label, status, detail) => checks.push({ id, label, status, detail });
+  const add = (id, label, status, detail) =>
+    checks.push({ id, label: localize(label), status, detail: localize(detail) });
 
   // --- Wallet-critical foundations -----------------------------------------
   add(
@@ -561,7 +669,7 @@ export function formatAuditEntries(diag) {
       });
     });
 
-  return entries;
+  return entries.map((entry) => ({ ...entry, message: localize(entry.message) }));
 }
 
 /** Full plain-text report for clipboard / bug reports. */
@@ -614,7 +722,7 @@ export function formatDiagnosticsReport(diag) {
     '## 环境',
     ...environment.map(([k, v]) => `- ${k}: ${v}`)
   );
-  return lines.join('\n');
+  return lines.map(localize).join('\n');
 }
 
 /** Run the audit and pipe the short summary into a LogContext `addLog`. */

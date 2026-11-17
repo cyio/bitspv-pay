@@ -34,6 +34,9 @@ i18n
 const applyHtmlLang = lng => {
   const value = String(lng || 'en');
   document.documentElement.lang = value.startsWith('zh') ? 'zh-Hans' : value;
+  // index.html 里的标题脚本只看 navigator.language，?lng= 或持久化偏好会被忽略。
+  const title = i18n.t('bsvPayment.documentTitle');
+  if (title && title !== 'bsvPayment.documentTitle') document.title = title;
 };
 
 i18n.on('languageChanged', applyHtmlLang);

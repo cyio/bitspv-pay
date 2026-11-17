@@ -1,6 +1,7 @@
 export default {
   bsvPayment: {
     title: 'BitSPV Pay',
+    documentTitle: 'BitSPV Pay - 单地址极简 BSV 钱包',
     manageWalletButton: '管理钱包',
     tagline: '单地址极简钱包 · 浏览器即用 · 支持离线签名',
     trustLine: '非托管 · 私钥不离开设备 · 交易可查',
@@ -313,6 +314,11 @@ export default {
     settings: {
       title: '设置',
       apiProvider: 'API 提供商',
+      language: '语言',
+      appearance: '外观',
+      themeAuto: '跟随系统',
+      themeLight: '浅色',
+      themeDark: '深色',
     },
     debugConsole: {
       open: '打开系统日志',

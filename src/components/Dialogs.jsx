@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DialogContext } from '../contexts/DialogContext';
 import { PinPromptContext } from '../contexts/PinPromptContext';
 import PinDialog from './PinDialog';
+import Portal, { useLockBodyScroll } from './Portal';
 
 const Button = ({ children, variant, ...props }) => {
   const baseClasses = "inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
@@ -13,29 +14,80 @@ const Button = ({ children, variant, ...props }) => {
 }
 
 function CustomAlertDialog({ open, onOpenChange, title, message, children }) {
+  const cardRef = useRef(null);
+  const titleId = React.useId();
+  // 父组件每次渲染都会生成新的 onOpenChange，effect 里用 ref 取最新的，
+  // 避免打开期间反复重跑、把焦点重置。
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+
+  useLockBodyScroll(open);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.activeElement;
+    const focusables = () =>
+      Array.from(cardRef.current?.querySelectorAll('button:not([disabled]), a[href]') || []);
+    const frame = requestAnimationFrame(() => focusables()[0]?.focus());
+
+    const onKeyDown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onOpenChangeRef.current?.(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown);
+      previous?.focus?.();
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
-        onOpenChange(false);
+      onOpenChange(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" onClick={handleOverlayClick}>
-      <div className="bg-card rounded-[var(--radius)] border border-border w-full max-w-md mx-auto">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <div className="mt-2 text-sm text-muted-foreground max-h-[70vh] overflow-y-auto">
-            {message}
+    <Portal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 p-4 py-8"
+        onClick={handleOverlayClick}
+      >
+        <div
+          ref={cardRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="my-auto w-full max-w-md overflow-y-auto rounded-[var(--radius)] border border-border bg-card shadow-lg max-h-[calc(100dvh-4rem)]"
+        >
+          <div className="p-6">
+            <h2 id={titleId} className="text-lg font-semibold text-foreground">{title}</h2>
+            <div className="mt-2 text-sm text-muted-foreground">{message}</div>
           </div>
-
-        </div>
-        <div className="bg-muted px-4 py-3 sm:px-6 flex justify-end gap-2">
-          {children}
+          <div className="flex justify-end gap-2 bg-muted px-4 py-3 sm:px-6">
+            {children}
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 

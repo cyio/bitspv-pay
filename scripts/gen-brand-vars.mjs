@@ -83,6 +83,13 @@ const block = (theme) =>
     .map(([cssVar, token]) => `  ${cssVar}: ${toHslTriplet(readToken(token, theme))};`)
     .join('\n');
 
+// html.light / html.dark 手动切换时必须覆盖整组变量：tokens.css 的 media
+// 规则在 OS 深色时仍会给 :root 上暗色值，只写 color-scheme 不够。
+const brandBlock = (theme) =>
+  tokens.color.tokens
+    .map((token) => `  --${token.name}: ${readToken(token.name, theme)};`)
+    .join('\n');
+
 const radiusToken = tokens.radius?.tokens?.find((t) => t.name === 'radius-sm');
 const radius = radiusToken?.value ?? '2px';
 
@@ -105,6 +112,20 @@ ${block(DARK)
   .join('\n')}
     --destructive-foreground: ${toHslTriplet(readToken('paper', DARK))};
   }
+}
+
+html.light {
+  color-scheme: light;
+${brandBlock(LIGHT)}
+${block(LIGHT)}
+  --destructive-foreground: ${toHslTriplet(readToken('paper', LIGHT))};
+}
+
+html.dark {
+  color-scheme: dark;
+${brandBlock(DARK)}
+${block(DARK)}
+  --destructive-foreground: ${toHslTriplet(readToken('paper', DARK))};
 }
 `;
 

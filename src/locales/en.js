@@ -1,6 +1,7 @@
 export default {
   bsvPayment: {
     title: 'BitSPV Pay',
+    documentTitle: 'BitSPV Pay - Minimal single-address BSV wallet',
     manageWalletButton: 'Manage Wallet',
     tagline: 'Minimal single-address wallet · Runs in your browser · Offline signing',
     trustLine: 'Non-custodial · Keys never leave your device · Every transaction verifiable',
@@ -341,6 +342,11 @@ export default {
     settings: {
       title: 'Settings',
       apiProvider: 'API provider',
+      language: 'Language',
+      appearance: 'Appearance',
+      themeAuto: 'System',
+      themeLight: 'Light',
+      themeDark: 'Dark',
     },
     debugConsole: {
       open: 'Open system log',
